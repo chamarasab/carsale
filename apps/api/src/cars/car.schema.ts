@@ -21,6 +21,9 @@ export class CostBreakdown {
   freightJpy?: number;
 
   @Prop({ type: Number })
+  yellowBookFreightJpy?: number;
+
+  @Prop({ type: Number })
   insuranceJpy?: number;
 
   @Prop({ type: Number })

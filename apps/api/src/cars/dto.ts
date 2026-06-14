@@ -39,6 +39,11 @@ export class CostBreakdownDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
+  yellowBookFreightJpy?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   insuranceJpy?: number;
 
   @IsOptional()

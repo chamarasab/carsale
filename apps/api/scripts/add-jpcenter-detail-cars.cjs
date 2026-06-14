@@ -111,20 +111,7 @@ async function toCarDoc(html, sourceUrl) {
   const images = await selectHighQualityImages(imageUrls, imageFilePrefix(meta.model, meta.lotNumber));
   const fuelType = inferFuelType(meta.model, html);
   const now = new Date();
-  const cost = calculateImportCost({
-    auctionPriceJpy: meta.auctionPriceJpy,
-    exchangeRateLkr: Number(process.env.JPY_TO_LKR || 2.08),
-    freightJpy: Number(process.env.DEFAULT_FREIGHT_JPY || 220000),
-    insuranceJpy: Number(process.env.DEFAULT_INSURANCE_JPY || 50000),
-    vehicleType: 'Car',
-    fuelType,
-    engineCapacity: meta.engineCapacity,
-    manufactureYear: meta.year,
-    bankChargesLkr: Number(process.env.DEFAULT_BANK_CHARGES_LKR || 45000),
-    clearingChargesLkr: Number(process.env.DEFAULT_CLEARING_CHARGES_LKR || 220000),
-    importerCommissionLkr: Number(process.env.DEFAULT_IMPORTER_COMMISSION_LKR || 220000),
-    localTransportLkr: Number(process.env.DEFAULT_LOCAL_TRANSPORT_LKR || 95000),
-  });
+  const cost = calculateImportCost(buildCostInput(meta, fuelType));
 
   return {
     title: cleanDisplayText([meta.year, meta.maker, meta.model, meta.grade].filter(Boolean).join(' ')),
@@ -151,6 +138,33 @@ async function toCarDoc(html, sourceUrl) {
     status: 'available',
     published: true,
     updatedAt: now,
+  };
+}
+
+function buildCostInput(meta, fuelType) {
+  const everyPreset = suzukiEveryCostPreset(meta);
+  if (everyPreset) {
+    return {
+      ...everyPreset,
+      fuelType,
+      engineCapacity: meta.engineCapacity || 660,
+      manufactureYear: meta.year,
+    };
+  }
+
+  return {
+    auctionPriceJpy: meta.auctionPriceJpy,
+    exchangeRateLkr: Number(process.env.JPY_TO_LKR || 2.08),
+    freightJpy: Number(process.env.DEFAULT_FREIGHT_JPY || 220000),
+    insuranceJpy: Number(process.env.DEFAULT_INSURANCE_JPY || 50000),
+    vehicleType: 'Car',
+    fuelType,
+    engineCapacity: meta.engineCapacity,
+    manufactureYear: meta.year,
+    bankChargesLkr: Number(process.env.DEFAULT_BANK_CHARGES_LKR || 45000),
+    clearingChargesLkr: Number(process.env.DEFAULT_CLEARING_CHARGES_LKR || 220000),
+    importerCommissionLkr: Number(process.env.DEFAULT_IMPORTER_COMMISSION_LKR || 220000),
+    localTransportLkr: Number(process.env.DEFAULT_LOCAL_TRANSPORT_LKR || 95000),
   };
 }
 
@@ -328,6 +342,109 @@ function imageFilePrefix(model, lotOrId) {
   const modelPart = titleCase(model).replace(/[^a-zA-Z0-9]/g, '') || 'Jpcenter';
   const numericPart = String(lotOrId || '').replace(/\D/g, '').slice(-4).padStart(4, '0');
   return `${modelPart}${numericPart}`;
+}
+
+function suzukiEveryCostPreset(meta) {
+  if (!/suzuki/i.test(meta.maker) || !/every/i.test(meta.model) || !/DA17V/i.test(meta.chassisCode || '')) return null;
+
+  const grade = normalizeGrade(meta.grade);
+  const common = {
+    depreciationRate: 0.85,
+    yellowBookFreightJpy: 95500,
+    insuranceJpy: 5000,
+    vehicleType: 'Commercial Van',
+    exciseDutyLkr: 1992000,
+    exciseRatePerUnitLkr: 0,
+    vehicleEntitlementLevyLkr: 15000,
+    ssclRate: 0,
+    luxuryThresholdLkr: 5500000,
+    luxuryRate: 0.8,
+    comExmSealLkr: 1750,
+    importerCommissionLkr: 0,
+    localTransportLkr: 0,
+  };
+
+  if (grade.includes('JOIN TURBO')) {
+    return {
+      ...common,
+      auctionPriceJpy: 1255000,
+      exchangeRateLkr: 2,
+      yellowBookValueJpy: 1665600,
+      freightJpy: 320000,
+      cidRate: 0.2,
+      cidSurchargeRate: 0.5,
+      vatRate: 0.18,
+      bankChargesLkr: 45000,
+      clearingChargesLkr: 85000,
+      depositLkr: 250000,
+    };
+  }
+
+  if (grade === 'JOIN') {
+    return {
+      ...common,
+      auctionPriceJpy: 1200000,
+      exchangeRateLkr: 2,
+      yellowBookValueJpy: 1544400,
+      freightJpy: 300000,
+      cidRate: 0.3,
+      cidSurchargeRate: 0.5,
+      vatRate: 0.205,
+      bankChargesLkr: 45000,
+      clearingChargesLkr: 85000,
+      depositLkr: 0,
+    };
+  }
+
+  if (grade.includes('PC')) {
+    return {
+      ...common,
+      auctionPriceJpy: 775000,
+      exchangeRateLkr: 2,
+      yellowBookValueJpy: 1485000,
+      freightJpy: 320000,
+      cidRate: 0.3,
+      cidSurchargeRate: 0.5,
+      vatRate: 0.18,
+      bankChargesLkr: 45000,
+      clearingChargesLkr: 85000,
+      depositLkr: 400000,
+    };
+  }
+
+  if (grade.includes('PA LTD') || grade.includes('PA LIMITED')) {
+    return {
+      ...common,
+      auctionPriceJpy: 1100000,
+      exchangeRateLkr: 2.1,
+      yellowBookValueJpy: 1777600,
+      freightJpy: 310000,
+      cidRate: 0.3,
+      cidSurchargeRate: 0,
+      vatRate: 0.205,
+      bankChargesLkr: 0,
+      clearingChargesLkr: 80000,
+      depositLkr: 300000,
+    };
+  }
+
+  return {
+    ...common,
+    auctionPriceJpy: 925000,
+    exchangeRateLkr: 2.1,
+    yellowBookValueJpy: 1267200,
+    freightJpy: 320000,
+    cidRate: 0.2,
+    cidSurchargeRate: 0.5,
+    vatRate: 0.18,
+    bankChargesLkr: 45000,
+    clearingChargesLkr: 85000,
+    depositLkr: 420000,
+  };
+}
+
+function normalizeGrade(value) {
+  return cleanDisplayText(value).toUpperCase().replace(/\s+/g, ' ').trim();
 }
 
 function splitSetCookie(value) {

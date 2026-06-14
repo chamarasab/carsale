@@ -4,6 +4,7 @@ export type CostBreakdown = {
   yellowBookValueJpy?: number;
   depreciationRate?: number;
   freightJpy?: number;
+  yellowBookFreightJpy?: number;
   insuranceJpy?: number;
   invoiceCifJpy?: number;
   auctionPriceLkr: number;
