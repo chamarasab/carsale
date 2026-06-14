@@ -110,7 +110,11 @@ export class CarsService {
   }
 
   private withPublicImageUrls<T extends { images?: string[] }>(car: T): T {
-    const publicBaseUrl = this.configService.get<string>('API_PUBLIC_URL')?.replace(/\/$/, '');
+    const publicBaseUrl = (
+      this.configService.get<string>('API_PUBLIC_URL') ||
+      this.configService.get<string>('RENDER_EXTERNAL_URL') ||
+      'https://carsale-1.onrender.com'
+    ).replace(/\/$/, '');
     if (!publicBaseUrl || !car.images) return car;
 
     return {

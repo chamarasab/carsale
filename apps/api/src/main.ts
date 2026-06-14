@@ -13,7 +13,8 @@ async function bootstrap() {
   const config = app.get(ConfigService);
   const clientOrigin = config.get<string>('CLIENT_ORIGIN') ?? 'http://localhost:3000';
 
-  app.use(helmet());
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  app.use('/health', (_req: express.Request, res: express.Response) => res.json({ ok: true }));
   const imagesDir = resolveApiPath('public/images');
   await mkdir(imagesDir, { recursive: true });
   app.use('/images', express.static(imagesDir));
