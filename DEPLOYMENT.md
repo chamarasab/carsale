@@ -22,7 +22,7 @@ settings, set **Root Directory** to `apps/client`, then redeploy.
 Required environment variables:
 
 ```text
-NEXT_PUBLIC_API_URL=https://your-render-api.onrender.com/api
+NEXT_PUBLIC_API_URL=https://carsale-1.onrender.com/api
 NEXTAUTH_URL=https://your-vercel-app.vercel.app
 NEXTAUTH_SECRET=generate-a-long-random-secret
 GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com

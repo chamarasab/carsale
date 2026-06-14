@@ -1,7 +1,7 @@
 import { Car } from './types';
 import jpCenterCars from '../../public/jpcenter-cars.json';
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'https://carsale-1.onrender.com/api';
 const apiPublicUrl = apiUrl.replace(/\/api\/?$/, '');
 const fallbackCars = normalizeCars(jpCenterCars as Car[]);
 
