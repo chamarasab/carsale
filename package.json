@@ -1,0 +1,24 @@
+{
+  "name": "carsale",
+  "version": "1.0.0",
+  "private": true,
+  "description": "JDM car auction ordering platform for Sri Lankan customers.",
+  "workspaces": [
+    "apps/api",
+    "apps/client"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace apps/api\" \"npm run dev --workspace apps/client\"",
+    "dev:api": "npm run dev --workspace apps/api",
+    "dev:client": "npm run dev --workspace apps/client",
+    "build": "npm run build --workspace apps/api && npm run build --workspace apps/client",
+    "lint": "npm run lint --workspace apps/api && npm run lint --workspace apps/client",
+    "seed": "npm run seed --workspace apps/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

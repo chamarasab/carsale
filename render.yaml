@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: carsale-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build --workspace apps/api
+    startCommand: npm run start --workspace apps/api
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: carsale
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: API_PUBLIC_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: JPCENTER_USERNAME
+        sync: false
+      - key: JPCENTER_PASSWORD
+        sync: false
+      - key: JPY_TO_LKR
+        value: "2.08"
+      - key: DEFAULT_FREIGHT_JPY
+        value: "220000"
+      - key: DEFAULT_INSURANCE_JPY
+        value: "50000"
+      - key: DEFAULT_BANK_CHARGES_LKR
+        value: "45000"
+      - key: DEFAULT_CLEARING_CHARGES_LKR
+        value: "220000"
+      - key: DEFAULT_IMPORTER_COMMISSION_LKR
+        value: "220000"
+      - key: DEFAULT_LOCAL_TRANSPORT_LKR
+        value: "95000"

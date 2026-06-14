@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="600" viewBox="0 0 960 600" role="img" aria-labelledby="title desc">
+  <title id="title">Default car image</title>
+  <desc id="desc">A simple neutral car logo used when auction photos are unavailable.</desc>
+  <rect width="960" height="600" fill="#eef2f5"/>
+  <rect x="64" y="64" width="832" height="472" rx="20" fill="#ffffff" stroke="#d8e0e8" stroke-width="4"/>
+  <path d="M219 356h522c19 0 35 16 35 35v34H184v-34c0-19 16-35 35-35Z" fill="#20252d"/>
+  <path d="M278 280c19-50 49-75 91-75h222c40 0 72 25 91 75l26 69H252l26-69Z" fill="#3d4652"/>
+  <path d="M365 231h91v93H315l23-57c6-16 15-28 27-36Zm139 0h86c14 0 27 5 38 16 10 10 18 23 24 39l15 38H504v-93Z" fill="#eef2f5"/>
+  <circle cx="308" cy="425" r="58" fill="#101318"/>
+  <circle cx="308" cy="425" r="27" fill="#eef2f5"/>
+  <circle cx="652" cy="425" r="58" fill="#101318"/>
+  <circle cx="652" cy="425" r="27" fill="#eef2f5"/>
+  <path d="M214 349h532" stroke="#e03131" stroke-width="10" stroke-linecap="round"/>
+  <path d="M260 170h440" stroke="#d8e0e8" stroke-width="16" stroke-linecap="round"/>
+  <path d="M330 500h300" stroke="#d8e0e8" stroke-width="14" stroke-linecap="round"/>
+</svg>
