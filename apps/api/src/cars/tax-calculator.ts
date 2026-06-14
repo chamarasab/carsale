@@ -40,13 +40,37 @@ export function calculateImportCost(cost: CreateCarDto['cost'], settings: TaxSet
 
   const cidBaseLkr = cost.cidBaseLkr ?? toLkr(taxableCifLkr * cidRate);
   const cidSurchargeLkr = cost.cidSurchargeLkr ?? toLkr(cidBaseLkr * cidSurchargeRate);
-  const exciseDutyLkr =
-    cost.exciseDutyLkr ?? toLkr((cost.engineCapacity ?? 0) * (cost.exciseRatePerUnitLkr ?? 0));
   const luxuryTaxLkr = cost.luxuryTaxLkr ?? toLkr(Math.max(0, taxableCifLkr - luxuryThresholdLkr) * luxuryRate);
-  const vatLkr = cost.vatLkr ?? toLkr((taxableCifLkr + cidBaseLkr + cidSurchargeLkr + exciseDutyLkr) * vatRate);
-  const ssclLkr = cost.ssclLkr ?? toLkr((taxableCifLkr + cidBaseLkr + cidSurchargeLkr + exciseDutyLkr) * ssclRate);
   const vehicleEntitlementLevyLkr = cost.vehicleEntitlementLevyLkr ?? 0;
   const comExmSealLkr = cost.comExmSealLkr ?? settings.comExmSealLkr ?? DEFAULT_TAX_SETTINGS.comExmSealLkr;
+  const bankChargesLkr = cost.bankChargesLkr ?? 0;
+  const clearingChargesLkr = cost.clearingChargesLkr ?? cost.portHandlingLkr ?? 0;
+  const supplierCommissionLkr = cost.supplierCommissionLkr ?? 0;
+  const importerCommissionLkr = cost.importerCommissionLkr ?? cost.serviceFeeLkr ?? 0;
+  const depositLkr = cost.depositLkr ?? 0;
+  const localTransportLkr = cost.localTransportLkr ?? 0;
+  const baseExciseDutyLkr = toLkr((cost.engineCapacity ?? 0) * (cost.exciseRatePerUnitLkr ?? 0));
+  const solvedReferenceExciseDutyLkr = referenceExciseDutyLkr(cost, {
+    invoiceCifLkr,
+    taxableCifLkr,
+    cidBaseLkr,
+    cidSurchargeLkr,
+    luxuryTaxLkr,
+    vehicleEntitlementLevyLkr,
+    comExmSealLkr,
+    vatRate,
+    ssclRate,
+    bankChargesLkr,
+    clearingChargesLkr,
+    supplierCommissionLkr,
+    importerCommissionLkr,
+    depositLkr,
+    localTransportLkr,
+    fallbackExciseDutyLkr: baseExciseDutyLkr,
+  });
+  const exciseDutyLkr = cost.referenceTotalLkr ? solvedReferenceExciseDutyLkr : cost.exciseDutyLkr ?? solvedReferenceExciseDutyLkr;
+  const vatLkr = cost.vatLkr ?? toLkr((taxableCifLkr + cidBaseLkr + cidSurchargeLkr + exciseDutyLkr) * vatRate);
+  const ssclLkr = cost.ssclLkr ?? toLkr((taxableCifLkr + cidBaseLkr + cidSurchargeLkr + exciseDutyLkr) * ssclRate);
   const importDutyLkr = calculateTotalLkr({
     cidBaseLkr,
     cidSurchargeLkr,
@@ -58,13 +82,7 @@ export function calculateImportCost(cost: CreateCarDto['cost'], settings: TaxSet
     comExmSealLkr,
   });
 
-  const bankChargesLkr = cost.bankChargesLkr ?? 0;
-  const clearingChargesLkr = cost.clearingChargesLkr ?? cost.portHandlingLkr ?? 0;
-  const supplierCommissionLkr = cost.supplierCommissionLkr ?? 0;
-  const importerCommissionLkr = cost.importerCommissionLkr ?? cost.serviceFeeLkr ?? 0;
-  const depositLkr = cost.depositLkr ?? 0;
   const portHandlingLkr = cost.portHandlingLkr ?? clearingChargesLkr;
-  const localTransportLkr = cost.localTransportLkr ?? 0;
   const serviceFeeLkr = cost.serviceFeeLkr ?? importerCommissionLkr;
   const totalOtherCostsLkr = calculateTotalLkr({
     bankChargesLkr,
@@ -227,6 +245,61 @@ function calculateCommercialVanCost(cost: CreateCarDto['cost'], settings: TaxSet
 
 function isCommercialVanCost(cost: CreateCarDto['cost']) {
   return cost.vehicleType?.toLowerCase().includes('commercial van') ?? false;
+}
+
+function referenceExciseDutyLkr(
+  cost: CreateCarDto['cost'],
+  values: {
+    invoiceCifLkr: number;
+    taxableCifLkr: number;
+    cidBaseLkr: number;
+    cidSurchargeLkr: number;
+    luxuryTaxLkr: number;
+    vehicleEntitlementLevyLkr: number;
+    comExmSealLkr: number;
+    vatRate: number;
+    ssclRate: number;
+    bankChargesLkr: number;
+    clearingChargesLkr: number;
+    supplierCommissionLkr: number;
+    importerCommissionLkr: number;
+    depositLkr: number;
+    localTransportLkr: number;
+    fallbackExciseDutyLkr: number;
+  },
+) {
+  if (!cost.referenceTotalLkr || !cost.referenceExchangeRateLkr || !cost.exchangeRateLkr) {
+    return values.fallbackExciseDutyLkr;
+  }
+
+  const targetTotalLkr = toLkr(cost.referenceTotalLkr * (cost.exchangeRateLkr / cost.referenceExchangeRateLkr));
+  const otherCostsLkr = calculateTotalLkr({
+    bankChargesLkr: values.bankChargesLkr,
+    clearingChargesLkr: values.clearingChargesLkr,
+    supplierCommissionLkr: values.supplierCommissionLkr,
+    importerCommissionLkr: values.importerCommissionLkr,
+    depositLkr: values.depositLkr,
+    localTransportLkr: values.localTransportLkr,
+  });
+  const fixedTaxesWithoutVatOrExcise = calculateTotalLkr({
+    cidBaseLkr: values.cidBaseLkr,
+    cidSurchargeLkr: values.cidSurchargeLkr,
+    luxuryTaxLkr: values.luxuryTaxLkr,
+    vehicleEntitlementLevyLkr: values.vehicleEntitlementLevyLkr,
+    comExmSealLkr: values.comExmSealLkr,
+  });
+  const vatBaseWithoutExcise = values.taxableCifLkr + values.cidBaseLkr + values.cidSurchargeLkr;
+  const ssclBaseWithoutExcise = values.taxableCifLkr + values.cidBaseLkr + values.cidSurchargeLkr;
+  const solvedExcise =
+    (targetTotalLkr -
+      values.invoiceCifLkr -
+      otherCostsLkr -
+      fixedTaxesWithoutVatOrExcise -
+      vatBaseWithoutExcise * values.vatRate -
+      ssclBaseWithoutExcise * values.ssclRate) /
+    (1 + values.vatRate + values.ssclRate);
+
+  return toLkr(Math.max(values.fallbackExciseDutyLkr, solvedExcise));
 }
 
 function defaultLuxuryThreshold(fuelType: string | undefined, settings: TaxSettingsLike) {

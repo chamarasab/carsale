@@ -1,12 +1,21 @@
 export type CostBreakdown = {
   auctionPriceJpy: number;
   exchangeRateLkr: number;
+  exchangeRateDate?: string;
+  exchangeRateSource?: string;
+  exchangeRateProvider?: string;
   yellowBookValueJpy?: number;
   depreciationRate?: number;
   freightJpy?: number;
   yellowBookFreightJpy?: number;
   insuranceJpy?: number;
   invoiceCifJpy?: number;
+  referenceCifJpy?: number;
+  referenceTotalLkr?: number;
+  referenceExchangeRateLkr?: number;
+  referenceModel?: string;
+  referenceSource?: string;
+  calculationBasis?: string;
   auctionPriceLkr: number;
   invoiceCifLkr?: number;
   yellowBookCifLkr?: number;

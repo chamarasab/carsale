@@ -4,6 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
 import { SettingsService } from '../settings/settings.service';
 import { Car } from './car.schema';
+import { applyWorkbookReferenceCost } from './cost-reference';
 import { CreateCarDto, UpdateCarDto } from './dto';
 import { calculateImportCost } from './tax-calculator';
 
@@ -87,15 +88,17 @@ export class CarsService {
 
   async recalculateAll() {
     const settings = await this.settingsService.getTaxSettings();
+    const exchangeRate = await this.settingsService.getJpyToLkrRate();
     const cars = await this.carModel.find().lean();
 
     for (const car of cars) {
+      const cost = this.withCurrentExchangeRate(car, exchangeRate);
       await this.carModel.findByIdAndUpdate(car._id, {
-        cost: calculateImportCost(car.cost as CreateCarDto['cost'], settings),
+        cost: calculateImportCost(cost as CreateCarDto['cost'], settings),
       });
     }
 
-    return { recalculated: cars.length };
+    return { recalculated: cars.length, exchangeRate };
   }
 
   private async withCalculatedCost(dto: CreateCarDto): Promise<CreateCarDto & { cost: ReturnType<typeof calculateImportCost> }>;
@@ -123,5 +126,31 @@ export class CarsService {
         image.replace(/^https?:\/\/(?:localhost|127\.0\.0\.1):4000/i, publicBaseUrl),
       ),
     };
+  }
+
+  private withCurrentExchangeRate(
+    car: Pick<Car, 'maker' | 'model' | 'chassisCode' | 'cost'>,
+    exchangeRate: Awaited<ReturnType<SettingsService['getJpyToLkrRate']>>,
+  ) {
+    if (this.isWorkbookLockedEvery(car)) {
+      return car.cost;
+    }
+
+    return {
+      ...applyWorkbookReferenceCost(car),
+      exchangeRateLkr: exchangeRate.rate,
+      exchangeRateDate: exchangeRate.date,
+      exchangeRateSource: exchangeRate.source,
+      exchangeRateProvider: exchangeRate.provider,
+    };
+  }
+
+  private isWorkbookLockedEvery(car: Pick<Car, 'maker' | 'model' | 'chassisCode' | 'cost'>) {
+    return (
+      /suzuki/i.test(car.maker) &&
+      /every/i.test(car.model) &&
+      /DA17V/i.test(car.chassisCode || '') &&
+      car.cost.vehicleType?.toLowerCase().includes('commercial van')
+    );
   }
 }

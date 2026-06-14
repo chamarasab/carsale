@@ -22,6 +22,18 @@ export class CostBreakdownDto {
   exchangeRateLkr: number;
 
   @IsOptional()
+  @IsString()
+  exchangeRateDate?: string;
+
+  @IsOptional()
+  @IsString()
+  exchangeRateSource?: string;
+
+  @IsOptional()
+  @IsString()
+  exchangeRateProvider?: string;
+
+  @IsOptional()
   @IsNumber()
   @Min(0)
   yellowBookValueJpy?: number;
@@ -50,6 +62,33 @@ export class CostBreakdownDto {
   @IsNumber()
   @Min(0)
   invoiceCifJpy?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  referenceCifJpy?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  referenceTotalLkr?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  referenceExchangeRateLkr?: number;
+
+  @IsOptional()
+  @IsString()
+  referenceModel?: string;
+
+  @IsOptional()
+  @IsString()
+  referenceSource?: string;
+
+  @IsOptional()
+  @IsString()
+  calculationBasis?: string;
 
   @IsOptional()
   @IsNumber()

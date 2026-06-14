@@ -7,7 +7,8 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "lint": "eslint \"src/**/*.ts\"",
-    "seed": "tsx src/seed.ts"
+    "seed": "tsx src/seed.ts",
+    "recalculate:cars": "npm run build && node scripts/recalculate-car-prices.cjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.5",

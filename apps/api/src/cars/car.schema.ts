@@ -11,6 +11,15 @@ export class CostBreakdown {
   @Prop({ required: true, type: Number })
   exchangeRateLkr: number;
 
+  @Prop({ type: String })
+  exchangeRateDate?: string;
+
+  @Prop({ type: String })
+  exchangeRateSource?: string;
+
+  @Prop({ type: String })
+  exchangeRateProvider?: string;
+
   @Prop({ type: Number })
   yellowBookValueJpy?: number;
 
@@ -28,6 +37,24 @@ export class CostBreakdown {
 
   @Prop({ type: Number })
   invoiceCifJpy?: number;
+
+  @Prop({ type: Number })
+  referenceCifJpy?: number;
+
+  @Prop({ type: Number })
+  referenceTotalLkr?: number;
+
+  @Prop({ type: Number })
+  referenceExchangeRateLkr?: number;
+
+  @Prop({ type: String })
+  referenceModel?: string;
+
+  @Prop({ type: String })
+  referenceSource?: string;
+
+  @Prop({ type: String })
+  calculationBasis?: string;
 
   @Prop({ required: true, type: Number })
   auctionPriceLkr: number;

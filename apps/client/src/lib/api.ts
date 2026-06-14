@@ -30,6 +30,24 @@ export async function getCar(id: string) {
   }
 }
 
+export async function getExchangeRate() {
+  try {
+    const response = await fetch(`${apiUrl}/settings/exchange-rate`, { next: { revalidate: 60 * 60 * 6 } });
+    if (!response.ok) return null;
+    return (await response.json()) as {
+      base: 'JPY';
+      quote: 'LKR';
+      rate: number;
+      date: string;
+      provider: string;
+      source: string;
+      fallback: boolean;
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function createInquiry(payload: {
   carId: string;
   name: string;

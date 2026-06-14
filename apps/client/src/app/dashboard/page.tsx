@@ -1,12 +1,12 @@
 import { CarCard } from '@/components/car-card';
 import { Nav } from '@/components/nav';
-import { getCars } from '@/lib/api';
+import { getCars, getExchangeRate } from '@/lib/api';
 
 const brandFilters = ['Daihatsu', 'Honda', 'Mitsubishi', 'Nissan', 'Suzuki', 'Toyota'];
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ maker?: string }> }) {
   const { maker } = await searchParams;
-  const cars = await getCars();
+  const [cars, exchangeRate] = await Promise.all([getCars(), getExchangeRate()]);
   const selectedMaker = brandFilters.find((brand) => brand.toLowerCase() === maker?.toLowerCase());
   const visibleCars = selectedMaker ? cars.filter((car) => car.maker.toLowerCase() === selectedMaker.toLowerCase()) : cars;
 
@@ -22,6 +22,11 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               <p className="mt-3 max-w-2xl text-sm leading-6 text-graphite">
                 Compare total landed cost, vehicle grade, mileage, and auction location before sending an inquiry.
               </p>
+              {exchangeRate ? (
+                <p className="mt-3 inline-flex bg-mist px-3 py-2 text-xs font-black uppercase text-asphalt">
+                  Daily JPY rate: 1 JPY = LKR {exchangeRate.rate.toFixed(4)} ({exchangeRate.date})
+                </p>
+              ) : null}
             </div>
             <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:justify-end">
               <a

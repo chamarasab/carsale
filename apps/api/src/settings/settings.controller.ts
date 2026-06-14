@@ -12,6 +12,11 @@ export class SettingsController {
     return this.settingsService.getTaxSettings();
   }
 
+  @Get('exchange-rate')
+  getExchangeRate() {
+    return this.settingsService.getJpyToLkrRate();
+  }
+
   @UseGuards(GoogleJwtGuard)
   @Patch('tax')
   updateTaxSettings(@Body() dto: UpdateTaxSettingsDto) {
