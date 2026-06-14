@@ -1,0 +1,6 @@
+PORT=4000
+CLIENT_ORIGIN=http://localhost:3000
+MONGODB_URI=mongodb+srv://root:6526560@cluster0.jacpzec.mongodb.net/?appName=Cluster0
+MONGODB_DB=carsale
+GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
+ADMIN_EMAILS=owner@example.com,staff@example.com
