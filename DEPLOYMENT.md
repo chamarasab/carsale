@@ -15,6 +15,10 @@ Import the GitHub repository in Vercel and use these settings:
 - Install Command: leave default
 - Output Directory: leave default
 
+If the deployed site looks like plain HTML without styling, the Vercel project
+was almost certainly imported from the repository root. Open the Vercel project
+settings, set **Root Directory** to `apps/client`, then redeploy.
+
 Required environment variables:
 
 ```text
