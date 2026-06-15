@@ -14,7 +14,7 @@ const MIN_AUCTION_SHEET_WIDTH = 220;
 const MIN_AUCTION_SHEET_HEIGHT = 320;
 const FALLBACK_IMAGE = '/blank-car-logo.svg';
 const LOCAL_IMAGE_ROUTE = '/images/jpcenter';
-const API_PUBLIC_URL = process.env.API_PUBLIC_URL || 'http://localhost:4000';
+const API_PUBLIC_URL = process.env.API_PUBLIC_URL || 'https://carsale-1.onrender.com';
 const JP_CENTER_VENDOR_IDS = {
   TOYOTA: '1',
   NISSAN: '2',
@@ -137,7 +137,7 @@ async function main() {
   }
 
   const total = await cars.countDocuments({ published: true });
-  const imageRecords = await cars.countDocuments({ images: /^http:\/\/localhost:4000\/images\/jpcenter\// });
+  const imageRecords = await cars.countDocuments({ images: new RegExp(`^${escapeRegExp(API_PUBLIC_URL.replace(/\/$/, ''))}/images/jpcenter/`) });
   const blankRecords = await cars.countDocuments({ images: FALLBACK_IMAGE });
   console.log(JSON.stringify({ total, imageRecords, blankRecords, results }, null, 2));
   await mongoose.disconnect();
@@ -394,6 +394,10 @@ function cleanDisplayText(value) {
 
 function titleCase(value) {
   return cleanText(value).toLowerCase().split(/\s+/).filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function inferFuelType(model) {

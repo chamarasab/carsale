@@ -14,7 +14,7 @@ const MIN_AUCTION_SHEET_WIDTH = 220;
 const MIN_AUCTION_SHEET_HEIGHT = 320;
 const FALLBACK_IMAGE = '/blank-car-logo.svg';
 const LOCAL_IMAGE_ROUTE = '/images/jpcenter';
-const API_PUBLIC_URL = process.env.API_PUBLIC_URL || 'http://localhost:4000';
+const API_PUBLIC_URL = process.env.API_PUBLIC_URL || 'https://carsale-1.onrender.com';
 const DEFAULT_DETAIL_URLS = [
   'https://jpcenter.ru/aj-jDxsWnkhOXMYlJG.htm',
   'https://jpcenter.ru/aj-TOlA7fgI9rjoW3.htm',
