@@ -140,7 +140,7 @@ function inferTaxProfile(car: CarLike) {
     .filter(Boolean)
     .join(' ');
 
-  if (/A202A|e[- ]?smart/i.test(identity)) {
+  if (/A202A|A202S|e[- ]?smart/i.test(identity)) {
     return { fuelType: 'e-SMART Hybrid', motorPowerKw: 78 };
   }
   if (/e[- ]?power/i.test(identity)) {

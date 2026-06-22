@@ -563,5 +563,5 @@ function inferFuelType(model: string) {
 }
 
 function inferMotorPowerKw(vehicleIdentity: string) {
-  return /a202a/i.test(vehicleIdentity) ? 78 : undefined;
+  return /a202a|a202s/i.test(vehicleIdentity) ? 78 : undefined;
 }
