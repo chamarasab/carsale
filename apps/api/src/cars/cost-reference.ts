@@ -13,10 +13,21 @@ type CarLike = {
 
 type CostInput = CreateCarDto['cost'];
 
+type WorkbookReference = {
+  model: RegExp;
+  code?: RegExp;
+  grade: RegExp;
+  cifJpy: number;
+  label: string;
+  totalLkr: number;
+  fuelType?: string;
+  motorPowerKw?: number;
+};
+
 const WORKBOOK_SOURCE = 'docs/ALL MODEL TAX WEB AND YELLOY BBOK NEW NEW NEW.xlsx';
 const MIN_TRUSTED_AUCTION_PRICE_JPY = 300_000;
 
-const references = [
+const references: WorkbookReference[] = [
   { model: /yaris|vitz/i, code: /KSP210/i, grade: /\bG\b/i, cifJpy: 1_558_000, label: '5BA-KSP210 YARIS G' , totalLkr: 5_425_000 },
   { model: /yaris|vitz/i, code: /KSP210/i, grade: /\bX\b/i, cifJpy: 1_385_000, label: '5BA-KSP210 YARIS X' , totalLkr: 5_160_000 },
 
@@ -26,8 +37,8 @@ const references = [
   { model: /raize/i, code: /A201A/i, grade: /\bZ\b/i, cifJpy: 1_773_000, label: '5BA-A201A RAIZE Z 2WD' , totalLkr: 8_380_000 },
   { model: /raize/i, code: /A201A/i, grade: /\bG\b/i, cifJpy: 1_623_000, label: '5BA-A201A RAIZE G 2WD' , totalLkr: 8_135_000 },
   { model: /raize/i, code: /A201A/i, grade: /\bX\b/i, cifJpy: 1_500_000, label: '5BA-A201A RAIZE X 2WD' , totalLkr: 7_950_000 },
-  { model: /raize/i, code: /A202A/i, grade: /\bZ\b/i, cifJpy: 1_992_000, label: '5AA-A202A RAIZE HYBRID Z' , totalLkr: 7_025_000 },
-  { model: /raize/i, code: /A202A/i, grade: /\bG\b/i, cifJpy: 1_854_000, label: '5AA-A202A RAIZE HYBRID G' , totalLkr: 6_810_000 },
+  { model: /raize/i, code: /A202A/i, grade: /\bZ\b/i, cifJpy: 1_992_000, label: '5AA-A202A RAIZE HYBRID Z' , totalLkr: 7_025_000, fuelType: 'e-SMART Hybrid', motorPowerKw: 78 },
+  { model: /raize/i, code: /A202A/i, grade: /\bG\b/i, cifJpy: 1_854_000, label: '5AA-A202A RAIZE HYBRID G' , totalLkr: 6_810_000, fuelType: 'e-SMART Hybrid', motorPowerKw: 78 },
 
   { model: /roomy|thor/i, code: /M900/i, grade: /CUSTOM GT|G-T/i, cifJpy: 1_830_000, label: '4BA-M900A ROOMY CUSTOM GT/G-T' , totalLkr: 5_860_000 },
   { model: /roomy|thor/i, code: /M900/i, grade: /CUSTOM G/i, cifJpy: 1_717_000, label: '5BA-M900A ROOMY CUSTOM G' , totalLkr: 5_685_000 },
@@ -73,18 +84,24 @@ const references = [
 
 export function applyWorkbookReferenceCost(car: CarLike): CostInput {
   const reference = findWorkbookReference(car);
-  if (!reference) return car.cost;
+  const taxProfile = inferTaxProfile(car);
+  const profiledCost = {
+    ...car.cost,
+    fuelType: reference?.fuelType ?? taxProfile.fuelType ?? car.cost.fuelType,
+    motorPowerKw: reference?.motorPowerKw ?? taxProfile.motorPowerKw ?? car.cost.motorPowerKw,
+  };
+  if (!reference) return profiledCost;
 
-  const freightJpy = car.cost.freightJpy ?? 220_000;
-  const insuranceJpy = car.cost.insuranceJpy ?? 50_000;
+  const freightJpy = profiledCost.freightJpy ?? 220_000;
+  const insuranceJpy = profiledCost.insuranceJpy ?? 50_000;
   const fallbackAuctionPriceJpy = Math.max(0, reference.cifJpy - freightJpy - insuranceJpy);
-  const alreadyUsedFallback = car.cost.calculationBasis === 'Workbook reference CIF fallback';
-  const needsFallback = alreadyUsedFallback || !car.cost.auctionPriceJpy || car.cost.auctionPriceJpy < MIN_TRUSTED_AUCTION_PRICE_JPY;
+  const alreadyUsedFallback = profiledCost.calculationBasis === 'Workbook reference CIF fallback';
+  const needsFallback = alreadyUsedFallback || !profiledCost.auctionPriceJpy || profiledCost.auctionPriceJpy < MIN_TRUSTED_AUCTION_PRICE_JPY;
 
   return {
-    ...car.cost,
-    auctionPriceJpy: needsFallback ? fallbackAuctionPriceJpy : car.cost.auctionPriceJpy,
-    invoiceCifJpy: needsFallback ? reference.cifJpy : car.cost.invoiceCifJpy,
+    ...profiledCost,
+    auctionPriceJpy: needsFallback ? fallbackAuctionPriceJpy : profiledCost.auctionPriceJpy,
+    invoiceCifJpy: needsFallback ? reference.cifJpy : profiledCost.invoiceCifJpy,
     exciseDutyLkr: undefined,
     vatLkr: undefined,
     ssclLkr: undefined,
@@ -108,4 +125,32 @@ function findWorkbookReference(car: CarLike) {
     if (reference.code && !reference.code.test(code)) return false;
     return reference.grade.test(grade);
   });
+}
+
+function inferTaxProfile(car: CarLike) {
+  const identity = [
+    car.title,
+    car.maker,
+    car.model,
+    car.modelCode,
+    car.chassisCode,
+    car.auctionGrade,
+    ...(car.features ?? []),
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  if (/A202A|e[- ]?smart/i.test(identity)) {
+    return { fuelType: 'e-SMART Hybrid', motorPowerKw: 78 };
+  }
+  if (/e[- ]?power/i.test(identity)) {
+    return { fuelType: 'e-POWER Hybrid' };
+  }
+  if (/e:?HEV|(?:^|[\s:_-])HEV(?:$|[\s:_-])|G[_-]?HEV|A202S|hybrid|prius|aqua|insight/i.test(identity)) {
+    return { fuelType: 'Hybrid' };
+  }
+  if (/diesel/i.test(identity)) {
+    return { fuelType: 'Diesel' };
+  }
+  return {};
 }

@@ -1,0 +1,94 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { calculateImportCost } from './tax-calculator';
+
+function baseCost(overrides: Record<string, unknown> = {}) {
+  return {
+    auctionPriceJpy: 1_800_000,
+    exchangeRateLkr: 2.125,
+    freightJpy: 320_000,
+    insuranceJpy: 0,
+    vehicleType: 'Car',
+    fuelType: 'Petrol',
+    engineCapacity: 996,
+    manufactureYear: new Date().getFullYear() - 2,
+    bankChargesLkr: 0,
+    clearingChargesLkr: 0,
+    importerCommissionLkr: 0,
+    localTransportLkr: 0,
+    ...overrides,
+  };
+}
+
+test('uses the workbook petrol excise rate for a 996cc Raize', () => {
+  const result = calculateImportCost(baseCost());
+
+  assert.equal(result.exciseRatePerUnitLkr, 2_450);
+  assert.equal(result.exciseUnit, 'cc');
+  assert.equal(result.exciseDutyLkr, 2_440_200);
+});
+
+test('does not apply the new automatic schedule to kei cars', () => {
+  const result = calculateImportCost(baseCost({ engineCapacity: 658 }));
+
+  assert.equal(result.exciseRatePerUnitLkr, 0);
+  assert.equal(result.exciseDutyLkr, 0);
+});
+
+test('uses the statutory petrol excise rate for a 1,190cc Raize', () => {
+  const result = calculateImportCost(baseCost({ engineCapacity: 1_190 }));
+
+  assert.equal(result.exciseRatePerUnitLkr, 3_850);
+  assert.equal(result.exciseUnit, 'cc');
+  assert.equal(result.exciseDutyLkr, 4_581_500);
+});
+
+test('uses the workbook kW rate for a 78kW Raize e-SMART hybrid', () => {
+  const result = calculateImportCost(
+    baseCost({
+      fuelType: 'e-SMART Hybrid',
+      engineCapacity: 1_196,
+      motorPowerKw: 78,
+    }),
+  );
+
+  assert.equal(result.exciseRatePerUnitLkr, 43_440);
+  assert.equal(result.exciseUnit, 'kW');
+  assert.equal(result.exciseDutyLkr, 3_388_320);
+});
+
+test('uses the expanded CIF base for VAT and SSCL', () => {
+  const result = calculateImportCost(baseCost({ engineCapacity: 1_190 }));
+  const taxableBase =
+    result.taxableCifLkr! * 1.1 +
+    result.cidBaseLkr! +
+    result.cidSurchargeLkr! +
+    result.exciseDutyLkr!;
+
+  assert.equal(result.vatLkr, Math.round(taxableBase * 0.18));
+  assert.equal(result.ssclLkr, Math.round(taxableBase * 0.025));
+});
+
+test('applies propulsion-specific luxury tax rates above the CIF threshold', () => {
+  const petrol = calculateImportCost(
+    baseCost({ auctionPriceJpy: 2_500_000, engineCapacity: 1_190 }),
+  );
+  const hybrid = calculateImportCost(
+    baseCost({
+      auctionPriceJpy: 2_750_000,
+      fuelType: 'Hybrid',
+      engineCapacity: 1_196,
+    }),
+  );
+
+  assert.equal(petrol.luxuryRate, 1);
+  assert.equal(
+    petrol.luxuryTaxLkr,
+    Math.round(Math.max(0, petrol.taxableCifLkr! - 5_000_000)),
+  );
+  assert.equal(hybrid.luxuryRate, 0.8);
+  assert.equal(
+    hybrid.luxuryTaxLkr,
+    Math.round(Math.max(0, hybrid.taxableCifLkr! - 5_500_000) * 0.8),
+  );
+});

@@ -92,6 +92,9 @@ export class CostBreakdown {
   @Prop({ type: Number })
   exciseRatePerUnitLkr?: number;
 
+  @Prop({ enum: ['cc', 'kW'], type: String })
+  exciseUnit?: 'cc' | 'kW';
+
   @Prop({ type: Number })
   exciseDutyLkr?: number;
 
@@ -133,6 +136,9 @@ export class CostBreakdown {
 
   @Prop({ type: Number })
   engineCapacity?: number;
+
+  @Prop({ type: Number })
+  motorPowerKw?: number;
 
   @Prop({ type: Number })
   manufactureYear?: number;

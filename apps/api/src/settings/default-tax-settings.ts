@@ -2,7 +2,7 @@ export const DEFAULT_TAX_SETTINGS = {
   key: 'active-tax-policy',
   name: 'Sri Lanka vehicle import tax policy',
   effectiveFrom: '2026-05-16',
-  notes: 'Defaults based on PiXAMP-visible 2026 calculator structure. Confirm final liability with a clearing agent.',
+  notes: 'Defaults follow the 2026 PiXAMP tax structure and published Sri Lanka excise schedules. Confirm final liability with a clearing agent.',
   cidRate: 0.3,
   cidSurchargeRate: 0.5,
   vatRate: 0.18,

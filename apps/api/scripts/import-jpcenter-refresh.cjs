@@ -154,11 +154,13 @@ async function toCarDoc(row, query, client) {
   const auctionName = cleanText(row.d) || 'Japan auction';
   const lotNumber = cleanText(row.c);
   const color = cleanDisplayText(row.w);
+  const vehicleIdentity = `${query.model} ${modelCode} ${chassisPrefix} ${trim}`;
   const sourceUrl = `${JP_CENTER_BASE_URL}/${cleanText(row.f1) || 'aj'}-${cleanText(row.a)}.htm`;
   const imagePrefix = imageFilePrefix(query.model, lotNumber || cleanText(row.a));
   const detailImageUrls = await client.fetchAuctionImageUrls(sourceUrl);
   const images = await selectHighQualityImages(detailImageUrls.length ? detailImageUrls : imageUrlsFromTokens([row.x, row.y, row.z]), imagePrefix);
-  const fuelType = inferFuelType(query.model);
+  const fuelType = inferFuelType(vehicleIdentity);
+  const motorPowerKw = inferMotorPowerKw(vehicleIdentity);
   const now = new Date();
   const cost = calculateImportCost({
     auctionPriceJpy,
@@ -168,6 +170,7 @@ async function toCarDoc(row, query, client) {
     vehicleType: 'Car',
     fuelType,
     engineCapacity,
+    motorPowerKw,
     manufactureYear: year,
     bankChargesLkr: Number(process.env.DEFAULT_BANK_CHARGES_LKR || 45000),
     clearingChargesLkr: Number(process.env.DEFAULT_CLEARING_CHARGES_LKR || 220000),
@@ -401,7 +404,15 @@ function escapeRegExp(value) {
 }
 
 function inferFuelType(model) {
-  return /(prius|aqua|hybrid|insight|leaf|sakura|bz4x)/i.test(model) ? 'Hybrid' : 'Petrol';
+  if (/a202a|e-smart|e smart/i.test(model)) return 'e-SMART Hybrid';
+  if (/e-power|e power/i.test(model)) return 'e-POWER Hybrid';
+  if (/(prius|aqua|hybrid|insight|e:?hev|(?:^|[\s:_-])hev(?:$|[\s:_-])|g[_-]?hev|a202s)/i.test(model)) return 'Hybrid';
+  if (/(leaf|sakura|bz4x)/i.test(model)) return 'Electric';
+  return 'Petrol';
+}
+
+function inferMotorPowerKw(vehicleIdentity) {
+  return /a202a/i.test(vehicleIdentity) ? 78 : undefined;
 }
 
 main().catch(async (error) => {

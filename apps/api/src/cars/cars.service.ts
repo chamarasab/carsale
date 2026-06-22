@@ -6,7 +6,7 @@ import { SettingsService } from '../settings/settings.service';
 import { Car } from './car.schema';
 import { applyWorkbookReferenceCost } from './cost-reference';
 import { CreateCarDto, UpdateCarDto } from './dto';
-import { calculateImportCost } from './tax-calculator';
+import { calculateImportCost, prepareCostForRecalculation } from './tax-calculator';
 
 @Injectable()
 export class CarsService {
@@ -92,9 +92,11 @@ export class CarsService {
     const cars = await this.carModel.find().lean();
 
     for (const car of cars) {
-      const cost = this.withCurrentExchangeRate(car, exchangeRate);
+      const cost = prepareCostForRecalculation(this.withCurrentExchangeRate(car, exchangeRate));
+      const calculatedCost = calculateImportCost(cost as CreateCarDto['cost'], settings);
       await this.carModel.findByIdAndUpdate(car._id, {
-        cost: calculateImportCost(cost as CreateCarDto['cost'], settings),
+        cost: calculatedCost,
+        fuelType: calculatedCost.fuelType ?? car.fuelType,
       });
     }
 

@@ -109,9 +109,11 @@ async function toCarDoc(html, sourceUrl) {
   const meta = parseDetailMeta(html, sourceUrl);
   const imageUrls = extractJpCenterImageUrls(html);
   const images = await selectHighQualityImages(imageUrls, imageFilePrefix(meta.model, meta.lotNumber));
-  const fuelType = inferFuelType(meta.model, html);
+  const vehicleIdentity = `${meta.model} ${meta.chassisCode} ${meta.grade} ${html}`;
+  const fuelType = inferFuelType(vehicleIdentity);
+  const motorPowerKw = inferMotorPowerKw(vehicleIdentity);
   const now = new Date();
-  const cost = calculateImportCost(buildCostInput(meta, fuelType));
+  const cost = calculateImportCost(buildCostInput(meta, fuelType, motorPowerKw));
 
   return {
     title: cleanDisplayText([meta.year, meta.maker, meta.model, meta.grade].filter(Boolean).join(' ')),
@@ -141,13 +143,14 @@ async function toCarDoc(html, sourceUrl) {
   };
 }
 
-function buildCostInput(meta, fuelType) {
+function buildCostInput(meta, fuelType, motorPowerKw) {
   const everyPreset = suzukiEveryCostPreset(meta);
   if (everyPreset) {
     return {
       ...everyPreset,
       fuelType,
       engineCapacity: meta.engineCapacity || 660,
+      motorPowerKw,
       manufactureYear: meta.year,
     };
   }
@@ -160,6 +163,7 @@ function buildCostInput(meta, fuelType) {
     vehicleType: 'Car',
     fuelType,
     engineCapacity: meta.engineCapacity,
+    motorPowerKw,
     manufactureYear: meta.year,
     bankChargesLkr: Number(process.env.DEFAULT_BANK_CHARGES_LKR || 45000),
     clearingChargesLkr: Number(process.env.DEFAULT_CLEARING_CHARGES_LKR || 220000),
@@ -303,8 +307,16 @@ function inferTransmission(html) {
   return value ? value.toUpperCase() : 'Automatic';
 }
 
-function inferFuelType(model, html) {
-  return /(hybrid|&nbsp;Hybrid)/i.test(`${model} ${html}`) ? 'Hybrid' : 'Petrol';
+function inferFuelType(vehicleIdentity) {
+  if (/a202a|e-smart|e smart/i.test(vehicleIdentity)) return 'e-SMART Hybrid';
+  if (/e-power|e power/i.test(vehicleIdentity)) return 'e-POWER Hybrid';
+  if (/hybrid|&nbsp;Hybrid|e:?hev|(?:^|[\s:_-])hev(?:$|[\s:_-])|g[_-]?hev|a202s/i.test(vehicleIdentity)) return 'Hybrid';
+  if (/leaf|sakura|bz4x/i.test(vehicleIdentity)) return 'Electric';
+  return 'Petrol';
+}
+
+function inferMotorPowerKw(vehicleIdentity) {
+  return /a202a/i.test(vehicleIdentity) ? 78 : undefined;
 }
 
 function mileageBucketToKm(value) {

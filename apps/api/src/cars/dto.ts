@@ -141,6 +141,10 @@ export class CostBreakdownDto {
   exciseRatePerUnitLkr?: number;
 
   @IsOptional()
+  @IsIn(['cc', 'kW'])
+  exciseUnit?: 'cc' | 'kW';
+
+  @IsOptional()
   @IsNumber()
   @Min(0)
   exciseDutyLkr?: number;
@@ -192,6 +196,11 @@ export class CostBreakdownDto {
   @IsNumber()
   @Min(0)
   engineCapacity?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  motorPowerKw?: number;
 
   @IsOptional()
   @IsInt()

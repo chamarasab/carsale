@@ -7,6 +7,7 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "lint": "eslint \"src/**/*.ts\"",
+    "test:tax": "tsx --test src/cars/tax-calculator.spec.ts",
     "seed": "tsx src/seed.ts",
     "recalculate:cars": "npm run build && node scripts/recalculate-car-prices.cjs"
   },

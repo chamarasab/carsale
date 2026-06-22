@@ -162,6 +162,9 @@ export class ScraperService {
     const auctionName = cleanText(row.d) || 'Japan auction';
     const lotNumber = cleanText(row.c);
     const color = cleanDisplayText(row.w);
+    const vehicleIdentity = `${query.model} ${modelCode} ${chassisPrefix} ${trim}`;
+    const fuelType = inferFuelType(vehicleIdentity);
+    const motorPowerKw = inferMotorPowerKw(vehicleIdentity);
     const sourceUrl = `${JP_CENTER_BASE_URL}/${cleanText(row.f1) || 'aj'}-${cleanText(row.a)}.htm`;
     const imagePrefix = imageFilePrefix(query.model, lotNumber || cleanText(row.a));
     const detailImageUrls = await client.fetchAuctionImageUrls(sourceUrl);
@@ -178,7 +181,7 @@ export class ScraperService {
       modelCode,
       year,
       mileageKm: toNumber(row.q),
-      fuelType: inferFuelType(query.model),
+      fuelType,
       transmission: 'Automatic',
       auctionGrade: grade,
       chassisCode: [chassisPrefix, modelCode].filter(Boolean).join(' ') || lotNumber,
@@ -198,8 +201,9 @@ export class ScraperService {
         freightJpy: this.config.get<number>('DEFAULT_FREIGHT_JPY') ?? 220000,
         insuranceJpy: this.config.get<number>('DEFAULT_INSURANCE_JPY') ?? 50000,
         vehicleType: 'Car',
-        fuelType: inferFuelType(query.model),
+        fuelType,
         engineCapacity,
+        motorPowerKw,
         manufactureYear: year,
         bankChargesLkr: this.config.get<number>('DEFAULT_BANK_CHARGES_LKR') ?? 45000,
         clearingChargesLkr: this.config.get<number>('DEFAULT_CLEARING_CHARGES_LKR') ?? 220000,
@@ -545,8 +549,19 @@ function isUsableVehicleImage(dimensions: { width: number; height: number }) {
 
 function inferFuelType(model: string) {
   const normalized = model.toLowerCase();
-  if (/(prius|aqua|hybrid|insight|leaf|sakura|bz4x)/.test(normalized)) {
+  if (/a202a|e-smart|e smart/.test(normalized)) {
+    return 'e-SMART Hybrid';
+  }
+  if (/e-power|e power/.test(normalized)) {
+    return 'e-POWER Hybrid';
+  }
+  if (/(prius|aqua|hybrid|insight|e:?hev|(?:^|[\s:_-])hev(?:$|[\s:_-])|g[_-]?hev|a202s)/.test(normalized)) {
     return 'Hybrid';
   }
+  if (/(leaf|sakura|bz4x)/.test(normalized)) return 'Electric';
   return 'Petrol';
+}
+
+function inferMotorPowerKw(vehicleIdentity: string) {
+  return /a202a/i.test(vehicleIdentity) ? 78 : undefined;
 }

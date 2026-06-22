@@ -28,6 +28,7 @@ export type CostBreakdown = {
   cidBaseLkr?: number;
   cidSurchargeLkr?: number;
   exciseRatePerUnitLkr?: number;
+  exciseUnit?: 'cc' | 'kW';
   exciseDutyLkr?: number;
   luxuryThresholdLkr?: number;
   luxuryRate?: number;
@@ -42,6 +43,7 @@ export type CostBreakdown = {
   vehicleType?: string;
   fuelType?: string;
   engineCapacity?: number;
+  motorPowerKw?: number;
   manufactureYear?: number;
   bankChargesLkr?: number;
   clearingChargesLkr?: number;
