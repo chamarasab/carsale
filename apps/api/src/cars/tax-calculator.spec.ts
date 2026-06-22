@@ -43,17 +43,32 @@ test('uses the statutory petrol excise rate for a 1,190cc Raize', () => {
   assert.equal(result.exciseDutyLkr, 4_581_500);
 });
 
-test('uses the workbook kW rate for a 78kW Raize e-SMART hybrid', () => {
+test('uses the current-year kW rate for a 78kW Raize e-SMART hybrid', () => {
   const result = calculateImportCost(
     baseCost({
       fuelType: 'e-SMART Hybrid',
       engineCapacity: 1_196,
       motorPowerKw: 78,
+      manufactureYear: new Date().getFullYear(),
+    }),
+  );
+
+  assert.equal(result.exciseRatePerUnitLkr, 40_970);
+  assert.equal(result.exciseUnit, 'kW');
+  assert.equal(result.exciseDutyLkr, 3_195_660);
+});
+
+test('uses the one-to-three-year kW rate for a 2025 Raize e-SMART hybrid', () => {
+  const result = calculateImportCost(
+    baseCost({
+      fuelType: 'e-SMART Hybrid',
+      engineCapacity: 1_196,
+      motorPowerKw: 78,
+      manufactureYear: new Date().getFullYear() - 1,
     }),
   );
 
   assert.equal(result.exciseRatePerUnitLkr, 43_440);
-  assert.equal(result.exciseUnit, 'kW');
   assert.equal(result.exciseDutyLkr, 3_388_320);
 });
 

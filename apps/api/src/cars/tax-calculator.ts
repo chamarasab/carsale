@@ -18,12 +18,13 @@ export function calculateImportCost(cost: CreateCarDto['cost'], settings: TaxSet
 
   const invoiceCifJpy = cost.invoiceCifJpy ?? cost.auctionPriceJpy + freightJpy + insuranceJpy;
   const invoiceCifLkr = toLkr(invoiceCifJpy * exchangeRateLkr);
+  const yellowBookFreightJpy = cost.yellowBookFreightJpy ?? freightJpy;
   const yellowBookCifLkr = cost.yellowBookValueJpy
     ? toLkr(
         ((cost.yellowBookValueJpy * 100) / 110) *
           (cost.depreciationRate ?? settings.defaultDepreciationRate ?? DEFAULT_TAX_SETTINGS.defaultDepreciationRate) *
           exchangeRateLkr +
-          shippingLkr +
+          yellowBookFreightJpy * exchangeRateLkr +
           insuranceLkr,
       )
     : invoiceCifLkr;
@@ -113,6 +114,7 @@ export function calculateImportCost(cost: CreateCarDto['cost'], settings: TaxSet
     ...cost,
     auctionPriceLkr,
     freightJpy,
+    yellowBookFreightJpy,
     insuranceJpy,
     shippingLkr,
     insuranceLkr,
@@ -519,7 +521,7 @@ function seriesHybridExciseRate(
   const ageYears = manufactureYear
     ? Math.max(0, new Date().getFullYear() - manufactureYear)
     : 2;
-  const ageBand = ageYears <= 1 ? 0 : ageYears <= 3 ? 1 : 2;
+  const ageBand = ageYears === 0 ? 0 : ageYears <= 3 ? 1 : 2;
   const rates = diesel
     ? [
         { max: 50, values: [36_920, 52_130, 69_550] },
