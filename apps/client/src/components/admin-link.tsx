@@ -9,7 +9,7 @@ export function AdminLink() {
   if (!session?.user) return null;
 
   return (
-    <Link className="hidden text-sm font-black text-asphalt hover:text-signal sm:inline" href="/admin/vehicles">
+    <Link className="hidden text-sm font-black text-sub hover:text-signal sm:inline" href="/admin/vehicles">
       Admin
     </Link>
   );

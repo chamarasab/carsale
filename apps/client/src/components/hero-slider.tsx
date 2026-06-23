@@ -17,7 +17,7 @@ export function HeroSlider() {
         <div className="flex flex-wrap justify-end gap-2">
           {models.map((model) => (
             <span
-              className="border border-white/20 bg-white/12 px-3 py-2 text-xs font-black uppercase text-white shadow-soft backdrop-blur"
+              className="rounded-panel border border-white/20 bg-white/12 px-3 py-2 text-xs font-black uppercase text-white shadow-soft backdrop-blur"
               key={model}
             >
               {model}

@@ -63,15 +63,15 @@ export default function AdminSettingsPage() {
   return (
     <main>
       <Nav />
-      <section className="border-b border-black/10 bg-white">
+      <section className="border-b border-line bg-surface">
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
           <p className="text-xs font-black uppercase tracking-wide text-signal">Admin</p>
-          <h1 className="mt-2 text-4xl font-black text-ink">Tax policy settings</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-graphite">
+          <h1 className="mt-2 text-4xl font-black text-foreground">Tax policy settings</h1>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
             Update government tax defaults here when rates change. Existing vehicle advertisements are recalculated
             after saving.
           </p>
-          <Link className="mt-5 inline-flex h-11 items-center justify-center border border-black/15 px-4 text-sm font-black text-ink hover:border-signal" href="/admin/vehicles">
+          <Link className="mt-5 inline-flex h-11 items-center justify-center rounded-panel border border-line px-4 text-sm font-black text-foreground hover:border-signal" href="/admin/vehicles">
             Vehicle advertisements
           </Link>
         </div>
@@ -79,10 +79,10 @@ export default function AdminSettingsPage() {
 
       <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         {status !== 'authenticated' ? (
-          <div className="border border-black/10 bg-white p-6 shadow-soft">
-            <h2 className="text-xl font-black text-ink">Admin login required</h2>
-            <p className="mt-2 text-sm text-graphite">Use Google login from the header, then return to this page.</p>
-            <Link className="mt-4 inline-flex bg-signal px-4 py-3 text-sm font-black text-white" href="/login">
+          <div className="rounded-panel border border-line bg-surface p-6 shadow-soft">
+            <h2 className="text-xl font-black text-foreground">Admin login required</h2>
+            <p className="mt-2 text-sm text-muted">Use Google login from the header, then return to this page.</p>
+            <Link className="mt-4 inline-flex rounded-panel bg-signal px-4 py-3 text-sm font-black text-white" href="/login">
               Go to login
             </Link>
           </div>
@@ -91,45 +91,45 @@ export default function AdminSettingsPage() {
         {settings ? (
           <form className="grid gap-6 lg:grid-cols-[1fr_360px]" onSubmit={onSubmit}>
             <div className="space-y-6">
-              <div className="border border-black/10 bg-white p-5 shadow-soft">
-                <h2 className="text-xl font-black text-ink">Policy</h2>
+              <div className="rounded-panel border border-line bg-surface p-5 shadow-soft">
+                <h2 className="text-xl font-black text-foreground">Policy</h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <label className="grid gap-2 text-sm font-bold text-graphite">
+                  <label className="grid gap-2 text-sm font-bold text-muted">
                     Name
                     <input
-                      className="h-11 border border-black/15 px-3 text-ink"
+                      className="h-11 rounded-panel border border-line bg-field px-3 text-foreground focus:border-signal focus:ring-signal/15"
                       value={settings.name}
                       onChange={(event) => setSettings({ ...settings, name: event.target.value })}
                     />
                   </label>
-                  <label className="grid gap-2 text-sm font-bold text-graphite">
+                  <label className="grid gap-2 text-sm font-bold text-muted">
                     Effective from
                     <input
-                      className="h-11 border border-black/15 px-3 text-ink"
+                      className="h-11 rounded-panel border border-line bg-field px-3 text-foreground focus:border-signal focus:ring-signal/15"
                       type="date"
                       value={settings.effectiveFrom}
                       onChange={(event) => setSettings({ ...settings, effectiveFrom: event.target.value })}
                     />
                   </label>
                 </div>
-                <label className="mt-4 grid gap-2 text-sm font-bold text-graphite">
+                <label className="mt-4 grid gap-2 text-sm font-bold text-muted">
                   Notes
                   <textarea
-                    className="min-h-24 border border-black/15 px-3 py-3 text-ink"
+                    className="min-h-24 rounded-panel border border-line bg-field px-3 py-3 text-foreground focus:border-signal focus:ring-signal/15"
                     value={settings.notes ?? ''}
                     onChange={(event) => setSettings({ ...settings, notes: event.target.value })}
                   />
                 </label>
               </div>
 
-              <div className="border border-black/10 bg-white p-5 shadow-soft">
-                <h2 className="text-xl font-black text-ink">Tax percentages</h2>
+              <div className="rounded-panel border border-line bg-surface p-5 shadow-soft">
+                <h2 className="text-xl font-black text-foreground">Tax percentages</h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   {percentFields.map(([field, label]) => (
-                    <label className="grid gap-2 text-sm font-bold text-graphite" key={field}>
+                    <label className="grid gap-2 text-sm font-bold text-muted" key={field}>
                       {label}
                       <input
-                        className="h-11 border border-black/15 px-3 text-ink"
+                        className="h-11 rounded-panel border border-line bg-field px-3 text-foreground focus:border-signal focus:ring-signal/15"
                         min="0"
                         step="0.001"
                         type="number"
@@ -138,10 +138,10 @@ export default function AdminSettingsPage() {
                       />
                     </label>
                   ))}
-                  <label className="grid gap-2 text-sm font-bold text-graphite">
+                  <label className="grid gap-2 text-sm font-bold text-muted">
                     COM / Exm / Seal fee
                     <input
-                      className="h-11 border border-black/15 px-3 text-ink"
+                      className="h-11 rounded-panel border border-line bg-field px-3 text-foreground focus:border-signal focus:ring-signal/15"
                       min="0"
                       step="1"
                       type="number"
@@ -152,14 +152,14 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
 
-              <div className="border border-black/10 bg-white p-5 shadow-soft">
-                <h2 className="text-xl font-black text-ink">Luxury thresholds</h2>
+              <div className="rounded-panel border border-line bg-surface p-5 shadow-soft">
+                <h2 className="text-xl font-black text-foreground">Luxury thresholds</h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   {Object.entries(settings.luxuryThresholds).map(([key, value]) => (
-                    <label className="grid gap-2 text-sm font-bold capitalize text-graphite" key={key}>
+                    <label className="grid gap-2 text-sm font-bold capitalize text-muted" key={key}>
                       {key}
                       <input
-                        className="h-11 border border-black/15 px-3 text-ink"
+                        className="h-11 rounded-panel border border-line bg-field px-3 text-foreground focus:border-signal focus:ring-signal/15"
                         min="0"
                         step="1000"
                         type="number"
@@ -172,7 +172,7 @@ export default function AdminSettingsPage() {
               </div>
             </div>
 
-            <aside className="h-fit border border-black/10 bg-ink p-5 text-white shadow-soft">
+            <aside className="h-fit rounded-panel border border-line bg-jdm-panel p-5 text-white shadow-soft">
               <h2 className="text-xl font-black">Luxury bands</h2>
               <div className="mt-4 space-y-3">
                 {settings.luxuryBands.map((band, index) => (
@@ -180,7 +180,7 @@ export default function AdminSettingsPage() {
                     <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-white/58">
                       Up to excess
                       <input
-                        className="h-10 border border-white/15 bg-white/8 px-2 text-white"
+                        className="h-10 rounded-panel border border-white/15 bg-white/8 px-2 text-white"
                         min="0"
                         step="1000"
                         type="number"
@@ -196,7 +196,7 @@ export default function AdminSettingsPage() {
                     <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-white/58">
                       Rate
                       <input
-                        className="h-10 border border-white/15 bg-white/8 px-2 text-white"
+                        className="h-10 rounded-panel border border-white/15 bg-white/8 px-2 text-white"
                         min="0"
                         step="0.001"
                         type="number"
@@ -212,7 +212,7 @@ export default function AdminSettingsPage() {
                 ))}
               </div>
               <button
-                className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 bg-signal px-4 text-sm font-black text-white hover:bg-red-700 disabled:bg-graphite"
+                className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-panel bg-signal px-4 text-sm font-black text-white hover:bg-red-700 disabled:bg-muted"
                 disabled={saving || status !== 'authenticated'}
                 type="submit"
               >
@@ -220,7 +220,7 @@ export default function AdminSettingsPage() {
                 {saving ? 'Saving...' : 'Save and recalculate'}
               </button>
               <button
-                className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 border border-white/15 px-4 text-sm font-black text-white hover:border-white"
+                className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-panel border border-white/15 px-4 text-sm font-black text-white hover:border-white"
                 disabled={saving || !session?.idToken}
                 onClick={async () => {
                   if (!session?.idToken) return;

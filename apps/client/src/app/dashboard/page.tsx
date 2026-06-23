@@ -13,32 +13,32 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   return (
     <main>
       <Nav />
-      <section className="border-b border-black/10 bg-white">
+      <section className="border-b border-line bg-surface">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <p className="text-xs font-black uppercase tracking-wide text-signal">Dashboard</p>
           <div className="mt-3 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h1 className="text-4xl font-black text-ink">Available Japan auction cars</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-graphite">
+              <h1 className="text-4xl font-black text-foreground">Available Japan auction cars</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
                 Compare total landed cost, vehicle grade, mileage, and auction location before sending an inquiry.
               </p>
               {exchangeRate ? (
-                <p className="mt-3 inline-flex bg-mist px-3 py-2 text-xs font-black uppercase text-asphalt">
+                <p className="mt-3 inline-flex rounded-panel border border-line bg-field px-3 py-2 text-xs font-black uppercase text-sub">
                   Daily JPY rate: 1 JPY = LKR {exchangeRate.rate.toFixed(4)} ({exchangeRate.date})
                 </p>
               ) : null}
             </div>
             <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:justify-end">
               <a
-                className={`px-3 py-2 text-xs font-black uppercase ${selectedMaker ? 'bg-mist text-asphalt hover:bg-white' : 'bg-ink text-white'}`}
+                className={`rounded-panel px-3 py-2 text-xs font-black uppercase ${selectedMaker ? 'bg-field text-sub hover:bg-surface-raised' : 'bg-jdm-panel text-white'}`}
                 href="/dashboard"
               >
                 All
               </a>
               {brandFilters.map((brand) => (
                 <a
-                  className={`px-3 py-2 text-xs font-black uppercase ${
-                    selectedMaker === brand ? 'bg-signal text-white' : 'bg-mist text-asphalt hover:bg-white'
+                  className={`rounded-panel px-3 py-2 text-xs font-black uppercase ${
+                    selectedMaker === brand ? 'bg-signal text-white' : 'bg-field text-sub hover:bg-surface-raised'
                   }`}
                   href={`/dashboard?maker=${encodeURIComponent(brand)}`}
                   key={brand}
@@ -57,9 +57,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           ))}
         </div>
         {visibleCars.length === 0 ? (
-          <div className="border border-black/10 bg-white p-8 text-center shadow-soft">
-            <p className="text-lg font-black text-ink">No {selectedMaker} cars available right now</p>
-            <p className="mt-2 text-sm text-graphite">Try another brand or clear the filter.</p>
+          <div className="rounded-panel border border-line bg-surface p-8 text-center shadow-soft">
+            <p className="text-lg font-black text-foreground">No {selectedMaker} cars available right now</p>
+            <p className="mt-2 text-sm text-muted">Try another brand or clear the filter.</p>
           </div>
         ) : null}
       </section>

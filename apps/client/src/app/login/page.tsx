@@ -8,7 +8,7 @@ export default function LoginPage() {
   const { data: session } = useSession();
 
   return (
-    <main className="min-h-screen bg-ink text-white">
+    <main className="min-h-screen bg-jdm-panel text-white">
       <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:px-8">
         <div>
           <p className="text-xs font-black uppercase tracking-wide text-red-300">Secure access</p>
@@ -21,13 +21,13 @@ export default function LoginPage() {
             Back to public site
           </Link>
         </div>
-        <div className="bg-white p-6 text-ink shadow-soft">
+        <div className="rounded-panel border border-white/10 bg-surface p-6 text-foreground shadow-theme">
           <h2 className="text-2xl font-black">Google account</h2>
-          <p className="mt-2 text-sm leading-6 text-graphite">
+          <p className="mt-2 text-sm leading-6 text-muted">
             {session?.user?.email ? `Signed in as ${session.user.email}` : 'Use Gmail or Google Workspace to continue.'}
           </p>
           <button
-            className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 bg-signal px-4 text-sm font-black text-white hover:bg-red-700"
+            className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-panel bg-signal px-4 text-sm font-black text-white hover:bg-red-700"
             onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
             type="button"
           >

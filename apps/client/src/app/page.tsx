@@ -13,7 +13,7 @@ export default async function Home() {
   return (
     <main>
       <Nav />
-      <section className="relative min-h-[82vh] overflow-hidden bg-ink">
+      <section className="relative min-h-[82vh] overflow-hidden bg-jdm-panel">
         <HeroSlider />
         <div className="relative z-10 mx-auto flex min-h-[82vh] max-w-7xl items-center px-4 py-16 sm:px-6 lg:px-8">
           <div className="max-w-3xl text-white">
@@ -48,7 +48,7 @@ export default async function Home() {
               </Link>
               {featured[0] ? (
                 <Link
-                  className="inline-flex h-12 items-center border border-white/18 bg-white px-5 text-sm font-black text-ink shadow-soft hover:bg-mist"
+                  className="inline-flex h-12 items-center rounded-panel border border-white/18 bg-white px-5 text-sm font-black text-[#1d1d1f] shadow-soft hover:bg-[#f5f5f5]"
                   href={`/cars/${featured[0]._id}`}
                 >
                   From {lkr(featured[0].cost.totalLkr)}
@@ -59,7 +59,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="bg-ink text-white">
+      <section className="bg-jdm-panel text-white">
         <div className="mx-auto grid max-w-7xl gap-0 px-4 py-8 sm:px-6 lg:grid-cols-3 lg:px-8">
           {[
             ['Auction sourced', 'Cars published from Japan auction feeds with source and grade.', FileCheck2],
@@ -79,7 +79,7 @@ export default async function Home() {
         <div className="mb-7 flex items-end justify-between gap-4">
           <div>
             <p className="text-xs font-black uppercase tracking-wide text-signal">Latest listings</p>
-            <h2 className="mt-2 text-4xl font-black leading-tight text-ink">Japanese JDM cars with landed price</h2>
+            <h2 className="mt-2 text-4xl font-black leading-tight text-foreground">Japanese JDM cars with landed price</h2>
           </div>
           <Link className="hidden text-sm font-black text-signal hover:text-red-700 sm:inline" href="/dashboard">
             See all cars

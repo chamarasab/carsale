@@ -15,7 +15,7 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
       <main>
         <Nav />
         <div className="mx-auto max-w-3xl px-4 py-16 text-center">
-          <h1 className="text-3xl font-black text-ink">Car not found</h1>
+          <h1 className="text-3xl font-black text-foreground">Car not found</h1>
           <Link className="mt-6 inline-flex bg-signal px-4 py-3 text-sm font-black text-white" href="/dashboard">
             Back to cars
           </Link>
@@ -89,18 +89,18 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
     <main>
       <Nav />
       <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <Link className="mb-5 inline-flex items-center gap-2 text-sm font-black text-graphite hover:text-ink" href="/dashboard">
+        <Link className="mb-5 inline-flex items-center gap-2 text-sm font-black text-muted hover:text-foreground" href="/dashboard">
           <ArrowLeft size={16} /> Back to dashboard
         </Link>
         <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
           <div>
-            <div className="relative aspect-[16/10] overflow-hidden bg-mist">
+            <div className="relative aspect-[16/10] overflow-hidden rounded-panel bg-field">
               <CarPhoto car={car} priority sizes="(min-width: 1024px) 58vw, 100vw" />
             </div>
             {car.images.slice(1, 3).some(hasAuctionPhoto) ? (
               <div className="mt-4 grid grid-cols-2 gap-4">
                 {car.images.slice(1, 3).filter(hasAuctionPhoto).map((image) => (
-                  <div className="relative aspect-[16/10] overflow-hidden bg-mist" key={image}>
+                  <div className="relative aspect-[16/10] overflow-hidden rounded-panel bg-field" key={image}>
                     <CarPhoto car={car} image={image} sizes="(min-width: 1024px) 29vw, 50vw" />
                   </div>
                 ))}
@@ -110,13 +110,13 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
           <div className="space-y-5">
             <div>
               <p className="text-xs font-black uppercase tracking-wide text-signal">{car.location}</p>
-              <h1 className="mt-2 text-4xl font-black leading-tight text-ink">{car.title}</h1>
-              <p className="mt-3 text-sm leading-6 text-graphite">
+              <h1 className="mt-2 text-4xl font-black leading-tight text-foreground">{car.title}</h1>
+              <p className="mt-3 text-sm leading-6 text-muted">
                 {car.year} {car.maker} {car.model}, {car.mileageKm.toLocaleString()} km, {car.fuelType}, {car.transmission},
                 auction grade {car.auctionGrade}.
               </p>
             </div>
-            <div className="bg-ink p-5 text-white">
+            <div className="rounded-panel border-l-4 border-brass bg-jdm-panel p-5 text-white">
               <p className="text-xs font-black uppercase tracking-wide text-white/70">Estimated delivered cost to Sri Lanka</p>
               <p className="mt-2 text-4xl font-black">{lkr(car.cost.totalLkr)}</p>
               <p className="mt-2 text-xs text-white/65">
@@ -129,7 +129,7 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
             </div>
             <div className="grid grid-cols-2 gap-2">
               {car.features.map((feature) => (
-                <span className="inline-flex items-center gap-2 bg-white px-3 py-2 text-sm font-bold text-asphalt" key={feature}>
+                <span className="inline-flex items-center gap-2 rounded-panel border border-line bg-surface px-3 py-2 text-sm font-bold text-sub" key={feature}>
                   <Check size={15} className="text-signal" /> {feature}
                 </span>
               ))}
@@ -143,38 +143,38 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
         </div>
       </section>
       <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-14 sm:px-6 lg:grid-cols-[1fr_380px] lg:px-8">
-        <div className="bg-white p-5 shadow-soft">
-          <h2 className="text-2xl font-black text-ink">Transparent landed cost</h2>
-          <p className="mt-2 text-sm leading-6 text-graphite">
+        <div className="rounded-panel border border-line bg-surface p-5 shadow-soft">
+          <h2 className="text-2xl font-black text-foreground">Transparent landed cost</h2>
+          <p className="mt-2 text-sm leading-6 text-muted">
             Estimate model follows the PiXAMP-style tax structure and the Excel rule where the higher of invoiced CIF
             and Yellow Book CIF becomes the taxable base.
           </p>
           {liveExchangeRate ? (
-            <div className="mt-4 border border-black/10 bg-mist p-3 text-xs font-bold text-asphalt">
+            <div className="mt-4 border border-line bg-field p-3 text-xs font-bold text-sub">
               <p>
                 Daily converter: 1 JPY = LKR {liveExchangeRate.rate.toFixed(4)} on {liveExchangeRate.date}.
               </p>
-              <p className="mt-1 text-graphite">
+              <p className="mt-1 text-muted">
                 This listing used {rate(car.cost.exchangeRateLkr)}
                 {car.cost.exchangeRateProvider ? ` from ${car.cost.exchangeRateProvider}` : ''}.
               </p>
             </div>
           ) : null}
-          <div className="mt-5 divide-y divide-black/10">
+          <div className="mt-5 divide-y divide-line">
             {rows.map(([label, formula, value]) => (
               <div className="grid gap-2 py-3 text-sm sm:grid-cols-[170px_1fr_140px] sm:items-center" key={label}>
-                <span className="font-bold text-graphite">{label}</span>
-                <span className="text-xs font-semibold leading-5 text-asphalt">{formula}</span>
-                <span className="text-right font-black text-ink">{value}</span>
+                <span className="font-bold text-muted">{label}</span>
+                <span className="text-xs font-semibold leading-5 text-sub">{formula}</span>
+                <span className="text-right font-black text-foreground">{value}</span>
               </div>
             ))}
             <div className="flex items-center justify-between gap-4 py-4 text-lg">
-              <span className="font-black text-ink">Total handover estimate</span>
+              <span className="font-black text-foreground">Total handover estimate</span>
               <span className="text-right font-black text-signal">{lkr(car.cost.totalLkr)}</span>
             </div>
           </div>
           {car.cost.taxPolicyEffectiveFrom ? (
-            <p className="mt-4 text-xs font-bold text-graphite">
+            <p className="mt-4 text-xs font-bold text-muted">
               Tax policy: {car.cost.taxPolicyName ?? 'Active tax policy'} effective {car.cost.taxPolicyEffectiveFrom}
             </p>
           ) : null}

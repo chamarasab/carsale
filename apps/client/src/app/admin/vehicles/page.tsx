@@ -147,16 +147,16 @@ function optionalNumber(value: string) {
   return Number.isFinite(number) ? number : undefined;
 }
 
-const panelClass = 'rounded-[28px] bg-white p-6 shadow-[0_18px_60px_rgba(0,0,0,0.08)] ring-1 ring-black/5';
-const labelClass = 'grid gap-2 text-sm font-semibold text-[#6e6e73]';
+const panelClass = 'rounded-panel bg-surface p-6 shadow-soft ring-1 ring-line';
+const labelClass = 'grid gap-2 text-sm font-semibold text-muted';
 const inputClass =
-  'h-12 rounded-2xl border border-black/10 bg-[#f5f5f7] px-4 text-[15px] text-[#1d1d1f] outline-none transition focus:border-[#0071e3] focus:bg-white focus:ring-4 focus:ring-[#0071e3]/10';
+  'h-12 rounded-panel border border-line bg-field px-4 text-[15px] text-foreground outline-none transition focus:border-signal focus:bg-surface focus:ring-4 focus:ring-signal/10';
 const textareaClass =
-  'min-h-24 rounded-2xl border border-black/10 bg-[#f5f5f7] px-4 py-3 text-[15px] text-[#1d1d1f] outline-none transition focus:border-[#0071e3] focus:bg-white focus:ring-4 focus:ring-[#0071e3]/10';
+  'min-h-24 rounded-panel border border-line bg-field px-4 py-3 text-[15px] text-foreground outline-none transition focus:border-signal focus:bg-surface focus:ring-4 focus:ring-signal/10';
 const primaryButtonClass =
-  'inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#0071e3] px-6 text-sm font-semibold text-white transition hover:bg-[#0077ed] disabled:bg-[#86868b]';
+  'inline-flex h-12 items-center justify-center gap-2 rounded-panel bg-signal px-6 text-sm font-semibold text-white transition hover:bg-red-700 disabled:bg-muted';
 const secondaryButtonClass =
-  'inline-flex h-11 items-center justify-center rounded-full bg-[#f5f5f7] px-5 text-sm font-semibold text-[#1d1d1f] ring-1 ring-black/5 transition hover:bg-white hover:ring-black/10';
+  'inline-flex h-11 items-center justify-center rounded-panel bg-field px-5 text-sm font-semibold text-foreground ring-1 ring-line transition hover:bg-surface-raised hover:ring-signal/40';
 
 export default function AdminVehiclesPage() {
   const { data: session, status } = useSession();
@@ -298,16 +298,16 @@ export default function AdminVehiclesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f5f5f7] text-[#1d1d1f]">
+    <main className="min-h-screen bg-canvas text-foreground">
       <Nav />
-      <section className="bg-[#f5f5f7]">
+      <section className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 pb-10 pt-12 sm:px-6 lg:flex-row lg:items-end lg:justify-between lg:px-8">
           <div>
-            <p className="text-sm font-semibold text-[#6e6e73]">Admin</p>
-            <h1 className="mt-2 max-w-3xl text-5xl font-semibold tracking-normal text-[#1d1d1f] sm:text-6xl">
+            <p className="text-sm font-semibold text-signal">管理 · Admin</p>
+            <h1 className="mt-2 max-w-3xl text-5xl font-semibold tracking-normal text-foreground sm:text-6xl">
               Vehicle advertisements.
             </h1>
-            <p className="mt-4 max-w-3xl text-xl font-semibold leading-8 text-[#6e6e73]">
+            <p className="mt-4 max-w-3xl text-xl font-semibold leading-8 text-muted">
               Create auction listings and keep tax defaults by model code, so each JDM car gets the correct Sri Lanka
               landed-cost attributes before publishing.
             </p>
@@ -321,18 +321,18 @@ export default function AdminVehiclesPage() {
       <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[420px_1fr] lg:px-8">
         {status !== 'authenticated' ? (
           <div className={`${panelClass} lg:col-span-2`}>
-            <h2 className="text-2xl font-semibold text-[#1d1d1f]">Admin login required</h2>
-            <p className="mt-2 text-sm font-medium text-[#6e6e73]">Use Google login from the header before saving categories or cars.</p>
+            <h2 className="text-2xl font-semibold text-foreground">Admin login required</h2>
+            <p className="mt-2 text-sm font-medium text-muted">Use Google login from the header before saving categories or cars.</p>
           </div>
         ) : null}
 
         <aside className="space-y-6">
           <form className={panelClass} onSubmit={onCategorySubmit}>
             <div className="flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-[#f5f5f7]">
-                <Tags className="text-[#0071e3]" size={20} />
+              <span className="grid h-10 w-10 place-items-center rounded-panel bg-sakura">
+                <Tags className="text-signal" size={20} />
               </span>
-              <h2 className="text-2xl font-semibold text-[#1d1d1f]">Model-code category</h2>
+              <h2 className="text-2xl font-semibold text-foreground">Model-code category</h2>
             </div>
             <div className="mt-4 grid gap-3">
               <label className={labelClass}>
@@ -428,23 +428,23 @@ export default function AdminVehiclesPage() {
           <div className={panelClass}>
             <div className="flex items-end justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-[#6e6e73]">Master data</p>
-                <h2 className="mt-1 text-2xl font-semibold text-[#1d1d1f]">Saved categories</h2>
+                <p className="text-sm font-semibold text-muted">Master data</p>
+                <h2 className="mt-1 text-2xl font-semibold text-foreground">Saved categories</h2>
               </div>
-              <span className="rounded-full bg-[#f5f5f7] px-3 py-1 text-xs font-semibold text-[#6e6e73]">{categories.length}</span>
+              <span className="rounded-panel bg-field px-3 py-1 text-xs font-semibold text-muted">{categories.length}</span>
             </div>
             <div className="mt-4 max-h-[440px] space-y-3 overflow-y-auto pr-2">
               {categories.map((category) => (
-                <div className="min-h-[96px] rounded-3xl bg-[#f5f5f7] p-4 ring-1 ring-black/5 transition hover:bg-white" key={category._id}>
+                <div className="min-h-[96px] rounded-panel bg-field p-4 ring-1 ring-line transition hover:bg-surface-raised" key={category._id}>
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-lg font-semibold text-[#1d1d1f]">{category.code}</p>
-                    <p className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#6e6e73]">{category.fuelType}</p>
+                    <p className="text-lg font-semibold text-foreground">{category.code}</p>
+                    <p className="rounded-panel bg-surface px-3 py-1 text-xs font-semibold text-muted">{category.fuelType}</p>
                   </div>
-                  <p className="mt-2 text-sm font-semibold text-[#1d1d1f]">{category.meaning}</p>
-                  <p className="mt-1 text-xs font-medium text-[#6e6e73]">
+                  <p className="mt-2 text-sm font-semibold text-foreground">{category.meaning}</p>
+                  <p className="mt-1 text-xs font-medium text-muted">
                     {category.maker} {category.model} / {category.engineCapacity ?? '-'}cc / {category.yearFrom ?? '-'}-{category.yearTo ?? 'now'}
                   </p>
-                  {category.grades?.length ? <p className="mt-2 line-clamp-2 text-xs text-[#86868b]">{category.grades.join(', ')}</p> : null}
+                  {category.grades?.length ? <p className="mt-2 line-clamp-2 text-xs text-muted">{category.grades.join(', ')}</p> : null}
                 </div>
               ))}
             </div>
@@ -453,12 +453,12 @@ export default function AdminVehiclesPage() {
 
         <form className={panelClass} onSubmit={onCarSubmit}>
           <div className="flex items-center gap-3">
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-[#f5f5f7]">
-              <CarFront className="text-[#0071e3]" size={22} />
+            <span className="grid h-10 w-10 place-items-center rounded-panel bg-sakura">
+              <CarFront className="text-signal" size={22} />
             </span>
             <div>
-              <p className="text-sm font-semibold text-[#6e6e73]">Auction listing</p>
-              <h2 className="text-3xl font-semibold text-[#1d1d1f]">Add vehicle advertisement</h2>
+              <p className="text-sm font-semibold text-muted">Auction listing</p>
+              <h2 className="text-3xl font-semibold text-foreground">Add vehicle advertisement</h2>
             </div>
           </div>
 
@@ -564,8 +564,8 @@ export default function AdminVehiclesPage() {
                   <option value="sold">Sold</option>
                 </select>
               </label>
-              <label className="flex items-center gap-3 pt-8 text-sm font-semibold text-[#6e6e73]">
-                <input checked={carForm.published} className="h-5 w-5 accent-[#0071e3]" type="checkbox" onChange={(event) => setCarForm({ ...carForm, published: event.target.checked })} />
+              <label className="flex items-center gap-3 pt-8 text-sm font-semibold text-muted">
+                <input checked={carForm.published} className="h-5 w-5 accent-signal" type="checkbox" onChange={(event) => setCarForm({ ...carForm, published: event.target.checked })} />
                 Published
               </label>
             </div>
@@ -574,7 +574,7 @@ export default function AdminVehiclesPage() {
               <Save size={16} />
               {savingCar ? 'Publishing...' : 'Publish vehicle'}
             </button>
-            {message ? <p className="rounded-2xl bg-[#f5f5f7] px-4 py-3 text-sm font-semibold text-[#1d1d1f]">{message}</p> : null}
+            {message ? <p className="rounded-panel bg-field px-4 py-3 text-sm font-semibold text-foreground">{message}</p> : null}
           </div>
         </form>
       </section>

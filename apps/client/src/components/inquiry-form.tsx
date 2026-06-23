@@ -28,25 +28,25 @@ export function InquiryForm({ carId }: { carId: string }) {
   }
 
   return (
-    <form className="space-y-3 bg-white p-5 shadow-soft" onSubmit={onSubmit}>
-      <h2 className="text-xl font-black text-ink">Inquire about this car</h2>
-      <input className="h-11 w-full border border-black/15 px-3" name="name" placeholder="Your name" required />
-      <input className="h-11 w-full border border-black/15 px-3" name="email" placeholder="Email" required type="email" />
-      <input className="h-11 w-full border border-black/15 px-3" name="phone" placeholder="Phone / WhatsApp" required />
+    <form className="space-y-3 rounded-panel border border-line bg-surface p-5 shadow-soft" onSubmit={onSubmit}>
+      <h2 className="text-xl font-black text-foreground">Inquire about this car</h2>
+      <input className="h-11 w-full rounded-panel border border-line bg-field px-3 focus:border-signal focus:ring-signal/15" name="name" placeholder="Your name" required />
+      <input className="h-11 w-full rounded-panel border border-line bg-field px-3 focus:border-signal focus:ring-signal/15" name="email" placeholder="Email" required type="email" />
+      <input className="h-11 w-full rounded-panel border border-line bg-field px-3 focus:border-signal focus:ring-signal/15" name="phone" placeholder="Phone / WhatsApp" required />
       <textarea
-        className="min-h-28 w-full border border-black/15 px-3 py-3"
+        className="min-h-28 w-full rounded-panel border border-line bg-field px-3 py-3 focus:border-signal focus:ring-signal/15"
         name="message"
         placeholder="Preferred color, budget, registration needs, or timing"
       />
       <button
-        className="inline-flex h-11 w-full items-center justify-center gap-2 bg-signal px-4 text-sm font-black text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-graphite"
+        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-panel bg-signal px-4 text-sm font-black text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-muted"
         disabled={state === 'submitting'}
         type="submit"
       >
         <Send size={16} />
         {state === 'submitting' ? 'Sending...' : 'Send inquiry'}
       </button>
-      {state === 'sent' ? <p className="text-sm font-bold text-green-700">Inquiry sent. We will contact you soon.</p> : null}
+      {state === 'sent' ? <p className="text-sm font-bold text-green-700 dark:text-green-400">Inquiry sent. We will contact you soon.</p> : null}
       {state === 'error' ? <p className="text-sm font-bold text-signal">Could not send inquiry. Check the API and try again.</p> : null}
     </form>
   );

@@ -4,7 +4,37 @@
 
 :root {
   color-scheme: light;
-  background: #f6f7f8;
+  --canvas: 247 247 249;
+  --surface: 255 255 255;
+  --surface-raised: 255 255 255;
+  --field: 241 242 245;
+  --line: 220 221 226;
+  --foreground: 29 30 34;
+  --sub: 67 69 76;
+  --muted: 103 106 115;
+  --signal: 196 39 54;
+  --sakura: 241 151 166;
+  --brass: 181 139 61;
+  --jdm-panel: 24 25 29;
+  --shadow-color: 31 32 38;
+  background: rgb(var(--canvas));
+}
+
+.dark {
+  color-scheme: dark;
+  --canvas: 12 14 18;
+  --surface: 23 25 31;
+  --surface-raised: 29 32 39;
+  --field: 35 38 46;
+  --line: 57 60 70;
+  --foreground: 244 244 242;
+  --sub: 200 201 205;
+  --muted: 153 155 164;
+  --signal: 232 70 82;
+  --sakura: 240 148 166;
+  --brass: 211 169 88;
+  --jdm-panel: 7 9 13;
+  --shadow-color: 0 0 0;
 }
 
 * {
@@ -13,9 +43,13 @@
 
 body {
   margin: 0;
-  background: #f3f4f6;
-  color: #101318;
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  background:
+    linear-gradient(rgb(var(--canvas) / 0.96), rgb(var(--canvas) / 0.96)),
+    repeating-linear-gradient(90deg, transparent 0, transparent 79px, rgb(var(--line) / 0.16) 80px);
+  color: rgb(var(--foreground));
+  font-family: var(--font-noto-sans-jp), Arial, Helvetica, sans-serif;
+  transition: background-color 180ms ease, color 180ms ease;
 }
 
 a {
@@ -30,9 +64,21 @@ select {
   font: inherit;
 }
 
+input,
+textarea,
+select {
+  background: rgb(var(--field));
+  color: rgb(var(--foreground));
+}
+
+::selection {
+  background: rgb(var(--sakura) / 0.45);
+  color: rgb(var(--foreground));
+}
+
 .hero-media::after {
   background:
-    radial-gradient(circle at 22% 45%, rgba(224, 49, 49, 0.22), transparent 28%),
+    linear-gradient(90deg, rgb(var(--signal) / 0.18), transparent 34%),
     linear-gradient(90deg, rgba(7, 10, 15, 0.92), rgba(16, 19, 24, 0.66), rgba(16, 19, 24, 0.18)),
     linear-gradient(0deg, rgba(7, 10, 15, 0.72), rgba(7, 10, 15, 0.08) 45%, rgba(7, 10, 15, 0.34));
   content: '';
