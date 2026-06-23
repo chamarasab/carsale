@@ -3,13 +3,15 @@
 import { LogIn } from 'lucide-react';
 import { signIn, useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { OwlesterAuthBackground } from '@/components/owlester-auth-background';
 
 export default function LoginPage() {
   const { data: session } = useSession();
 
   return (
-    <main className="bg-owl-gradient min-h-screen text-white">
-      <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:px-8">
+    <main className="bg-owl-gradient relative isolate min-h-screen overflow-hidden text-white">
+      <OwlesterAuthBackground />
+      <div className="relative z-10 mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:px-8">
         <div>
           <p className="text-xs font-black uppercase tracking-wide text-brass">Secure access</p>
           <h1 className="mt-3 text-5xl font-black leading-tight">Login to manage JDM orders</h1>
@@ -21,7 +23,7 @@ export default function LoginPage() {
             Back to public site
           </Link>
         </div>
-        <div className="rounded-panel border border-white/10 bg-surface p-6 text-foreground shadow-theme">
+        <div className="rounded-panel border border-white/10 bg-surface/90 p-6 text-foreground shadow-theme backdrop-blur-xl">
           <h2 className="text-2xl font-black">Google account</h2>
           <p className="mt-2 text-sm leading-6 text-muted">
             {session?.user?.email ? `Signed in as ${session.user.email}` : 'Use Gmail or Google Workspace to continue.'}
