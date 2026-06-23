@@ -1,40 +1,20 @@
-'use client';
-
 import { Gauge, MapPin, ShieldCheck, Ship } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
 import { CarPhoto } from '@/components/car-photo';
 import { compactNumber, lkr } from '@/lib/format';
 import { Car } from '@/lib/types';
 
 export function CarCard({ car }: { car: Car }) {
-  const images = useMemo(() => (car.images.length ? car.images : ['/blank-car-logo.svg']), [car.images]);
-  const [imageIndex, setImageIndex] = useState(0);
-
-  useEffect(() => {
-    setImageIndex(0);
-  }, [car._id]);
-
-  useEffect(() => {
-    if (images.length < 2) return;
-
-    const interval = window.setInterval(() => {
-      setImageIndex((current) => (current + 1) % images.length);
-    }, 3200);
-
-    return () => window.clearInterval(interval);
-  }, [images.length]);
-
   return (
     <Link
-      className="group block overflow-hidden rounded-panel border border-line bg-surface shadow-soft transition duration-300 hover:-translate-y-1 hover:border-signal/40 hover:shadow-theme"
+      className="car-card group block overflow-hidden rounded-panel border border-line bg-surface shadow-soft transition duration-300 hover:-translate-y-1 hover:border-signal/40 hover:shadow-theme"
       href={`/cars/${car._id}`}
     >
       <div className="relative aspect-[16/10] overflow-hidden bg-field">
         <CarPhoto
           car={car}
           className="transition duration-500 group-hover:scale-105"
-          image={images[imageIndex]}
+          image={car.images[0]}
           sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
         />
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/72 to-transparent" />
@@ -44,16 +24,6 @@ export function CarCard({ car }: { car: Car }) {
         <div className="bg-brand-gradient absolute bottom-3 right-3 px-3 py-1 text-xs font-black uppercase text-white shadow">
           {car.status}
         </div>
-        {images.length > 1 ? (
-          <div className="absolute bottom-3 left-3 flex gap-1.5">
-            {images.map((image, index) => (
-              <span
-                className={`h-1.5 w-6 transition ${index === imageIndex ? 'bg-white' : 'bg-white/42'}`}
-                key={`${image}-${index}`}
-              />
-            ))}
-          </div>
-        ) : null}
       </div>
       <div className="space-y-4 p-5">
         <div>

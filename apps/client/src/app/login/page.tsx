@@ -21,7 +21,7 @@ export default function LoginPage() {
             Back to public site
           </Link>
         </div>
-        <div className="rounded-panel border border-white/10 bg-surface/90 p-6 text-foreground shadow-theme backdrop-blur-xl">
+        <div className="rounded-panel border border-white/10 bg-surface/95 p-6 text-foreground shadow-theme">
           <h2 className="text-2xl font-black">Google account</h2>
           <p className="mt-2 text-sm leading-6 text-muted">
             {session?.user?.email ? `Signed in as ${session.user.email}` : 'Use Gmail or Google Workspace to continue.'}

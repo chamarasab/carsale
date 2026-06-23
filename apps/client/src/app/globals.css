@@ -145,18 +145,15 @@ select {
 }
 
 .dark .site-shell .bg-surface {
-  background-color: rgb(var(--surface) / 0.82);
-  backdrop-filter: blur(16px);
+  background-color: rgb(var(--surface) / 0.92);
 }
 
 .dark .site-shell .bg-field {
-  background-color: rgb(var(--field) / 0.8);
-  backdrop-filter: blur(10px);
+  background-color: rgb(var(--field) / 0.9);
 }
 
 .dark .site-shell .bg-jdm-panel {
-  background-color: rgb(var(--jdm-panel) / 0.9);
-  backdrop-filter: blur(14px);
+  background-color: rgb(var(--jdm-panel) / 0.96);
 }
 
 .site-shell > .relative {
@@ -165,28 +162,27 @@ select {
 
 .owlester-glow {
   border-radius: 50%;
-  filter: blur(110px);
   position: absolute;
 }
 
 .owlester-glow-purple {
-  background: rgb(124 77 255 / 0.16);
-  height: 460px;
+  background: radial-gradient(circle, rgb(124 77 255 / 0.16), transparent 68%);
+  height: 520px;
   left: -80px;
   top: -120px;
-  width: 460px;
+  width: 520px;
 }
 
 .owlester-glow-teal {
-  background: rgb(0 196 180 / 0.14);
-  height: 420px;
+  background: radial-gradient(circle, rgb(0 196 180 / 0.14), transparent 68%);
+  height: 500px;
   right: -100px;
   top: 200px;
-  width: 420px;
+  width: 500px;
 }
 
 .owlester-glow-blue {
-  background: rgb(41 121 255 / 0.16);
+  background: radial-gradient(circle, rgb(41 121 255 / 0.16), transparent 68%);
   bottom: -140px;
   height: 420px;
   left: 14%;
@@ -207,15 +203,15 @@ select {
 }
 
 .dark .owlester-glow-purple {
-  background: rgb(124 77 255 / 0.33);
+  background: radial-gradient(circle, rgb(124 77 255 / 0.3), transparent 68%);
 }
 
 .dark .owlester-glow-teal {
-  background: rgb(0 196 180 / 0.27);
+  background: radial-gradient(circle, rgb(0 196 180 / 0.24), transparent 68%);
 }
 
 .dark .owlester-glow-blue {
-  background: rgb(41 121 255 / 0.31);
+  background: radial-gradient(circle, rgb(41 121 255 / 0.28), transparent 68%);
 }
 
 .dark .owlester-dot-field {
@@ -254,6 +250,30 @@ select {
   font-size: 18px;
   font-weight: 700;
   line-height: 1;
+}
+
+.car-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 560px;
+}
+
+@media (max-width: 767px) {
+  .owlester-orbit,
+  .owlester-sparkle,
+  .owlester-marker {
+    animation: none;
+  }
+
+  .owlester-sparkle,
+  .owlester-marker {
+    display: none;
+  }
+}
+
+:root:not(.dark) .owlester-orbit,
+:root:not(.dark) .owlester-sparkle,
+:root:not(.dark) .owlester-marker {
+  animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

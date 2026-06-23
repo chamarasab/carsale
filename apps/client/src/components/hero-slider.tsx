@@ -10,14 +10,15 @@ export function HeroSlider() {
         className="object-cover"
         fill
         priority
+        quality={70}
         sizes="100vw"
-        src="/jdm-hero.png"
+        src="/jdm-hero.webp"
       />
       <div className="absolute bottom-5 left-4 right-4 z-10 mx-auto hidden max-w-7xl justify-end md:flex">
         <div className="flex flex-wrap justify-end gap-2">
           {models.map((model) => (
             <span
-              className="rounded-panel border border-white/20 bg-white/12 px-3 py-2 text-xs font-black uppercase text-white shadow-soft backdrop-blur"
+              className="rounded-panel border border-white/20 bg-white/12 px-3 py-2 text-xs font-black uppercase text-white shadow-soft"
               key={model}
             >
               {model}

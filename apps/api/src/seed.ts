@@ -27,7 +27,7 @@ const cars = [
     sourceUrl: 'https://example.com/auction/toyota-supra-rz',
     images: [
       '/jdm-supra.png',
-      '/jdm-hero.png'
+      '/jdm-hero.webp'
     ],
     features: ['2JZ-GTE twin turbo', 'Getrag manual', 'Factory aero', 'Collector grade JDM icon'],
     cost: {
@@ -70,7 +70,7 @@ const cars = [
     sourceUrl: 'https://example.com/auction/skyline-gtr-r34',
     images: [
       '/jdm-gtr.png',
-      '/jdm-hero.png'
+      '/jdm-hero.webp'
     ],
     features: ['RB26DETT', 'ATTESA E-TS AWD', 'V-Spec aero', 'Auction sheet verified'],
     cost: {
@@ -113,7 +113,7 @@ const cars = [
     sourceUrl: 'https://example.com/auction/honda-nsx-na1',
     images: [
       '/jdm-nsx.png',
-      '/jdm-hero.png'
+      '/jdm-hero.webp'
     ],
     features: ['Mid-engine layout', 'VTEC V6', 'Aluminium body', 'Low-mile collector car'],
     cost: {
@@ -156,7 +156,7 @@ const cars = [
     sourceUrl: 'https://example.com/auction/evo-vi-tme',
     images: [
       '/jdm-evo.png',
-      '/jdm-hero.png'
+      '/jdm-hero.webp'
     ],
     features: ['4G63 turbo', 'AWD rally platform', 'Tommi Makinen Edition', 'Brembo brakes'],
     cost: {

@@ -88,7 +88,7 @@ const initialCarForm: CarForm = {
   chassisCode: '',
   location: 'USS Tokyo',
   sourceUrl: '',
-  image: '/jdm-hero.png',
+  image: '/blank-car-logo.svg',
   features: 'Auction sheet verified, Japan auction listing, Transparent Sri Lanka landed cost',
   auctionPriceJpy: '950000',
   exchangeRateLkr: '2.08',
@@ -255,7 +255,7 @@ export default function AdminVehiclesPage() {
           location: carForm.location,
           source: 'Japan Auction',
           sourceUrl: carForm.sourceUrl || undefined,
-          images: images.length ? images : ['/jdm-hero.png'],
+          images: images.length ? images : ['/blank-car-logo.svg'],
           features: carForm.features
             .split(',')
             .map((feature) => feature.trim())
@@ -298,7 +298,7 @@ export default function AdminVehiclesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-canvas/75 text-foreground backdrop-blur-[2px] dark:bg-canvas/35">
+    <main className="min-h-screen bg-canvas/75 text-foreground dark:bg-canvas/35">
       <Nav />
       <section className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 pb-10 pt-12 sm:px-6 lg:flex-row lg:items-end lg:justify-between lg:px-8">

@@ -3,7 +3,7 @@ import Image from 'next/image';
 import { Car } from '@/lib/types';
 
 const defaultCarImage = '/blank-car-logo.svg';
-const fallbackImages = new Set(['/jdm-hero.png', defaultCarImage]);
+const fallbackImages = new Set(['/jdm-hero.png', '/jdm-hero.webp', defaultCarImage]);
 
 type CarPhotoProps = {
   car: Car;
@@ -25,6 +25,7 @@ export function CarPhoto({ car, className = '', image = car.images[0], priority 
         className={`object-cover ${className}`}
         fill
         priority={priority}
+        quality={70}
         sizes={sizes}
         src={image}
       />
