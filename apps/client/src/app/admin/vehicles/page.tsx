@@ -298,7 +298,7 @@ export default function AdminVehiclesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-canvas text-foreground">
+    <main className="min-h-screen bg-canvas/75 text-foreground backdrop-blur-[2px] dark:bg-canvas/35">
       <Nav />
       <section className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 pb-10 pt-12 sm:px-6 lg:flex-row lg:items-end lg:justify-between lg:px-8">

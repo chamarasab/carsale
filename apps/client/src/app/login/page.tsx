@@ -3,23 +3,21 @@
 import { LogIn } from 'lucide-react';
 import { signIn, useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { OwlesterAuthBackground } from '@/components/owlester-auth-background';
 
 export default function LoginPage() {
   const { data: session } = useSession();
 
   return (
-    <main className="bg-owl-gradient relative isolate min-h-screen overflow-hidden text-white">
-      <OwlesterAuthBackground />
-      <div className="relative z-10 mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:px-8">
+    <main className="relative min-h-screen overflow-hidden text-foreground">
+      <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:px-8">
         <div>
           <p className="text-xs font-black uppercase tracking-wide text-brass">Secure access</p>
           <h1 className="mt-3 text-5xl font-black leading-tight">Login to manage JDM orders</h1>
-          <p className="mt-5 text-base leading-7 text-white/72">
+          <p className="mt-5 text-base leading-7 text-sub">
             Customers can browse freely. Google login is used for saved sessions and protected owner actions such as
             importing auction cars, managing listings, and reviewing inquiries.
           </p>
-          <Link className="mt-8 inline-flex text-sm font-black text-white/80 hover:text-white" href="/">
+          <Link className="mt-8 inline-flex text-sm font-black text-sub hover:text-foreground" href="/">
             Back to public site
           </Link>
         </div>
