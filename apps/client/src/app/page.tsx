@@ -81,7 +81,7 @@ export default async function Home() {
             <p className="text-xs font-black uppercase tracking-wide text-signal">Latest listings</p>
             <h2 className="mt-2 text-4xl font-black leading-tight text-foreground">Japanese JDM cars with landed price</h2>
           </div>
-          <Link className="hidden text-sm font-black text-signal hover:text-red-700 sm:inline" href="/dashboard">
+          <Link className="hidden text-sm font-black text-signal hover:text-brass sm:inline" href="/dashboard">
             See all cars
           </Link>
         </div>

@@ -12,8 +12,8 @@
   --foreground: 26 29 58;
   --sub: 74 74 106;
   --muted: 107 107 128;
-  --signal: 255 107 53;
-  --sakura: 233 30 140;
+  --signal: 41 121 255;
+  --sakura: 0 196 180;
   --brass: 0 196 180;
   --jdm-panel: 30 35 64;
   --shadow-color: 30 35 64;
@@ -33,8 +33,8 @@
   --foreground: 255 255 255;
   --sub: 158 158 168;
   --muted: 107 107 128;
-  --signal: 255 107 53;
-  --sakura: 233 30 140;
+  --signal: 41 121 255;
+  --sakura: 0 196 180;
   --brass: 0 196 180;
   --jdm-panel: 30 35 64;
   --shadow-color: 0 0 0;
@@ -88,16 +88,16 @@ select {
 }
 
 .bg-brand-gradient {
-  background: linear-gradient(90deg, #ff6b35, #e91e8c);
+  background: linear-gradient(90deg, #2979ff, #00c4b4);
 }
 
 .bg-owl-gradient {
-  background: linear-gradient(135deg, #1a0a2e 0%, #0d1b3e 55%, #0a1628 100%);
+  background: linear-gradient(135deg, #111a4b 0%, #0d1b3e 55%, #071d35 100%);
 }
 
 .hero-media::after {
   background:
-    linear-gradient(90deg, rgba(26, 10, 46, 0.94), rgba(13, 27, 62, 0.7), rgba(10, 22, 40, 0.18)),
+    linear-gradient(90deg, rgba(17, 26, 75, 0.94), rgba(13, 27, 62, 0.7), rgba(7, 29, 53, 0.18)),
     linear-gradient(0deg, rgba(10, 22, 40, 0.78), rgba(10, 22, 40, 0.08) 45%, rgba(26, 10, 46, 0.3));
   content: '';
   inset: 0;
@@ -131,7 +131,7 @@ select {
 }
 
 .owlester-auth-background {
-  background: radial-gradient(ellipse at 30% 0%, #2d1b4e 0%, #1e2340 45%, #0f1228 100%);
+  background: radial-gradient(ellipse at 30% 0%, #223a8f 0%, #172653 45%, #09172f 100%);
   inset: 0;
   overflow: hidden;
   pointer-events: none;
@@ -161,8 +161,8 @@ select {
   width: 420px;
 }
 
-.owlester-glow-orange {
-  background: rgb(255 107 53 / 0.31);
+.owlester-glow-blue {
+  background: rgb(41 121 255 / 0.31);
   bottom: -140px;
   height: 420px;
   left: 14%;
