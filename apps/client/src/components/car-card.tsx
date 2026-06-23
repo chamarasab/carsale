@@ -41,7 +41,7 @@ export function CarCard({ car }: { car: Car }) {
         <div className="absolute left-3 top-3 rounded-panel bg-white/92 px-3 py-1 text-xs font-black uppercase text-[#1d1d1f] shadow">
           Grade {car.auctionGrade}
         </div>
-        <div className="absolute bottom-3 right-3 bg-signal px-3 py-1 text-xs font-black uppercase text-white shadow">
+        <div className="bg-brand-gradient absolute bottom-3 right-3 px-3 py-1 text-xs font-black uppercase text-white shadow">
           {car.status}
         </div>
         {images.length > 1 ? (

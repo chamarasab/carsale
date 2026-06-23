@@ -13,7 +13,7 @@ export function LoginButton() {
   if (session?.user) {
     return (
       <button
-        className="inline-flex h-9 items-center gap-2 rounded-panel border border-line bg-surface px-3 text-sm font-bold text-foreground hover:border-signal hover:text-signal"
+        className="inline-flex h-9 items-center gap-2 rounded-panel border border-white/15 bg-white/5 px-3 text-sm font-bold text-white hover:border-signal"
         onClick={() => signOut()}
         type="button"
       >
@@ -25,7 +25,7 @@ export function LoginButton() {
 
   return (
     <button
-      className="inline-flex h-9 items-center gap-2 rounded-panel bg-signal px-3 text-sm font-bold text-white shadow-sm hover:bg-red-700"
+      className="bg-brand-gradient inline-flex h-9 items-center gap-2 rounded-panel px-3 text-sm font-bold text-white shadow-sm hover:opacity-90"
       onClick={() => signIn('google')}
       type="button"
     >

@@ -82,7 +82,7 @@ export default function AdminSettingsPage() {
           <div className="rounded-panel border border-line bg-surface p-6 shadow-soft">
             <h2 className="text-xl font-black text-foreground">Admin login required</h2>
             <p className="mt-2 text-sm text-muted">Use Google login from the header, then return to this page.</p>
-            <Link className="mt-4 inline-flex rounded-panel bg-signal px-4 py-3 text-sm font-black text-white" href="/login">
+            <Link className="bg-brand-gradient mt-4 inline-flex rounded-panel px-4 py-3 text-sm font-black text-white" href="/login">
               Go to login
             </Link>
           </div>
@@ -212,7 +212,7 @@ export default function AdminSettingsPage() {
                 ))}
               </div>
               <button
-                className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-panel bg-signal px-4 text-sm font-black text-white hover:bg-red-700 disabled:bg-muted"
+                className="bg-brand-gradient mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-panel px-4 text-sm font-black text-white hover:opacity-90 disabled:opacity-50"
                 disabled={saving || status !== 'authenticated'}
                 type="submit"
               >

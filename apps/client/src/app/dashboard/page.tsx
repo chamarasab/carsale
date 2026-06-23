@@ -38,7 +38,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               {brandFilters.map((brand) => (
                 <a
                   className={`rounded-panel px-3 py-2 text-xs font-black uppercase ${
-                    selectedMaker === brand ? 'bg-signal text-white' : 'bg-field text-sub hover:bg-surface-raised'
+                    selectedMaker === brand ? 'bg-brand-gradient text-white' : 'bg-field text-sub hover:bg-surface-raised'
                   }`}
                   href={`/dashboard?maker=${encodeURIComponent(brand)}`}
                   key={brand}

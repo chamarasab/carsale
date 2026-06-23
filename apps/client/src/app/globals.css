@@ -4,36 +4,39 @@
 
 :root {
   color-scheme: light;
-  --canvas: 247 247 249;
+  --canvas: 247 248 252;
   --surface: 255 255 255;
   --surface-raised: 255 255 255;
-  --field: 241 242 245;
-  --line: 220 221 226;
-  --foreground: 29 30 34;
-  --sub: 67 69 76;
-  --muted: 103 106 115;
-  --signal: 196 39 54;
-  --sakura: 241 151 166;
-  --brass: 181 139 61;
-  --jdm-panel: 24 25 29;
-  --shadow-color: 31 32 38;
+  --field: 240 241 245;
+  --line: 224 226 240;
+  --foreground: 26 29 58;
+  --sub: 74 74 106;
+  --muted: 107 107 128;
+  --signal: 255 107 53;
+  --sakura: 233 30 140;
+  --brass: 0 196 180;
+  --jdm-panel: 30 35 64;
+  --shadow-color: 30 35 64;
+  --owl-purple: 124 77 255;
+  --owl-blue: 41 121 255;
+  --owl-green: 0 200 83;
   background: rgb(var(--canvas));
 }
 
 .dark {
   color-scheme: dark;
-  --canvas: 12 14 18;
-  --surface: 23 25 31;
-  --surface-raised: 29 32 39;
-  --field: 35 38 46;
-  --line: 57 60 70;
-  --foreground: 244 244 242;
-  --sub: 200 201 205;
-  --muted: 153 155 164;
-  --signal: 232 70 82;
-  --sakura: 240 148 166;
-  --brass: 211 169 88;
-  --jdm-panel: 7 9 13;
+  --canvas: 13 14 43;
+  --surface: 26 29 58;
+  --surface-raised: 30 34 64;
+  --field: 30 34 64;
+  --line: 42 45 80;
+  --foreground: 255 255 255;
+  --sub: 158 158 168;
+  --muted: 107 107 128;
+  --signal: 255 107 53;
+  --sakura: 233 30 140;
+  --brass: 0 196 180;
+  --jdm-panel: 30 35 64;
   --shadow-color: 0 0 0;
 }
 
@@ -44,12 +47,20 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background:
-    linear-gradient(rgb(var(--canvas) / 0.96), rgb(var(--canvas) / 0.96)),
-    repeating-linear-gradient(90deg, transparent 0, transparent 79px, rgb(var(--line) / 0.16) 80px);
+  background: rgb(var(--canvas));
   color: rgb(var(--foreground));
-  font-family: var(--font-noto-sans-jp), Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), Inter, Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
   transition: background-color 180ms ease, color 180ms ease;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-nunito), Nunito, Arial, Helvetica, sans-serif;
 }
 
 a {
@@ -72,15 +83,22 @@ select {
 }
 
 ::selection {
-  background: rgb(var(--sakura) / 0.45);
-  color: rgb(var(--foreground));
+  background: rgb(var(--sakura) / 0.4);
+  color: white;
+}
+
+.bg-brand-gradient {
+  background: linear-gradient(90deg, #ff6b35, #e91e8c);
+}
+
+.bg-owl-gradient {
+  background: linear-gradient(135deg, #1a0a2e 0%, #0d1b3e 55%, #0a1628 100%);
 }
 
 .hero-media::after {
   background:
-    linear-gradient(90deg, rgb(var(--signal) / 0.18), transparent 34%),
-    linear-gradient(90deg, rgba(7, 10, 15, 0.92), rgba(16, 19, 24, 0.66), rgba(16, 19, 24, 0.18)),
-    linear-gradient(0deg, rgba(7, 10, 15, 0.72), rgba(7, 10, 15, 0.08) 45%, rgba(7, 10, 15, 0.34));
+    linear-gradient(90deg, rgba(26, 10, 46, 0.94), rgba(13, 27, 62, 0.7), rgba(10, 22, 40, 0.18)),
+    linear-gradient(0deg, rgba(10, 22, 40, 0.78), rgba(10, 22, 40, 0.08) 45%, rgba(26, 10, 46, 0.3));
   content: '';
   inset: 0;
   position: absolute;

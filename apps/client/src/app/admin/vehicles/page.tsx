@@ -154,7 +154,7 @@ const inputClass =
 const textareaClass =
   'min-h-24 rounded-panel border border-line bg-field px-4 py-3 text-[15px] text-foreground outline-none transition focus:border-signal focus:bg-surface focus:ring-4 focus:ring-signal/10';
 const primaryButtonClass =
-  'inline-flex h-12 items-center justify-center gap-2 rounded-panel bg-signal px-6 text-sm font-semibold text-white transition hover:bg-red-700 disabled:bg-muted';
+  'bg-brand-gradient inline-flex h-12 items-center justify-center gap-2 rounded-panel px-6 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50';
 const secondaryButtonClass =
   'inline-flex h-11 items-center justify-center rounded-panel bg-field px-5 text-sm font-semibold text-foreground ring-1 ring-line transition hover:bg-surface-raised hover:ring-signal/40';
 
@@ -329,7 +329,7 @@ export default function AdminVehiclesPage() {
         <aside className="space-y-6">
           <form className={panelClass} onSubmit={onCategorySubmit}>
             <div className="flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-panel bg-sakura">
+              <span className="grid h-10 w-10 place-items-center rounded-panel bg-signal/12">
                 <Tags className="text-signal" size={20} />
               </span>
               <h2 className="text-2xl font-semibold text-foreground">Model-code category</h2>
@@ -453,7 +453,7 @@ export default function AdminVehiclesPage() {
 
         <form className={panelClass} onSubmit={onCarSubmit}>
           <div className="flex items-center gap-3">
-            <span className="grid h-10 w-10 place-items-center rounded-panel bg-sakura">
+            <span className="grid h-10 w-10 place-items-center rounded-panel bg-signal/12">
               <CarFront className="text-signal" size={22} />
             </span>
             <div>

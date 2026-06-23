@@ -8,7 +8,7 @@ const ThemeContext = createContext<{
   theme: Theme;
   toggleTheme: () => void;
 }>({
-  theme: 'light',
+  theme: 'dark',
   toggleTheme: () => undefined,
 });
 
@@ -19,9 +19,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const storedTheme = window.localStorage.getItem('carsale-theme') as Theme | null;
-    const nextTheme =
-      storedTheme ??
-      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const nextTheme = storedTheme ?? 'dark';
     setTheme(nextTheme);
     document.documentElement.classList.toggle('dark', nextTheme === 'dark');
     document.documentElement.style.colorScheme = nextTheme;

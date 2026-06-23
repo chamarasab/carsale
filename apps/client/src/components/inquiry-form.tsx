@@ -39,7 +39,7 @@ export function InquiryForm({ carId }: { carId: string }) {
         placeholder="Preferred color, budget, registration needs, or timing"
       />
       <button
-        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-panel bg-signal px-4 text-sm font-black text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-muted"
+        className="bg-brand-gradient inline-flex h-11 w-full items-center justify-center gap-2 rounded-panel px-4 text-sm font-black text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         disabled={state === 'submitting'}
         type="submit"
       >

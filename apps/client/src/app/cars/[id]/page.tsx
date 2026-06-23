@@ -16,7 +16,7 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
         <Nav />
         <div className="mx-auto max-w-3xl px-4 py-16 text-center">
           <h1 className="text-3xl font-black text-foreground">Car not found</h1>
-          <Link className="mt-6 inline-flex bg-signal px-4 py-3 text-sm font-black text-white" href="/dashboard">
+          <Link className="bg-brand-gradient mt-6 inline-flex rounded-panel px-4 py-3 text-sm font-black text-white" href="/dashboard">
             Back to cars
           </Link>
         </div>

@@ -13,7 +13,7 @@ export default async function Home() {
   return (
     <main>
       <Nav />
-      <section className="relative min-h-[82vh] overflow-hidden bg-jdm-panel">
+      <section className="bg-owl-gradient relative min-h-[82vh] overflow-hidden">
         <HeroSlider />
         <div className="relative z-10 mx-auto flex min-h-[82vh] max-w-7xl items-center px-4 py-16 sm:px-6 lg:px-8">
           <div className="max-w-3xl text-white">
@@ -41,7 +41,7 @@ export default async function Home() {
             </div>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
-                className="inline-flex h-12 items-center gap-2 bg-signal px-5 text-sm font-black text-white shadow-soft hover:bg-red-700"
+                className="bg-brand-gradient inline-flex h-12 items-center gap-2 rounded-panel px-5 text-sm font-black text-white shadow-theme hover:opacity-90"
                 href="/dashboard"
               >
                 View auction cars <ArrowRight size={18} />
@@ -67,7 +67,7 @@ export default async function Home() {
             ['Delivered locally', 'Shipping, clearance, local transport, and handover are visible.', Ship],
           ].map(([title, text, Icon]) => (
             <div className="border-b border-white/10 py-6 lg:border-b-0 lg:border-r lg:px-8 last:lg:border-r-0" key={title as string}>
-              <Icon className="mb-4 text-signal" size={26} />
+              <Icon className="mb-4 text-brass" size={26} />
               <h2 className="text-lg font-black text-white">{title as string}</h2>
               <p className="mt-2 text-sm leading-6 text-white/62">{text as string}</p>
             </div>
