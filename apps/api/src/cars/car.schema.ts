@@ -243,6 +243,12 @@ export class Car {
 
   @Prop({ default: true, type: Boolean })
   published: boolean;
+
+  @Prop({ index: true, trim: true, type: String })
+  createdBy?: string;
+
+  @Prop({ trim: true, type: String })
+  createdByName?: string;
 }
 
 export const CarSchema = SchemaFactory.createForClass(Car);

@@ -16,7 +16,10 @@ async function bootstrap() {
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.use('/health', (_req: express.Request, res: express.Response) => res.json({ ok: true }));
   const imagesDir = resolveApiPath('public/images');
+  const uploadDir = config.get<string>('UPLOAD_DIR') || join(imagesDir, 'uploads');
   await mkdir(imagesDir, { recursive: true });
+  await mkdir(uploadDir, { recursive: true });
+  app.use('/images/uploads', express.static(uploadDir));
   app.use('/images', express.static(imagesDir));
   app.enableCors({
     origin: clientOrigin.split(',').map((origin) => origin.trim()),

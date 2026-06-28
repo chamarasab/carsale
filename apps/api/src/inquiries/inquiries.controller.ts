@@ -1,5 +1,7 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { GoogleJwtGuard } from '../auth/google-jwt.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 import { CreateInquiryDto } from './dto';
 import { InquiriesService } from './inquiries.service';
 
@@ -12,7 +14,8 @@ export class InquiriesController {
     return this.inquiriesService.create(dto);
   }
 
-  @UseGuards(GoogleJwtGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   @Get()
   findAll() {
     return this.inquiriesService.findAll();

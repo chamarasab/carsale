@@ -1,3 +1,5 @@
+import { Car } from './types';
+
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
 
 export type VehicleCategory = {
@@ -26,6 +28,15 @@ export type VehicleCategory = {
 };
 
 export type VehicleCategoryInput = Omit<VehicleCategory, '_id'>;
+
+export type AppUser = {
+  _id: string;
+  name: string;
+  email: string;
+  role: 'ADMIN' | 'USER';
+  active: boolean;
+  createdAt?: string;
+};
 
 export type CreateCarAdInput = {
   title: string;
@@ -96,6 +107,19 @@ export type TaxSettings = {
   }>;
 };
 
+export async function signupUser(input: { name: string; email: string; password: string }) {
+  const response = await fetch(`${apiUrl}/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) throw new Error('Could not create account');
+  return (await response.json()) as {
+    accessToken: string;
+    user: { id: string; name: string; email: string; role: 'ADMIN' | 'USER' };
+  };
+}
+
 export async function getTaxSettings() {
   const response = await fetch(`${apiUrl}/settings/tax`, { cache: 'no-store' });
   if (!response.ok) {
@@ -143,7 +167,35 @@ export async function createCarAdvertisement(car: CreateCarAdInput, idToken: str
     throw new Error('Could not create vehicle advertisement');
   }
 
-  return response.json();
+  return (await response.json()) as Car;
+}
+
+export async function getManageableCars(accessToken: string) {
+  const response = await fetch(`${apiUrl}/cars/manage`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    throw new Error('Could not load advertisements');
+  }
+  return (await response.json()) as Car[];
+}
+
+export async function setCarPublished(id: string, published: boolean, accessToken: string) {
+  const response = await fetch(`${apiUrl}/cars/${id}/published`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ published }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Could not update advertisement');
+  }
+
+  return (await response.json()) as Car;
 }
 
 export async function updateTaxSettings(settings: TaxSettings, idToken: string) {
@@ -174,4 +226,54 @@ export async function recalculateCars(idToken: string) {
   }
 
   return (await response.json()) as { recalculated: number };
+}
+
+export async function uploadCarImages(files: File[], accessToken: string) {
+  const body = new FormData();
+  files.forEach((file) => body.append('images', file));
+  const response = await fetch(`${apiUrl}/uploads/images`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body,
+  });
+  if (!response.ok) throw new Error('Could not upload images');
+  return (await response.json()) as string[];
+}
+
+export async function getUsers(accessToken: string) {
+  const response = await fetch(`${apiUrl}/users`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: 'no-store',
+  });
+  if (!response.ok) throw new Error('Could not load users');
+  return (await response.json()) as AppUser[];
+}
+
+export async function createUser(
+  input: { name: string; email: string; password: string },
+  accessToken: string,
+) {
+  const response = await fetch(`${apiUrl}/users`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) throw new Error('Could not create user');
+  return (await response.json()) as AppUser;
+}
+
+export async function setUserActive(id: string, active: boolean, accessToken: string) {
+  const response = await fetch(`${apiUrl}/users/${id}/status`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ active }),
+  });
+  if (!response.ok) throw new Error('Could not update user');
+  return (await response.json()) as AppUser;
 }

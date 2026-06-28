@@ -1,7 +1,9 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString, IsUrl, Max, Min } from 'class-validator';
-import { GoogleJwtGuard } from '../auth/google-jwt.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 import { ScraperService } from './scraper.service';
 
 class SourceUrlDto {
@@ -49,7 +51,8 @@ class JpCenterImportDto {
   listSize?: number;
 }
 
-@UseGuards(GoogleJwtGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('ADMIN')
 @Controller('scraper')
 export class ScraperController {
   constructor(private readonly scraperService: ScraperService) {}

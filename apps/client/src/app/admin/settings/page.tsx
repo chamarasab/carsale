@@ -20,6 +20,7 @@ export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<TaxSettings | null>(null);
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const isAdmin = session?.user.role === 'ADMIN';
 
   useEffect(() => {
     getTaxSettings()
@@ -29,19 +30,19 @@ export default function AdminSettingsPage() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!settings || !session?.idToken) {
-      setMessage('Sign in with an admin Google account first.');
+    if (!settings || !session?.accessToken) {
+      setMessage('Sign in with an account first.');
       return;
     }
 
     setSaving(true);
     setMessage('');
     try {
-      await updateTaxSettings(settings, session.idToken);
-      const result = await recalculateCars(session.idToken);
+      await updateTaxSettings(settings, session.accessToken);
+      const result = await recalculateCars(session.accessToken);
       setMessage(`Saved tax policy and recalculated ${result.recalculated} cars.`);
     } catch {
-      setMessage('Could not save. Check admin email, Google OAuth, and API logs.');
+      setMessage('Could not save. Check admin email, account credentials, and API logs.');
     } finally {
       setSaving(false);
     }
@@ -78,17 +79,17 @@ export default function AdminSettingsPage() {
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        {status !== 'authenticated' ? (
+        {status !== 'authenticated' || !isAdmin ? (
           <div className="rounded-panel border border-line bg-surface p-6 shadow-soft">
-            <h2 className="text-xl font-black text-foreground">Admin login required</h2>
-            <p className="mt-2 text-sm text-muted">Use Google login from the header, then return to this page.</p>
+            <h2 className="text-xl font-black text-foreground">Administrator access required</h2>
+            <p className="mt-2 text-sm text-muted">Only the administrator can update tax policy settings.</p>
             <Link className="bg-brand-gradient mt-4 inline-flex rounded-panel px-4 py-3 text-sm font-black text-white" href="/login">
               Go to login
             </Link>
           </div>
         ) : null}
 
-        {settings ? (
+        {settings && isAdmin ? (
           <form className="grid gap-6 lg:grid-cols-[1fr_360px]" onSubmit={onSubmit}>
             <div className="space-y-6">
               <div className="rounded-panel border border-line bg-surface p-5 shadow-soft">
@@ -221,10 +222,10 @@ export default function AdminSettingsPage() {
               </button>
               <button
                 className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-panel border border-white/15 px-4 text-sm font-black text-white hover:border-white"
-                disabled={saving || !session?.idToken}
+                disabled={saving || !session?.accessToken}
                 onClick={async () => {
-                  if (!session?.idToken) return;
-                  const result = await recalculateCars(session.idToken);
+                  if (!session?.accessToken) return;
+                  const result = await recalculateCars(session.accessToken);
                   setMessage(`Recalculated ${result.recalculated} cars.`);
                 }}
                 type="button"

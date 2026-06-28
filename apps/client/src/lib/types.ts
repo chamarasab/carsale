@@ -80,4 +80,8 @@ export type Car = {
   features: string[];
   cost: CostBreakdown;
   status: 'available' | 'reserved' | 'sold';
+  published?: boolean;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
 };

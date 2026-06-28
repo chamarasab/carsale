@@ -1,7 +1,8 @@
 'use client';
 
 import { LogIn, LogOut } from 'lucide-react';
-import { signIn, signOut, useSession } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
+import Link from 'next/link';
 
 export function LoginButton() {
   const { data: session, status } = useSession();
@@ -24,13 +25,12 @@ export function LoginButton() {
   }
 
   return (
-    <button
+    <Link
       className="bg-brand-gradient inline-flex h-9 items-center gap-2 rounded-panel px-3 text-sm font-bold text-white shadow-sm hover:opacity-90"
-      onClick={() => signIn('google')}
-      type="button"
+      href="/login"
     >
       <LogIn aria-hidden size={16} />
-      Google login
-    </button>
+      Login
+    </Link>
   );
 }

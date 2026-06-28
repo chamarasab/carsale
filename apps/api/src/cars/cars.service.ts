@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
 import { SettingsService } from '../settings/settings.service';
+import { AuthUser } from '../auth/auth.types';
 import { Car } from './car.schema';
 import { applyWorkbookReferenceCost } from './cost-reference';
 import { CreateCarDto, UpdateCarDto } from './dto';
@@ -35,6 +36,12 @@ export class CarsService {
     return cars.map((car) => this.withPublicImageUrls(car));
   }
 
+  async findManageable(user: AuthUser) {
+    const filter: FilterQuery<Car> = user.role === 'ADMIN' ? {} : { createdBy: user.id };
+    const cars = await this.carModel.find(filter).sort({ published: 1, createdAt: -1 }).lean();
+    return cars.map((car) => this.withPublicImageUrls(car));
+  }
+
   async findOne(id: string) {
     const car = await this.carModel.findOne({ _id: id, published: true }).lean();
     if (!car) {
@@ -43,8 +50,13 @@ export class CarsService {
     return this.withPublicImageUrls(car);
   }
 
-  async create(dto: CreateCarDto) {
-    return this.carModel.create(await this.withCalculatedCost(dto));
+  async create(dto: CreateCarDto, user?: AuthUser) {
+    const payload = await this.withCalculatedCost(dto);
+    return this.carModel.create({
+      ...payload,
+      published: user?.role === 'ADMIN' ? (payload.published ?? true) : false,
+      ...(user ? { createdBy: user.id, createdByName: user.name } : {}),
+    });
   }
 
   async upsertBySourceUrl(dto: CreateCarDto) {
@@ -66,9 +78,14 @@ export class CarsService {
     return { car, created: false };
   }
 
-  async update(id: string, dto: UpdateCarDto) {
+  async update(id: string, dto: UpdateCarDto, user?: AuthUser) {
+    await this.assertCanManage(id, user);
+    const payload = await this.withCalculatedCost(dto);
+    if (user?.role !== 'ADMIN') {
+      delete payload.published;
+    }
     const car = await this.carModel
-      .findByIdAndUpdate(id, await this.withCalculatedCost(dto), { new: true })
+      .findByIdAndUpdate(id, payload, { new: true })
       .lean();
 
     if (!car) {
@@ -78,12 +95,28 @@ export class CarsService {
     return car;
   }
 
-  async remove(id: string) {
+  async setPublished(id: string, published: boolean) {
+    const car = await this.carModel.findByIdAndUpdate(id, { published }, { new: true }).lean();
+    if (!car) {
+      throw new NotFoundException('Car not found');
+    }
+    return this.withPublicImageUrls(car);
+  }
+
+  async remove(id: string, user?: AuthUser) {
+    await this.assertCanManage(id, user);
     const car = await this.carModel.findByIdAndDelete(id).lean();
     if (!car) {
       throw new NotFoundException('Car not found');
     }
     return { deleted: true };
+  }
+
+  private async assertCanManage(id: string, user?: AuthUser) {
+    if (!user || user.role === 'ADMIN') return;
+    const car = await this.carModel.findById(id).select('createdBy').lean();
+    if (!car) throw new NotFoundException('Car not found');
+    if (car.createdBy !== user.id) throw new ForbiddenException('You can only manage your own advertisements');
   }
 
   async recalculateAll() {

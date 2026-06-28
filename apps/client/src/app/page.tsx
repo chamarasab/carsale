@@ -54,6 +54,12 @@ export default async function Home() {
                   From {lkr(featured[0].cost.totalLkr)}
                 </Link>
               ) : null}
+              <Link
+                className="inline-flex h-12 items-center rounded-panel border border-white/20 px-5 text-sm font-black text-white hover:border-brass"
+                href="/login"
+              >
+                Admin / publisher login
+              </Link>
             </div>
           </div>
         </div>

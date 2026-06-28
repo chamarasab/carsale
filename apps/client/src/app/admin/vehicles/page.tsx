@@ -1,6 +1,6 @@
 'use client';
 
-import { CarFront, Plus, Save, Tags } from 'lucide-react';
+import { CarFront, CheckCircle2, ImagePlus, Plus, Save, Tags } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
@@ -8,10 +8,14 @@ import { Nav } from '@/components/nav';
 import {
   createCarAdvertisement,
   createVehicleCategory,
+  getManageableCars,
   getVehicleCategories,
+  setCarPublished,
   VehicleCategory,
   VehicleCategoryInput,
+  uploadCarImages,
 } from '@/lib/admin-api';
+import { Car } from '@/lib/types';
 
 type CarForm = {
   title: string;
@@ -156,22 +160,32 @@ const textareaClass =
 const primaryButtonClass =
   'bg-brand-gradient inline-flex h-12 items-center justify-center gap-2 rounded-panel px-6 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50';
 const secondaryButtonClass =
-  'inline-flex h-11 items-center justify-center rounded-panel bg-field px-5 text-sm font-semibold text-foreground ring-1 ring-line transition hover:bg-surface-raised hover:ring-signal/40';
+  'inline-flex h-11 items-center justify-center gap-2 rounded-panel bg-field px-5 text-sm font-semibold text-foreground ring-1 ring-line transition hover:bg-surface-raised hover:ring-signal/40';
 
 export default function AdminVehiclesPage() {
   const { data: session, status } = useSession();
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
+  const [cars, setCars] = useState<Car[]>([]);
   const [categoryForm, setCategoryForm] = useState<VehicleCategoryInput>(emptyCategory);
   const [carForm, setCarForm] = useState<CarForm>(initialCarForm);
   const [message, setMessage] = useState('');
   const [savingCategory, setSavingCategory] = useState(false);
   const [savingCar, setSavingCar] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const isAdmin = session?.user.role === 'ADMIN';
 
   useEffect(() => {
     getVehicleCategories()
       .then(setCategories)
       .catch(() => setMessage('Could not load vehicle categories.'));
   }, []);
+
+  useEffect(() => {
+    if (!session?.accessToken) return;
+    getManageableCars(session.accessToken)
+      .then(setCars)
+      .catch(() => setMessage('Could not load advertisements.'));
+  }, [session?.accessToken]);
 
   const activeCategories = useMemo(() => categories.filter((category) => category.active !== false), [categories]);
 
@@ -204,15 +218,15 @@ export default function AdminVehiclesPage() {
 
   async function onCategorySubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!session?.idToken) {
-      setMessage('Sign in with an admin Google account first.');
+    if (!session?.accessToken) {
+      setMessage('Sign in with an account first.');
       return;
     }
 
     setSavingCategory(true);
     setMessage('');
     try {
-      const saved = await createVehicleCategory(categoryForm, session.idToken);
+      const saved = await createVehicleCategory(categoryForm, session.accessToken);
       setCategories((current) => [...current.filter((category) => category._id !== saved._id), saved]);
       setCategoryForm(emptyCategory);
       setMessage(`Saved category ${saved.code}.`);
@@ -225,8 +239,8 @@ export default function AdminVehiclesPage() {
 
   async function onCarSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!session?.idToken) {
-      setMessage('Sign in with an admin Google account first.');
+    if (!session?.accessToken) {
+      setMessage('Sign in with an account first.');
       return;
     }
 
@@ -238,7 +252,7 @@ export default function AdminVehiclesPage() {
         .map((image) => image.trim())
         .filter(Boolean);
 
-      await createCarAdvertisement(
+      const saved = await createCarAdvertisement(
         {
           title: carForm.title,
           maker: carForm.maker,
@@ -283,17 +297,47 @@ export default function AdminVehiclesPage() {
             localTransportLkr: optionalNumber(carForm.localTransportLkr),
           },
           status: carForm.status,
-          published: carForm.published,
+          published: isAdmin ? carForm.published : false,
         },
-        session.idToken,
+        session.accessToken,
       );
 
+      setCars((current) => [saved, ...current]);
       setCarForm(initialCarForm);
-      setMessage('Vehicle advertisement published and landed cost calculated.');
+      setMessage(isAdmin && saved.published ? 'Vehicle advertisement published.' : 'Advertisement submitted for admin approval.');
     } catch {
-      setMessage('Could not publish vehicle advertisement. Check required fields and API logs.');
+      setMessage('Could not save vehicle advertisement. Check required fields and API logs.');
     } finally {
       setSavingCar(false);
+    }
+  }
+
+  async function togglePublished(car: Car) {
+    if (!session?.accessToken || !isAdmin) return;
+    try {
+      const updated = await setCarPublished(car._id, !car.published, session.accessToken);
+      setCars((current) => current.map((item) => (item._id === updated._id ? updated : item)));
+      setMessage(updated.published ? 'Advertisement approved and published.' : 'Advertisement moved back to pending.');
+    } catch {
+      setMessage('Could not update advertisement approval.');
+    }
+  }
+
+  async function onImagesSelected(files: FileList | null) {
+    if (!files?.length || !session?.accessToken) return;
+    setUploadingImages(true);
+    setMessage('');
+    try {
+      const uploaded = await uploadCarImages(Array.from(files), session.accessToken);
+      setCarForm((current) => ({
+        ...current,
+        image: [...current.image.split(',').map((item) => item.trim()).filter(Boolean), ...uploaded].join(', '),
+      }));
+      setMessage(`Uploaded and optimized ${uploaded.length} image${uploaded.length === 1 ? '' : 's'}.`);
+    } catch {
+      setMessage('Could not upload images. Use JPG, PNG, or WebP files up to 15 MB each.');
+    } finally {
+      setUploadingImages(false);
     }
   }
 
@@ -308,26 +352,24 @@ export default function AdminVehiclesPage() {
               Vehicle advertisements.
             </h1>
             <p className="mt-4 max-w-3xl text-xl font-semibold leading-8 text-muted">
-              Create auction listings and keep tax defaults by model code, so each JDM car gets the correct Sri Lanka
-              landed-cost attributes before publishing.
+              Create auction listings, review user submissions, and publish approved JDM advertisements to the public
+              dashboard.
             </p>
           </div>
-          <Link className={secondaryButtonClass} href="/admin/settings">
-            Tax settings
-          </Link>
+          {isAdmin ? <Link className={secondaryButtonClass} href="/admin/settings">Tax settings</Link> : null}
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[420px_1fr] lg:px-8">
+      <section className="mx-auto mt-8 grid max-w-7xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[420px_1fr] lg:px-8">
         {status !== 'authenticated' ? (
           <div className={`${panelClass} lg:col-span-2`}>
             <h2 className="text-2xl font-semibold text-foreground">Admin login required</h2>
-            <p className="mt-2 text-sm font-medium text-muted">Use Google login from the header before saving categories or cars.</p>
+            <p className="mt-2 text-sm font-medium text-muted">Sign in before saving categories or advertisements.</p>
           </div>
         ) : null}
 
         <aside className="space-y-6">
-          <form className={panelClass} onSubmit={onCategorySubmit}>
+          {isAdmin ? <form className={panelClass} onSubmit={onCategorySubmit}>
             <div className="flex items-center gap-3">
               <span className="grid h-10 w-10 place-items-center rounded-panel bg-signal/12">
                 <Tags className="text-signal" size={20} />
@@ -423,9 +465,9 @@ export default function AdminVehiclesPage() {
                 {savingCategory ? 'Saving...' : 'Add category'}
               </button>
             </div>
-          </form>
+          </form> : null}
 
-          <div className={panelClass}>
+          <div className={`${panelClass} lg:mt-8`}>
             <div className="flex items-end justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-muted">Master data</p>
@@ -450,6 +492,51 @@ export default function AdminVehiclesPage() {
             </div>
           </div>
         </aside>
+
+        <div className="space-y-6 lg:pt-8">
+          {status === 'authenticated' ? (
+            <section className={panelClass}>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-muted">{isAdmin ? 'Approval queue' : 'My advertisements'}</p>
+                  <h2 className="text-3xl font-semibold text-foreground">
+                    {isAdmin ? 'Advertisement requests' : 'Submitted advertisements'}
+                  </h2>
+                </div>
+                <span className="rounded-panel bg-field px-3 py-2 text-xs font-semibold text-muted">
+                  {cars.filter((car) => !car.published).length} pending
+                </span>
+              </div>
+              <div className="mt-5 divide-y divide-line">
+                {cars.map((car) => (
+                  <div className="grid gap-3 py-4 md:grid-cols-[1fr_auto]" key={car._id}>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-foreground">{car.title}</p>
+                        <span className={`rounded-panel px-2 py-1 text-xs font-semibold ${car.published ? 'bg-owl-green/15 text-owl-green' : 'bg-field text-muted'}`}>
+                          {car.published ? 'Published' : 'Pending approval'}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-muted">
+                        {car.year} {car.maker} {car.model} · {car.createdByName ?? 'Unknown publisher'}
+                      </p>
+                    </div>
+                    {isAdmin ? (
+                      <button
+                        className={car.published ? secondaryButtonClass : primaryButtonClass}
+                        onClick={() => togglePublished(car)}
+                        type="button"
+                      >
+                        <CheckCircle2 size={16} />
+                        {car.published ? 'Unpublish' : 'Approve'}
+                      </button>
+                    ) : null}
+                  </div>
+                ))}
+                {cars.length === 0 ? <p className="py-4 text-sm font-semibold text-muted">No advertisements yet.</p> : null}
+              </div>
+            </section>
+          ) : null}
 
         <form className={panelClass} onSubmit={onCarSubmit}>
           <div className="flex items-center gap-3">
@@ -523,9 +610,25 @@ export default function AdminVehiclesPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <label className={labelClass}>
-                Image paths
-                <input className={inputClass} value={carForm.image} onChange={(event) => setCarForm({ ...carForm, image: event.target.value })} />
+              <label className={`${labelClass} md:col-span-2`}>
+                Browse vehicle images
+                <span className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-panel border border-dashed border-line bg-field px-4 py-5 text-center hover:border-signal">
+                  <ImagePlus className="text-signal" size={24} />
+                  <span>{uploadingImages ? 'Optimizing and uploading...' : 'Select up to 12 images'}</span>
+                  <span className="text-xs font-medium text-muted">Images are resized within 1280×720 and compressed toward 1 MB.</span>
+                  <input
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    disabled={uploadingImages}
+                    multiple
+                    onChange={(event) => onImagesSelected(event.target.files)}
+                    type="file"
+                  />
+                </span>
+              </label>
+              <label className={`${labelClass} md:col-span-2`}>
+                Uploaded image URLs
+                <textarea className={textareaClass} readOnly value={carForm.image} />
               </label>
               <label className={labelClass}>
                 Auction URL
@@ -564,19 +667,26 @@ export default function AdminVehiclesPage() {
                   <option value="sold">Sold</option>
                 </select>
               </label>
-              <label className="flex items-center gap-3 pt-8 text-sm font-semibold text-muted">
-                <input checked={carForm.published} className="h-5 w-5 accent-signal" type="checkbox" onChange={(event) => setCarForm({ ...carForm, published: event.target.checked })} />
-                Published
-              </label>
+              {isAdmin ? (
+                <label className="flex items-center gap-3 pt-8 text-sm font-semibold text-muted">
+                  <input checked={carForm.published} className="h-5 w-5 accent-signal" type="checkbox" onChange={(event) => setCarForm({ ...carForm, published: event.target.checked })} />
+                  Publish immediately
+                </label>
+              ) : (
+                <p className="rounded-panel bg-field px-4 py-3 text-sm font-semibold text-muted md:col-span-3">
+                  User advertisements are submitted for admin approval before publishing.
+                </p>
+              )}
             </div>
 
             <button className={`${primaryButtonClass} md:w-fit`} disabled={savingCar || status !== 'authenticated'} type="submit">
               <Save size={16} />
-              {savingCar ? 'Publishing...' : 'Publish vehicle'}
+              {savingCar ? 'Saving...' : isAdmin ? 'Save vehicle' : 'Submit for approval'}
             </button>
             {message ? <p className="rounded-panel bg-field px-4 py-3 text-sm font-semibold text-foreground">{message}</p> : null}
           </div>
         </form>
+        </div>
       </section>
     </main>
   );

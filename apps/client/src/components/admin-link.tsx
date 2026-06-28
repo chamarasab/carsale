@@ -9,8 +9,8 @@ export function AdminLink() {
   if (!session?.user) return null;
 
   return (
-    <Link className="hidden text-sm font-black text-white/65 hover:text-white sm:inline" href="/admin/vehicles">
-      Admin
+    <Link className="hidden text-sm font-black text-white/65 hover:text-white sm:inline" href="/admin">
+      {session.user.role === 'ADMIN' ? 'Admin' : 'Publish'}
     </Link>
   );
 }
