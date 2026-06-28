@@ -13,7 +13,9 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (session?.user) router.replace('/admin');
+    if (session?.user) {
+      router.replace(session.user.role === 'ADMIN' ? '/admin' : '/users/vehicles');
+    }
   }, [router, session]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -31,8 +33,15 @@ export default function LoginPage() {
       setError('Invalid credentials or this account is inactive.');
       return;
     }
-    router.push('/admin');
+    const response = await fetch('/api/auth/session', { cache: 'no-store' });
+    const nextSession = (await response.json()) as { user?: { role?: 'ADMIN' | 'USER' } };
+    router.push(nextSession.user?.role === 'ADMIN' ? '/admin' : '/users/vehicles');
     router.refresh();
+  }
+
+  async function loginWithGoogle() {
+    setError('');
+    await signIn('google', { callbackUrl: '/users/vehicles' });
   }
 
   return (
@@ -58,7 +67,7 @@ export default function LoginPage() {
           </label>
           <label className="mt-4 grid gap-2 text-sm font-bold text-sub">
             Password
-            <input className="h-12 rounded-panel border border-line bg-field px-4 focus:border-signal focus:ring-signal/15" minLength={8} name="password" required type="password" />
+            <input className="h-12 rounded-panel border border-line bg-field px-4 focus:border-signal focus:ring-signal/15" minLength={5} name="password" required type="password" />
           </label>
           <button
             className="bg-brand-gradient mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-panel px-4 text-sm font-black text-white hover:opacity-90 disabled:opacity-50"
@@ -67,6 +76,18 @@ export default function LoginPage() {
           >
             <LogIn size={18} />
             {submitting ? 'Signing in...' : 'Sign in'}
+          </button>
+          <div className="my-5 flex items-center gap-3 text-xs font-bold uppercase text-muted">
+            <span className="h-px flex-1 bg-line" />
+            Or
+            <span className="h-px flex-1 bg-line" />
+          </div>
+          <button
+            className="inline-flex h-12 w-full items-center justify-center rounded-panel border border-line bg-surface px-4 text-sm font-black text-foreground hover:bg-field"
+            onClick={loginWithGoogle}
+            type="button"
+          >
+            Continue with Google
           </button>
           {error ? <p className="mt-4 text-sm font-bold text-red-500">{error}</p> : null}
           <p className="mt-5 text-center text-sm font-bold text-muted">

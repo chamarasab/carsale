@@ -41,6 +41,30 @@ export class UsersService implements OnModuleInit {
     return this.userModel.findOne({ _id: id, active: true }).lean();
   }
 
+  async findOrCreateGoogleUser(input: { googleSubject: string; email: string; name: string }) {
+    const email = input.email.trim().toLowerCase();
+    const existing = await this.userModel.findOne({
+      $or: [{ googleSubject: input.googleSubject }, { email }],
+    });
+
+    if (existing) {
+      existing.googleSubject = input.googleSubject;
+      if (!existing.name) existing.name = input.name.trim();
+      return { user: await existing.save(), created: false };
+    }
+
+    return {
+      user: await this.userModel.create({
+        name: input.name.trim(),
+        email,
+        googleSubject: input.googleSubject,
+        role: 'USER',
+        active: false,
+      }),
+      created: true,
+    };
+  }
+
   async findAll() {
     return this.userModel.find().sort({ role: 1, createdAt: -1 }).lean();
   }

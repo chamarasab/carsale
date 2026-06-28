@@ -90,8 +90,8 @@ export default function AdminSettingsPage() {
         ) : null}
 
         {settings && isAdmin ? (
-          <form className="grid gap-6 lg:grid-cols-[1fr_360px]" onSubmit={onSubmit}>
-            <div className="space-y-6">
+          <form className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)]" onSubmit={onSubmit}>
+            <div className="min-w-0 space-y-6">
               <div className="rounded-panel border border-line bg-surface p-5 shadow-soft">
                 <h2 className="text-xl font-black text-foreground">Policy</h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -173,15 +173,15 @@ export default function AdminSettingsPage() {
               </div>
             </div>
 
-            <aside className="h-fit rounded-panel border border-line bg-jdm-panel p-5 text-white shadow-soft">
+            <aside className="h-fit min-w-0 rounded-panel border border-line bg-jdm-panel p-5 text-white shadow-soft">
               <h2 className="text-xl font-black">Luxury bands</h2>
               <div className="mt-4 space-y-3">
                 {settings.luxuryBands.map((band, index) => (
-                  <div className="grid grid-cols-2 gap-2" key={index}>
-                    <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-white/58">
+                  <div className="grid min-w-0 grid-cols-[repeat(2,minmax(0,1fr))] gap-2" key={index}>
+                    <label className="grid min-w-0 gap-1 text-xs font-bold uppercase tracking-wide text-white/58">
                       Up to excess
                       <input
-                        className="h-10 rounded-panel border border-white/15 bg-white/8 px-2 text-white"
+                        className="h-10 w-full min-w-0 max-w-full rounded-panel border border-white/15 bg-white/8 px-2 text-white"
                         min="0"
                         step="1000"
                         type="number"
@@ -194,10 +194,10 @@ export default function AdminSettingsPage() {
                         }}
                       />
                     </label>
-                    <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-white/58">
+                    <label className="grid min-w-0 gap-1 text-xs font-bold uppercase tracking-wide text-white/58">
                       Rate
                       <input
-                        className="h-10 rounded-panel border border-white/15 bg-white/8 px-2 text-white"
+                        className="h-10 w-full min-w-0 max-w-full rounded-panel border border-white/15 bg-white/8 px-2 text-white"
                         min="0"
                         step="0.001"
                         type="number"

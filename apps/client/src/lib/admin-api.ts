@@ -181,6 +181,17 @@ export async function getManageableCars(accessToken: string) {
   return (await response.json()) as Car[];
 }
 
+export async function getPendingCars(accessToken: string) {
+  const response = await fetch(`${apiUrl}/cars/pending`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    throw new Error('Could not load pending advertisements');
+  }
+  return (await response.json()) as Car[];
+}
+
 export async function setCarPublished(id: string, published: boolean, accessToken: string) {
   const response = await fetch(`${apiUrl}/cars/${id}/published`, {
     method: 'PATCH',
@@ -196,6 +207,17 @@ export async function setCarPublished(id: string, published: boolean, accessToke
   }
 
   return (await response.json()) as Car;
+}
+
+export async function deleteCarAdvertisement(id: string, accessToken: string) {
+  const response = await fetch(`${apiUrl}/cars/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) {
+    throw new Error('Could not delete advertisement');
+  }
+  return (await response.json()) as { deleted: true };
 }
 
 export async function updateTaxSettings(settings: TaxSettings, idToken: string) {

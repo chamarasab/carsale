@@ -1,10 +1,15 @@
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import GoogleProvider from 'next-auth/providers/google';
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
 
 export const authOptions: NextAuthOptions = {
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID ?? '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+    }),
     CredentialsProvider({
       name: 'Email and password',
       credentials: {
@@ -36,6 +41,35 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async signIn({ account, user }) {
+      if (account?.provider !== 'google') return true;
+      if (!account.id_token) return false;
+
+      const response = await fetch(`${apiUrl}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: account.id_token }),
+      });
+      if (!response.ok) return false;
+
+      const result = (await response.json()) as {
+        status: 'PENDING' | 'AUTHENTICATED';
+        accessToken?: string;
+        user?: { id: string; email: string; name: string; role: 'ADMIN' | 'USER' };
+      };
+      if (result.status === 'PENDING') {
+        const siteUrl = process.env.NEXTAUTH_URL?.trim() || 'http://localhost:3000';
+        return new URL('/?signup=pending', siteUrl).toString();
+      }
+      if (!result.user || !result.accessToken) return false;
+
+      user.id = result.user.id;
+      user.email = result.user.email;
+      user.name = result.user.name;
+      user.role = result.user.role;
+      user.accessToken = result.accessToken;
+      return true;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.role = user.role;

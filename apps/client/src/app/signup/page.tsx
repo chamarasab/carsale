@@ -14,7 +14,9 @@ export default function SignupPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (session?.user) router.replace('/admin');
+    if (session?.user) {
+      router.replace(session.user.role === 'ADMIN' ? '/admin' : '/users/vehicles');
+    }
   }, [router, session]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -36,7 +38,7 @@ export default function SignupPage() {
         router.push('/login');
         return;
       }
-      router.push('/admin');
+      router.push('/users/vehicles');
       router.refresh();
     } catch {
       setError('Could not create account. Use a unique email and at least 8 characters for the password.');

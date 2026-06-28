@@ -9,3 +9,4 @@ dist
 npm-debug.log*
 docs/
 render logs*.txt*
+apps/api/public/images/uploads/

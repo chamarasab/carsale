@@ -10,12 +10,19 @@ import { AppUser, createUser, getUsers, setUserActive } from '@/lib/admin-api';
 export default function AdminUsersPage() {
   const { data: session, status } = useSession();
   const [users, setUsers] = useState<AppUser[]>([]);
+  const [draftStatuses, setDraftStatuses] = useState<Record<string, boolean>>({});
+  const [savingUserId, setSavingUserId] = useState('');
   const [message, setMessage] = useState('');
   const isAdmin = session?.user.role === 'ADMIN';
 
   useEffect(() => {
     if (!isAdmin || !session?.accessToken) return;
-    getUsers(session.accessToken).then(setUsers).catch(() => setMessage('Could not load users.'));
+    getUsers(session.accessToken)
+      .then((loadedUsers) => {
+        setUsers(loadedUsers);
+        setDraftStatuses(Object.fromEntries(loadedUsers.map((user) => [user._id, user.active])));
+      })
+      .catch(() => setMessage('Could not load users.'));
   }, [isAdmin, session?.accessToken]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -32,6 +39,7 @@ export default function AdminUsersPage() {
         session.accessToken,
       );
       setUsers((current) => [user, ...current]);
+      setDraftStatuses((current) => ({ ...current, [user._id]: user.active }));
       event.currentTarget.reset();
       setMessage(`Created ${user.email}.`);
     } catch {
@@ -39,10 +47,20 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function toggle(user: AppUser) {
+  async function saveStatus(user: AppUser) {
     if (!session?.accessToken) return;
-    const updated = await setUserActive(user._id, !user.active, session.accessToken);
-    setUsers((current) => current.map((item) => (item._id === updated._id ? updated : item)));
+    setSavingUserId(user._id);
+    setMessage('');
+    try {
+      const updated = await setUserActive(user._id, draftStatuses[user._id], session.accessToken);
+      setUsers((current) => current.map((item) => (item._id === updated._id ? updated : item)));
+      setDraftStatuses((current) => ({ ...current, [updated._id]: updated.active }));
+      setMessage(`Saved ${updated.email} as ${updated.active ? 'active' : 'inactive'}.`);
+    } catch {
+      setMessage(`Could not update ${user.email}.`);
+    } finally {
+      setSavingUserId('');
+    }
   }
 
   return (
@@ -74,20 +92,36 @@ export default function AdminUsersPage() {
               <h2 className="text-xl font-black">Users</h2>
               <div className="mt-4 divide-y divide-line">
                 {users.map((user) => (
-                  <div className="flex items-center justify-between gap-4 py-4" key={user._id}>
+                  <div className="grid gap-4 py-4 sm:grid-cols-[1fr_150px_auto] sm:items-center" key={user._id}>
                     <div>
                       <p className="font-black text-foreground">{user.name}</p>
                       <p className="text-sm text-muted">
                         {user.email} · {user.role}
                       </p>
                     </div>
-                    <button
-                      className={`rounded-panel px-3 py-2 text-xs font-black ${user.active ? 'bg-owl-green/15 text-owl-green' : 'bg-field text-muted'}`}
+                    <select
+                      aria-label={`Account status for ${user.email}`}
+                      className="h-10 rounded-panel border border-line bg-field px-3 text-sm font-bold text-foreground"
                       disabled={user.role === 'ADMIN'}
-                      onClick={() => toggle(user)}
+                      onChange={(event) =>
+                        setDraftStatuses((current) => ({ ...current, [user._id]: event.target.value === 'active' }))
+                      }
+                      value={draftStatuses[user._id] === false ? 'inactive' : 'active'}
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                    <button
+                      className="h-10 rounded-panel bg-brand-gradient px-4 text-xs font-black text-white disabled:opacity-40"
+                      disabled={
+                        user.role === 'ADMIN' ||
+                        savingUserId === user._id ||
+                        draftStatuses[user._id] === user.active
+                      }
+                      onClick={() => saveStatus(user)}
                       type="button"
                     >
-                      {user.active ? 'Active' : 'Inactive'}
+                      {savingUserId === user._id ? 'Saving...' : 'Save'}
                     </button>
                   </div>
                 ))}

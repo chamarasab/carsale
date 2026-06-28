@@ -22,6 +22,13 @@ export class CarsController {
     return this.carsService.findManageable(request.user);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Get('pending')
+  findPending() {
+    return this.carsService.findPending();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.carsService.findOne(id);

@@ -1,13 +1,15 @@
 'use client';
 
-import { CarFront, CheckCircle2, ImagePlus, Plus, Save, Tags } from 'lucide-react';
+import { CarFront, CheckCircle2, Eye, ImagePlus, Plus, Save, Tags, Trash2, X } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { CarPhoto } from '@/components/car-photo';
 import { Nav } from '@/components/nav';
 import {
   createCarAdvertisement,
   createVehicleCategory,
+  deleteCarAdvertisement,
   getManageableCars,
   getVehicleCategories,
   setCarPublished,
@@ -15,6 +17,7 @@ import {
   VehicleCategoryInput,
   uploadCarImages,
 } from '@/lib/admin-api';
+import { lkr } from '@/lib/format';
 import { Car } from '@/lib/types';
 
 type CarForm = {
@@ -151,12 +154,12 @@ function optionalNumber(value: string) {
   return Number.isFinite(number) ? number : undefined;
 }
 
-const panelClass = 'rounded-panel bg-surface p-6 shadow-soft ring-1 ring-line';
-const labelClass = 'grid gap-2 text-sm font-semibold text-muted';
+const panelClass = 'min-w-0 rounded-panel bg-surface p-6 shadow-soft ring-1 ring-line';
+const labelClass = 'grid min-w-0 gap-2 text-sm font-semibold text-muted';
 const inputClass =
-  'h-12 rounded-panel border border-line bg-field px-4 text-[15px] text-foreground outline-none transition focus:border-signal focus:bg-surface focus:ring-4 focus:ring-signal/10';
+  'h-12 w-full min-w-0 max-w-full rounded-panel border border-line bg-field px-4 text-[15px] text-foreground outline-none transition focus:border-signal focus:bg-surface focus:ring-4 focus:ring-signal/10';
 const textareaClass =
-  'min-h-24 rounded-panel border border-line bg-field px-4 py-3 text-[15px] text-foreground outline-none transition focus:border-signal focus:bg-surface focus:ring-4 focus:ring-signal/10';
+  'min-h-24 w-full min-w-0 max-w-full rounded-panel border border-line bg-field px-4 py-3 text-[15px] text-foreground outline-none transition focus:border-signal focus:bg-surface focus:ring-4 focus:ring-signal/10';
 const primaryButtonClass =
   'bg-brand-gradient inline-flex h-12 items-center justify-center gap-2 rounded-panel px-6 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50';
 const secondaryButtonClass =
@@ -172,6 +175,11 @@ export default function AdminVehiclesPage() {
   const [savingCategory, setSavingCategory] = useState(false);
   const [savingCar, setSavingCar] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [previewCar, setPreviewCar] = useState<Car | null>(null);
+  const [reviewingCar, setReviewingCar] = useState(false);
+  const [confirmingTrash, setConfirmingTrash] = useState(false);
+  const [desktopColumnHeight, setDesktopColumnHeight] = useState<number | null>(null);
+  const rightColumnRef = useRef<HTMLDivElement>(null);
   const isAdmin = session?.user.role === 'ADMIN';
 
   useEffect(() => {
@@ -186,6 +194,45 @@ export default function AdminVehiclesPage() {
       .then(setCars)
       .catch(() => setMessage('Could not load advertisements.'));
   }, [session?.accessToken]);
+
+  useEffect(() => {
+    if (!previewCar) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !reviewingCar) {
+        setPreviewCar(null);
+        setConfirmingTrash(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [previewCar, reviewingCar]);
+
+  useEffect(() => {
+    const rightColumn = rightColumnRef.current;
+    if (!rightColumn) return;
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    let frame = 0;
+    const syncHeight = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        setDesktopColumnHeight(desktop.matches ? Math.ceil(rightColumn.getBoundingClientRect().height) : null);
+      });
+    };
+    const observer = new ResizeObserver(syncHeight);
+    observer.observe(rightColumn);
+    desktop.addEventListener('change', syncHeight);
+    syncHeight();
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+      desktop.removeEventListener('change', syncHeight);
+    };
+  }, []);
 
   const activeCategories = useMemo(() => categories.filter((category) => category.active !== false), [categories]);
 
@@ -312,15 +359,54 @@ export default function AdminVehiclesPage() {
     }
   }
 
-  async function togglePublished(car: Car) {
-    if (!session?.accessToken || !isAdmin) return;
+  async function reviewPublished(car: Car) {
+    if (!session?.accessToken) return;
+    setReviewingCar(true);
+    setMessage('');
     try {
       const updated = await setCarPublished(car._id, !car.published, session.accessToken);
       setCars((current) => current.map((item) => (item._id === updated._id ? updated : item)));
+      setPreviewCar(updated);
+      setConfirmingTrash(false);
       setMessage(updated.published ? 'Advertisement approved and published.' : 'Advertisement moved back to pending.');
     } catch {
       setMessage('Could not update advertisement approval.');
+    } finally {
+      setReviewingCar(false);
     }
+  }
+
+  async function trashAdvertisement(car: Car) {
+    if (!session?.accessToken) return;
+    if (!confirmingTrash) {
+      setConfirmingTrash(true);
+      return;
+    }
+
+    setReviewingCar(true);
+    setMessage('');
+    try {
+      await deleteCarAdvertisement(car._id, session.accessToken);
+      setCars((current) => current.filter((item) => item._id !== car._id));
+      setPreviewCar(null);
+      setConfirmingTrash(false);
+      setMessage('Advertisement deleted.');
+    } catch {
+      setMessage('Could not delete advertisement.');
+    } finally {
+      setReviewingCar(false);
+    }
+  }
+
+  function openPreview(car: Car) {
+    setPreviewCar(car);
+    setConfirmingTrash(false);
+  }
+
+  function closePreview() {
+    if (reviewingCar) return;
+    setPreviewCar(null);
+    setConfirmingTrash(false);
   }
 
   async function onImagesSelected(files: FileList | null) {
@@ -360,7 +446,7 @@ export default function AdminVehiclesPage() {
         </div>
       </section>
 
-      <section className="mx-auto mt-8 grid max-w-7xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[420px_1fr] lg:px-8">
+      <section className="mx-auto mt-8 grid max-w-7xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:px-8">
         {status !== 'authenticated' ? (
           <div className={`${panelClass} lg:col-span-2`}>
             <h2 className="text-2xl font-semibold text-foreground">Admin login required</h2>
@@ -368,7 +454,10 @@ export default function AdminVehiclesPage() {
           </div>
         ) : null}
 
-        <aside className="space-y-6">
+        <aside
+          className="flex min-h-0 min-w-0 flex-col gap-6 self-start lg:overflow-hidden"
+          style={desktopColumnHeight ? { height: `${desktopColumnHeight}px` } : undefined}
+        >
           {isAdmin ? <form className={panelClass} onSubmit={onCategorySubmit}>
             <div className="flex items-center gap-3">
               <span className="grid h-10 w-10 place-items-center rounded-panel bg-signal/12">
@@ -385,7 +474,7 @@ export default function AdminVehiclesPage() {
                 Meaning
                 <input className={inputClass} value={categoryForm.meaning} onChange={(event) => setCategoryForm({ ...categoryForm, meaning: event.target.value })} />
               </label>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid min-w-0 gap-3 sm:grid-cols-2">
                 <label className={labelClass}>
                   Maker
                   <input className={inputClass} value={categoryForm.maker ?? ''} onChange={(event) => setCategoryForm({ ...categoryForm, maker: event.target.value })} />
@@ -395,7 +484,7 @@ export default function AdminVehiclesPage() {
                   <input className={inputClass} value={categoryForm.model ?? ''} onChange={(event) => setCategoryForm({ ...categoryForm, model: event.target.value })} />
                 </label>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid min-w-0 gap-3 sm:grid-cols-2">
                 <label className={labelClass}>
                   Vehicle type
                   <input className={inputClass} value={categoryForm.vehicleType ?? ''} onChange={(event) => setCategoryForm({ ...categoryForm, vehicleType: event.target.value })} />
@@ -405,7 +494,7 @@ export default function AdminVehiclesPage() {
                   <input className={inputClass} value={categoryForm.fuelType ?? ''} onChange={(event) => setCategoryForm({ ...categoryForm, fuelType: event.target.value })} />
                 </label>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid min-w-0 gap-3 sm:grid-cols-2">
                 <label className={labelClass}>
                   Year from
                   <input className={inputClass} min="1980" type="number" value={categoryForm.yearFrom ?? ''} onChange={(event) => setCategoryForm({ ...categoryForm, yearFrom: optionalNumber(event.target.value) })} />
@@ -415,7 +504,7 @@ export default function AdminVehiclesPage() {
                   <input className={inputClass} min="1980" type="number" value={categoryForm.yearTo ?? ''} onChange={(event) => setCategoryForm({ ...categoryForm, yearTo: optionalNumber(event.target.value) })} />
                 </label>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid min-w-0 gap-3 sm:grid-cols-2">
                 <label className={labelClass}>
                   Body type
                   <input className={inputClass} value={categoryForm.bodyType ?? ''} onChange={(event) => setCategoryForm({ ...categoryForm, bodyType: event.target.value })} />
@@ -441,7 +530,7 @@ export default function AdminVehiclesPage() {
                   }
                 />
               </label>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid min-w-0 gap-3 sm:grid-cols-2">
                 {categoryNumberFields.map(([field, label]) => (
                   <label className={labelClass} key={field}>
                     {label}
@@ -467,7 +556,7 @@ export default function AdminVehiclesPage() {
             </div>
           </form> : null}
 
-          <div className={`${panelClass} lg:mt-8`}>
+          <div className={`${panelClass} flex min-h-0 flex-1 flex-col overflow-hidden lg:mt-8`}>
             <div className="flex items-end justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-muted">Master data</p>
@@ -475,7 +564,7 @@ export default function AdminVehiclesPage() {
               </div>
               <span className="rounded-panel bg-field px-3 py-1 text-xs font-semibold text-muted">{categories.length}</span>
             </div>
-            <div className="mt-4 max-h-[440px] space-y-3 overflow-y-auto pr-2">
+            <div className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-2">
               {categories.map((category) => (
                 <div className="min-h-[96px] rounded-panel bg-field p-4 ring-1 ring-line transition hover:bg-surface-raised" key={category._id}>
                   <div className="flex items-center justify-between gap-3">
@@ -493,7 +582,10 @@ export default function AdminVehiclesPage() {
           </div>
         </aside>
 
-        <div className="space-y-6 lg:pt-8">
+        <div
+          className={`min-w-0 space-y-6 self-start ${isAdmin ? '' : 'lg:pt-8'}`}
+          ref={rightColumnRef}
+        >
           {status === 'authenticated' ? (
             <section className={panelClass}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -523,12 +615,12 @@ export default function AdminVehiclesPage() {
                     </div>
                     {isAdmin ? (
                       <button
-                        className={car.published ? secondaryButtonClass : primaryButtonClass}
-                        onClick={() => togglePublished(car)}
+                        className={secondaryButtonClass}
+                        onClick={() => openPreview(car)}
                         type="button"
                       >
-                        <CheckCircle2 size={16} />
-                        {car.published ? 'Unpublish' : 'Approve'}
+                        <Eye size={16} />
+                        Preview
                       </button>
                     ) : null}
                   </div>
@@ -688,6 +780,107 @@ export default function AdminVehiclesPage() {
         </form>
         </div>
       </section>
+      {previewCar ? (
+        <div
+          aria-labelledby="advertisement-preview-title"
+          aria-modal="true"
+          className="fixed inset-0 z-[60] grid place-items-center bg-black/70 p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closePreview();
+          }}
+          role="dialog"
+        >
+          <section className="max-h-[calc(100vh-2rem)] w-full max-w-4xl overflow-y-auto rounded-panel bg-surface shadow-theme ring-1 ring-line">
+            <div className="flex items-start justify-between gap-4 border-b border-line p-5 sm:p-6">
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase tracking-wide text-signal">Advertisement preview</p>
+                <h2 className="mt-2 text-2xl font-black text-foreground" id="advertisement-preview-title">
+                  {previewCar.title}
+                </h2>
+                <p className="mt-1 text-sm text-muted">
+                  Submitted by {previewCar.createdByName ?? 'Unknown publisher'}
+                </p>
+              </div>
+              <button
+                aria-label="Close preview"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-panel bg-field text-muted hover:text-foreground"
+                disabled={reviewingCar}
+                onClick={closePreview}
+                type="button"
+              >
+                <X size={19} />
+              </button>
+            </div>
+
+            <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
+              <div className="min-w-0">
+                <div className="relative aspect-[16/10] overflow-hidden rounded-panel bg-field">
+                  <CarPhoto car={previewCar} priority sizes="(min-width: 1024px) 50vw, 100vw" />
+                </div>
+                {previewCar.features.length ? (
+                  <div className="mt-5">
+                    <p className="text-xs font-black uppercase tracking-wide text-muted">Features</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {previewCar.features.map((feature) => (
+                        <span className="rounded-panel bg-field px-3 py-2 text-xs font-bold text-sub" key={feature}>
+                          {feature}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="min-w-0">
+                <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+                  {[
+                    ['Status', previewCar.published ? 'Published' : 'Pending approval'],
+                    ['Year', previewCar.year],
+                    ['Maker', previewCar.maker],
+                    ['Model', previewCar.model],
+                    ['Mileage', `${previewCar.mileageKm.toLocaleString()} km`],
+                    ['Fuel', previewCar.fuelType],
+                    ['Transmission', previewCar.transmission],
+                    ['Auction grade', previewCar.auctionGrade],
+                    ['Chassis', previewCar.chassisCode],
+                    ['Location', previewCar.location],
+                  ].map(([label, value]) => (
+                    <div className="min-w-0 border-b border-line pb-3" key={label}>
+                      <p className="text-xs font-bold uppercase text-muted">{label}</p>
+                      <p className="mt-1 break-words text-sm font-black text-foreground">{value}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-5 border-l-4 border-brass bg-jdm-panel p-4 text-white">
+                  <p className="text-xs font-bold uppercase text-white/65">Estimated delivered cost</p>
+                  <p className="mt-1 text-2xl font-black">{lkr(previewCar.cost.totalLkr)}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-line p-5 sm:flex-row sm:items-center sm:justify-end sm:p-6">
+              <button
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-panel bg-red-600 px-5 text-sm font-black text-white hover:bg-red-700 disabled:opacity-50"
+                disabled={reviewingCar}
+                onClick={() => trashAdvertisement(previewCar)}
+                type="button"
+              >
+                <Trash2 size={17} />
+                {confirmingTrash ? 'Confirm trash' : 'Trash'}
+              </button>
+              <button
+                className={previewCar.published ? secondaryButtonClass : primaryButtonClass}
+                disabled={reviewingCar}
+                onClick={() => reviewPublished(previewCar)}
+                type="button"
+              >
+                <CheckCircle2 size={17} />
+                {reviewingCar ? 'Saving...' : previewCar.published ? 'Unpublish' : 'Approve'}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }

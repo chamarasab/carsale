@@ -42,6 +42,11 @@ export class CarsService {
     return cars.map((car) => this.withPublicImageUrls(car));
   }
 
+  async findPending() {
+    const cars = await this.carModel.find({ published: false }).sort({ createdAt: -1 }).lean();
+    return cars.map((car) => this.withPublicImageUrls(car));
+  }
+
   async findOne(id: string) {
     const car = await this.carModel.findOne({ _id: id, published: true }).lean();
     if (!car) {
