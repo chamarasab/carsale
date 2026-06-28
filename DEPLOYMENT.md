@@ -44,6 +44,10 @@ MONGODB_URI=mongodb+srv://...
 MONGODB_DB=carsale
 CLIENT_ORIGIN=https://your-vercel-app.vercel.app
 API_PUBLIC_URL=https://your-render-api.onrender.com
+AUTH_JWT_SECRET=generate-a-long-random-secret
+ADMIN_INITIAL_NAME=Carsale Administrator
+ADMIN_INITIAL_EMAIL=owner@example.com
+ADMIN_INITIAL_PASSWORD=choose-a-strong-initial-password
 GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
 ADMIN_EMAILS=owner@example.com,staff@example.com
 JPCENTER_USERNAME=your-jpcenter-username
@@ -52,4 +56,4 @@ JPCENTER_PASSWORD=your-jpcenter-password
 
 ## Notes
 
-The API currently serves scraped images from `apps/api/public/images`. This is acceptable for a development demo if those files are deployed with the API. For production, move uploaded/scraped images to Cloudinary, S3, or Vercel Blob and store those public URLs in MongoDB.
+The API currently serves scraped images from `apps/api/public/images`. Vehicle photos bypass the Next.js image proxy because a sleeping Render service can exceed its upstream timeout. Uploaded images still require persistent storage; use a Render persistent disk or move uploads to Cloudinary, S3, or Vercel Blob before relying on them in production.

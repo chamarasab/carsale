@@ -28,6 +28,7 @@ export function CarPhoto({ car, className = '', image = car.images[0], priority 
         quality={70}
         sizes={sizes}
         src={image}
+        unoptimized
       />
     );
   }
