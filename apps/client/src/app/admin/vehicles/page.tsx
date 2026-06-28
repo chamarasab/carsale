@@ -1,6 +1,6 @@
 'use client';
 
-import { CarFront, CheckCircle2, Eye, ImagePlus, Plus, Save, Tags, Trash2, X } from 'lucide-react';
+import { CarFront, CheckCircle2, Eye, ImagePlus, Pencil, Plus, RotateCcw, Save, Tags, Trash2, X } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
@@ -13,6 +13,7 @@ import {
   getManageableCars,
   getVehicleCategories,
   setCarPublished,
+  updateCarAdvertisement,
   VehicleCategory,
   VehicleCategoryInput,
   uploadCarImages,
@@ -34,6 +35,7 @@ type CarForm = {
   auctionGrade: string;
   chassisCode: string;
   location: string;
+  auctionDate: string;
   sourceUrl: string;
   image: string;
   features: string;
@@ -74,7 +76,6 @@ const emptyCategory: VehicleCategoryInput = {
   transmission: 'CVT',
   engineCapacity: 660,
   defaultDepreciationRate: 0.85,
-  defaultExciseRatePerUnitLkr: 3000,
   defaultLuxuryThresholdLkr: 5500000,
   notes: '',
   active: true,
@@ -87,13 +88,14 @@ const initialCarForm: CarForm = {
   modelCode: '',
   categoryId: '',
   categoryMeaning: '',
-  year: '2021',
-  mileageKm: '42000',
+  year: '2026',
+  mileageKm: '0',
   fuelType: '',
   transmission: 'Automatic',
   auctionGrade: '4',
   chassisCode: '',
   location: 'USS Tokyo',
+  auctionDate: '',
   sourceUrl: '',
   image: '/blank-car-logo.svg',
   features: 'Auction sheet verified, Japan auction listing, Transparent Sri Lanka landed cost',
@@ -175,11 +177,13 @@ export default function AdminVehiclesPage() {
   const [savingCategory, setSavingCategory] = useState(false);
   const [savingCar, setSavingCar] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [editingCarId, setEditingCarId] = useState<string | null>(null);
   const [previewCar, setPreviewCar] = useState<Car | null>(null);
   const [reviewingCar, setReviewingCar] = useState(false);
   const [confirmingTrash, setConfirmingTrash] = useState(false);
   const [desktopColumnHeight, setDesktopColumnHeight] = useState<number | null>(null);
   const rightColumnRef = useRef<HTMLDivElement>(null);
+  const carFormRef = useRef<HTMLFormElement>(null);
   const isAdmin = session?.user.role === 'ADMIN';
 
   useEffect(() => {
@@ -299,59 +303,67 @@ export default function AdminVehiclesPage() {
         .map((image) => image.trim())
         .filter(Boolean);
 
-      const saved = await createCarAdvertisement(
-        {
-          title: carForm.title,
-          maker: carForm.maker,
-          model: carForm.model,
-          modelCode: carForm.modelCode || undefined,
-          categoryId: carForm.categoryId || undefined,
-          categoryMeaning: carForm.categoryMeaning || undefined,
-          year: Number(carForm.year),
-          mileageKm: Number(carForm.mileageKm),
+      const payload = {
+        title: carForm.title,
+        maker: carForm.maker,
+        model: carForm.model,
+        modelCode: carForm.modelCode || undefined,
+        categoryId: carForm.categoryId || undefined,
+        categoryMeaning: carForm.categoryMeaning || undefined,
+        year: Number(carForm.year),
+        mileageKm: Number(carForm.mileageKm),
+        fuelType: carForm.fuelType,
+        transmission: carForm.transmission,
+        auctionGrade: carForm.auctionGrade,
+        chassisCode: carForm.chassisCode,
+        location: carForm.location,
+        auctionDate: carForm.auctionDate || undefined,
+        source: 'Japan Auction',
+        sourceUrl: carForm.sourceUrl || undefined,
+        images: images.length ? images : ['/blank-car-logo.svg'],
+        features: carForm.features
+          .split(',')
+          .map((feature) => feature.trim())
+          .filter(Boolean),
+        cost: {
+          auctionPriceJpy: Number(carForm.auctionPriceJpy),
+          exchangeRateLkr: Number(carForm.exchangeRateLkr),
+          yellowBookValueJpy: optionalNumber(carForm.yellowBookValueJpy),
+          freightJpy: optionalNumber(carForm.freightJpy),
+          insuranceJpy: optionalNumber(carForm.insuranceJpy),
+          vehicleType: carForm.vehicleType,
           fuelType: carForm.fuelType,
-          transmission: carForm.transmission,
-          auctionGrade: carForm.auctionGrade,
-          chassisCode: carForm.chassisCode,
-          location: carForm.location,
-          source: 'Japan Auction',
-          sourceUrl: carForm.sourceUrl || undefined,
-          images: images.length ? images : ['/blank-car-logo.svg'],
-          features: carForm.features
-            .split(',')
-            .map((feature) => feature.trim())
-            .filter(Boolean),
-          cost: {
-            auctionPriceJpy: Number(carForm.auctionPriceJpy),
-            exchangeRateLkr: Number(carForm.exchangeRateLkr),
-            yellowBookValueJpy: optionalNumber(carForm.yellowBookValueJpy),
-            freightJpy: optionalNumber(carForm.freightJpy),
-            insuranceJpy: optionalNumber(carForm.insuranceJpy),
-            vehicleType: carForm.vehicleType,
-            fuelType: carForm.fuelType,
-            engineCapacity: optionalNumber(carForm.engineCapacity),
-            manufactureYear: Number(carForm.year),
-            depreciationRate: optionalNumber(carForm.depreciationRate),
-            exciseRatePerUnitLkr: optionalNumber(carForm.exciseRatePerUnitLkr),
-            exciseDutyLkr: optionalNumber(carForm.exciseDutyLkr),
-            luxuryThresholdLkr: optionalNumber(carForm.luxuryThresholdLkr),
-            luxuryRate: optionalNumber(carForm.luxuryRate),
-            bankChargesLkr: optionalNumber(carForm.bankChargesLkr),
-            clearingChargesLkr: optionalNumber(carForm.clearingChargesLkr),
-            supplierCommissionLkr: optionalNumber(carForm.supplierCommissionLkr),
-            importerCommissionLkr: optionalNumber(carForm.importerCommissionLkr),
-            depositLkr: optionalNumber(carForm.depositLkr),
-            localTransportLkr: optionalNumber(carForm.localTransportLkr),
-          },
-          status: carForm.status,
-          published: isAdmin ? carForm.published : false,
+          engineCapacity: optionalNumber(carForm.engineCapacity),
+          manufactureYear: Number(carForm.year),
+          depreciationRate: optionalNumber(carForm.depreciationRate),
+          exciseRatePerUnitLkr: optionalNumber(carForm.exciseRatePerUnitLkr),
+          exciseDutyLkr: optionalNumber(carForm.exciseDutyLkr),
+          luxuryThresholdLkr: optionalNumber(carForm.luxuryThresholdLkr),
+          luxuryRate: optionalNumber(carForm.luxuryRate),
+          bankChargesLkr: optionalNumber(carForm.bankChargesLkr),
+          clearingChargesLkr: optionalNumber(carForm.clearingChargesLkr),
+          supplierCommissionLkr: optionalNumber(carForm.supplierCommissionLkr),
+          importerCommissionLkr: optionalNumber(carForm.importerCommissionLkr),
+          depositLkr: optionalNumber(carForm.depositLkr),
+          localTransportLkr: optionalNumber(carForm.localTransportLkr),
         },
-        session.accessToken,
-      );
+        status: carForm.status,
+        published: isAdmin ? carForm.published : false,
+      };
+      const saved = editingCarId
+        ? await updateCarAdvertisement(editingCarId, payload, session.accessToken)
+        : await createCarAdvertisement(payload, session.accessToken);
 
-      setCars((current) => [saved, ...current]);
+      setCars((current) => [saved, ...current.filter((car) => car._id !== saved._id)]);
       setCarForm(initialCarForm);
-      setMessage(isAdmin && saved.published ? 'Vehicle advertisement published.' : 'Advertisement submitted for admin approval.');
+      setEditingCarId(null);
+      setMessage(
+        editingCarId
+          ? 'Advertisement updated.'
+          : isAdmin && saved.published
+            ? 'Vehicle advertisement published.'
+            : 'Advertisement submitted for admin approval.',
+      );
     } catch {
       setMessage('Could not save vehicle advertisement. Check required fields and API logs.');
     } finally {
@@ -407,6 +419,59 @@ export default function AdminVehiclesPage() {
     if (reviewingCar) return;
     setPreviewCar(null);
     setConfirmingTrash(false);
+  }
+
+  function beginEditing(car: Car) {
+    setEditingCarId(car._id);
+    setCarForm({
+      title: car.title,
+      maker: car.maker,
+      model: car.model,
+      modelCode: car.modelCode ?? '',
+      categoryId: car.categoryId ?? '',
+      categoryMeaning: car.categoryMeaning ?? '',
+      year: String(car.year),
+      mileageKm: String(car.mileageKm),
+      fuelType: car.fuelType,
+      transmission: car.transmission,
+      auctionGrade: car.auctionGrade,
+      chassisCode: car.chassisCode,
+      location: car.location,
+      auctionDate: car.auctionDate ?? '',
+      sourceUrl: car.sourceUrl ?? '',
+      image: car.images.join(', '),
+      features: car.features.join(', '),
+      auctionPriceJpy: String(car.cost.auctionPriceJpy),
+      exchangeRateLkr: String(car.cost.exchangeRateLkr),
+      yellowBookValueJpy: numberInput(car.cost.yellowBookValueJpy),
+      freightJpy: numberInput(car.cost.freightJpy),
+      insuranceJpy: numberInput(car.cost.insuranceJpy),
+      vehicleType: car.cost.vehicleType ?? 'Car',
+      engineCapacity: numberInput(car.cost.engineCapacity),
+      depreciationRate: numberInput(car.cost.depreciationRate),
+      exciseRatePerUnitLkr: '',
+      exciseDutyLkr: '',
+      luxuryThresholdLkr: '',
+      luxuryRate: '',
+      bankChargesLkr: numberInput(car.cost.bankChargesLkr),
+      clearingChargesLkr: numberInput(car.cost.clearingChargesLkr),
+      supplierCommissionLkr: numberInput(car.cost.supplierCommissionLkr),
+      importerCommissionLkr: numberInput(car.cost.importerCommissionLkr),
+      depositLkr: numberInput(car.cost.depositLkr),
+      localTransportLkr: numberInput(car.cost.localTransportLkr),
+      status: car.status,
+      published: car.published ?? false,
+    });
+    setPreviewCar(null);
+    setConfirmingTrash(false);
+    setMessage(`Editing ${car.title}.`);
+    window.requestAnimationFrame(() => carFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+
+  function cancelEditing() {
+    setEditingCarId(null);
+    setCarForm(initialCarForm);
+    setMessage('');
   }
 
   async function onImagesSelected(files: FileList | null) {
@@ -630,14 +695,16 @@ export default function AdminVehiclesPage() {
             </section>
           ) : null}
 
-        <form className={panelClass} onSubmit={onCarSubmit}>
+        <form className={panelClass} onSubmit={onCarSubmit} ref={carFormRef}>
           <div className="flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-panel bg-signal/12">
               <CarFront className="text-signal" size={22} />
             </span>
             <div>
               <p className="text-sm font-semibold text-muted">Auction listing</p>
-              <h2 className="text-3xl font-semibold text-foreground">Add vehicle advertisement</h2>
+              <h2 className="text-3xl font-semibold text-foreground">
+                {editingCarId ? 'Edit vehicle advertisement' : 'Add vehicle advertisement'}
+              </h2>
             </div>
           </div>
 
@@ -698,6 +765,10 @@ export default function AdminVehiclesPage() {
               <label className={labelClass}>
                 Auction location
                 <input className={inputClass} required value={carForm.location} onChange={(event) => setCarForm({ ...carForm, location: event.target.value })} />
+              </label>
+              <label className={labelClass}>
+                Auction date
+                <input className={inputClass} placeholder="YYYY-MM-DD" value={carForm.auctionDate} onChange={(event) => setCarForm({ ...carForm, auctionDate: event.target.value })} />
               </label>
             </div>
 
@@ -771,10 +842,24 @@ export default function AdminVehiclesPage() {
               )}
             </div>
 
-            <button className={`${primaryButtonClass} md:w-fit`} disabled={savingCar || status !== 'authenticated'} type="submit">
-              <Save size={16} />
-              {savingCar ? 'Saving...' : isAdmin ? 'Save vehicle' : 'Submit for approval'}
-            </button>
+            <div className="flex flex-wrap gap-3">
+              <button className={`${primaryButtonClass} md:w-fit`} disabled={savingCar || status !== 'authenticated'} type="submit">
+                <Save size={16} />
+                {savingCar
+                  ? 'Saving...'
+                  : editingCarId
+                    ? 'Update advertisement'
+                    : isAdmin
+                      ? 'Save vehicle'
+                      : 'Submit for approval'}
+              </button>
+              {editingCarId ? (
+                <button className={secondaryButtonClass} disabled={savingCar} onClick={cancelEditing} type="button">
+                  <RotateCcw size={16} />
+                  Cancel edit
+                </button>
+              ) : null}
+            </div>
             {message ? <p className="rounded-panel bg-field px-4 py-3 text-sm font-semibold text-foreground">{message}</p> : null}
           </div>
         </form>
@@ -844,6 +929,8 @@ export default function AdminVehiclesPage() {
                     ['Auction grade', previewCar.auctionGrade],
                     ['Chassis', previewCar.chassisCode],
                     ['Location', previewCar.location],
+                    ['Auction date', displayDate(previewCar.auctionDate)],
+                    ['Advertisement created', displayDate(previewCar.createdAt)],
                   ].map(([label, value]) => (
                     <div className="min-w-0 border-b border-line pb-3" key={label}>
                       <p className="text-xs font-bold uppercase text-muted">{label}</p>
@@ -859,6 +946,15 @@ export default function AdminVehiclesPage() {
             </div>
 
             <div className="flex flex-col-reverse gap-3 border-t border-line p-5 sm:flex-row sm:items-center sm:justify-end sm:p-6">
+              <button
+                className={secondaryButtonClass}
+                disabled={reviewingCar}
+                onClick={() => beginEditing(previewCar)}
+                type="button"
+              >
+                <Pencil size={17} />
+                Edit
+              </button>
               <button
                 className="inline-flex h-12 items-center justify-center gap-2 rounded-panel bg-red-600 px-5 text-sm font-black text-white hover:bg-red-700 disabled:opacity-50"
                 disabled={reviewingCar}
@@ -883,4 +979,19 @@ export default function AdminVehiclesPage() {
       ) : null}
     </main>
   );
+}
+
+function numberInput(value: number | undefined) {
+  return value === undefined ? '' : String(value);
+}
+
+function displayDate(value: string | undefined) {
+  if (!value) return 'Not provided';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat('en-LK', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(parsed);
 }

@@ -32,6 +32,12 @@ services:
         sync: false
       - key: JPCENTER_PASSWORD
         sync: false
+      - key: SCRAPER_SERVICE_KEY
+        sync: false
+      - key: SCRAPER_BOT_ENABLED
+        value: "true"
+      - key: SCRAPER_SCHEDULE_LABEL
+        value: Every 6 hours
       - key: JPY_TO_LKR
         value: "2.08"
       - key: DEFAULT_FREIGHT_JPY
@@ -46,3 +52,19 @@ services:
         value: "220000"
       - key: DEFAULT_LOCAL_TRANSPORT_LKR
         value: "95000"
+  - type: cron
+    name: carsale-jpcenter-scraper
+    runtime: node
+    plan: starter
+    schedule: "0 */6 * * *"
+    buildCommand: npm install
+    startCommand: npm run scraper:run
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: SCRAPER_API_URL
+        value: https://carsale-1.onrender.com/api
+      - key: SCRAPER_SERVICE_KEY
+        sync: false
+      - key: SCRAPER_RUN_TIMEOUT_MS
+        value: "1800000"

@@ -12,7 +12,7 @@ export function Nav() {
           </span>
           <span>
             <span className="block text-sm font-black uppercase tracking-wide text-white">Ceylon JDM Orders</span>
-            <span className="block text-xs font-semibold text-white/55">日本車 · Japan auction to Sri Lanka</span>
+            <span className="block text-xs font-semibold text-white/55">日本車 · Your Japan-to-Sri Lanka car journey</span>
           </span>
         </Link>
         <nav className="flex items-center gap-2 sm:gap-4">

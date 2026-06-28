@@ -17,7 +17,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'Ceylon JDM Orders',
-  description: 'Transparent Japan auction vehicle ordering for Sri Lankan buyers.',
+  description: 'Explore newer Japanese auction cars with a clear estimated landed cost for Sri Lanka.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

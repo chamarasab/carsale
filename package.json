@@ -5,12 +5,15 @@
   "description": "JDM car auction ordering platform for Sri Lankan customers.",
   "workspaces": [
     "apps/api",
-    "apps/client"
+    "apps/client",
+    "apps/scraper-worker"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev --workspace apps/api\" \"npm run dev --workspace apps/client\"",
+    "dev": "concurrently \"npm run dev --workspace apps/api\" \"npm run dev --workspace apps/client\" \"npm run dev --workspace apps/scraper-worker\"",
     "dev:api": "npm run dev --workspace apps/api",
     "dev:client": "npm run dev --workspace apps/client",
+    "dev:scraper": "npm run dev --workspace apps/scraper-worker",
+    "scraper:run": "npm run run --workspace apps/scraper-worker",
     "start": "npm run start --workspace apps/api",
     "build": "npm run build --workspace apps/api && npm run build --workspace apps/client",
     "lint": "npm run lint --workspace apps/api && npm run lint --workspace apps/client",

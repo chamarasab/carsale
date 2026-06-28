@@ -295,6 +295,10 @@ export class CreateCarDto {
 
   @IsOptional()
   @IsString()
+  auctionDate?: string;
+
+  @IsOptional()
+  @IsString()
   source?: string;
 
   @IsOptional()

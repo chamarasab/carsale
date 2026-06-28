@@ -1,18 +1,18 @@
 import Image from 'next/image';
 
-const models = ['Supra A80', 'Skyline GT-R', 'RX-7 FD', 'NSX NA1', 'Evo VI'];
+const models = ['Wagon R Custom Z', 'Daihatsu Thor', 'Daihatsu Rocky', 'Mira e:S'];
 
 export function HeroSlider() {
   return (
     <div className="hero-media absolute inset-0">
       <Image
-        alt="Japanese JDM sports cars at a Tokyo auction yard"
+        alt="Newer Japanese compact cars ready for shipment to Sri Lanka"
         className="object-cover"
         fill
         priority
         quality={70}
         sizes="100vw"
-        src="/jdm-hero.webp"
+        src="/jdm-family-hero.webp"
       />
       <div className="absolute bottom-5 left-4 right-4 z-10 mx-auto hidden max-w-7xl justify-end md:flex">
         <div className="flex flex-wrap justify-end gap-2">

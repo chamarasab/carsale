@@ -25,20 +25,20 @@ export default async function Home({
         <div className="relative z-10 mx-auto flex min-h-[82vh] max-w-7xl items-center px-4 py-16 sm:px-6 lg:px-8">
           <div className="max-w-3xl text-white">
             <p className="mb-5 inline-flex border border-white/15 bg-white/10 px-3 py-2 text-xs font-black uppercase tracking-wide text-white/84 backdrop-blur">
-              Supra, GT-R and JDM auction ordering for Sri Lanka
+              2023+ Japanese cars, ordered for Sri Lanka
             </p>
             <h1 className="max-w-4xl text-5xl font-black leading-none sm:text-6xl lg:text-7xl">
-              Japan auction legends, priced to your driveway.
+              Newer Japanese cars for Sri Lankan families.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-white/78">
-              Browse Japanese performance icons and clean reconditioned auction cars with auction price, shipping,
-              taxes, port charges, local delivery, and service fee shown before you inquire.
+              A car is one of life&apos;s biggest dreams. Explore practical 2023+ models from Japan with the auction
+              price, shipping, taxes, clearance, and local delivery brought together before you decide.
             </p>
             <div className="mt-8 grid max-w-2xl grid-cols-3 gap-3 border-y border-white/14 py-5 text-white sm:flex">
               {[
-                ['4', 'JDM listings'],
-                ['100%', 'cost clarity'],
-                ['JP to LK', 'handover flow'],
+                [String(cars.length), 'live listings'],
+                ['2023+', 'newer models'],
+                ['JP to LK', 'one clear path'],
               ].map(([value, label]) => (
                 <div className="sm:min-w-36" key={label}>
                   <p className="text-2xl font-black">{value}</p>
@@ -51,7 +51,7 @@ export default async function Home({
                 className="bg-brand-gradient inline-flex h-12 items-center gap-2 rounded-panel px-5 text-sm font-black text-white shadow-theme hover:opacity-90"
                 href="/dashboard"
               >
-                View auction cars <ArrowRight size={18} />
+                Find your car <ArrowRight size={18} />
               </Link>
               {featured[0] ? (
                 <Link
@@ -75,9 +75,9 @@ export default async function Home({
       <section className="bg-jdm-panel text-white">
         <div className="mx-auto grid max-w-7xl gap-0 px-4 py-8 sm:px-6 lg:grid-cols-3 lg:px-8">
           {[
-            ['Auction sourced', 'Cars published from Japan auction feeds with source and grade.', FileCheck2],
-            ['JDM cost calculated', 'Supra, GT-R, NSX, Evo and other auction prices are converted with landing charges.', Calculator],
-            ['Delivered locally', 'Shipping, clearance, local transport, and handover are visible.', Ship],
+            ['Sourced in Japan', 'Newer cars are published with their auction source, grade, and key details.', FileCheck2],
+            ['A clearer budget', 'Vehicle cost, shipping, taxes, clearance, and local charges are estimated together.', Calculator],
+            ['Supported to handover', 'Follow one understandable path from the Japanese auction to your Sri Lankan driveway.', Ship],
           ].map(([title, text, Icon]) => (
             <div className="border-b border-white/10 py-6 lg:border-b-0 lg:border-r lg:px-8 last:lg:border-r-0" key={title as string}>
               <Icon className="mb-4 text-brass" size={26} />
@@ -92,7 +92,9 @@ export default async function Home({
         <div className="mb-7 flex items-end justify-between gap-4">
           <div>
             <p className="text-xs font-black uppercase tracking-wide text-signal">Latest listings</p>
-            <h2 className="mt-2 text-4xl font-black leading-tight text-foreground">Japanese JDM cars with landed price</h2>
+            <h2 className="mt-2 text-4xl font-black leading-tight text-foreground">
+              Start with the car that fits your life.
+            </h2>
           </div>
           <Link className="hidden text-sm font-black text-signal hover:text-brass sm:inline" href="/dashboard">
             See all cars

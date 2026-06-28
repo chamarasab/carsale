@@ -223,6 +223,9 @@ export class Car {
   @Prop({ required: true, trim: true, type: String })
   location: string;
 
+  @Prop({ trim: true, type: String })
+  auctionDate?: string;
+
   @Prop({ default: 'Japan Auction', trim: true, type: String })
   source: string;
 

@@ -28,11 +28,27 @@ test('uses the workbook petrol excise rate for a 996cc Raize', () => {
   assert.equal(result.exciseDutyLkr, 2_440_200);
 });
 
-test('does not apply the new automatic schedule to kei cars', () => {
+test('applies the fixed petrol excise duty to a 658cc kei car', () => {
   const result = calculateImportCost(baseCost({ engineCapacity: 658 }));
 
+  assert.equal(result.exciseRatePerUnitLkr, 2_450);
+  assert.equal(result.exciseDutyLkr, 1_992_000);
+  assert.ok(result.totalLkr >= 6_500_000);
+});
+
+test('applies the fixed hybrid excise duty to a 660cc Wagon R', () => {
+  const result = calculateImportCost(
+    baseCost({
+      auctionPriceJpy: 1_100_000,
+      engineCapacity: 660,
+      fuelType: 'Hybrid Petrol',
+    }),
+  );
+
   assert.equal(result.exciseRatePerUnitLkr, 0);
-  assert.equal(result.exciseDutyLkr, 0);
+  assert.equal(result.exciseDutyLkr, 1_810_900);
+  assert.ok(result.totalLkr >= 6_500_000);
+  assert.ok(result.totalLkr <= 9_500_000);
 });
 
 test('uses the statutory petrol excise rate for a 1,190cc Raize', () => {
@@ -82,6 +98,22 @@ test('uses the expanded CIF base for VAT and SSCL', () => {
 
   assert.equal(result.vatLkr, Math.round(taxableBase * 0.18));
   assert.equal(result.ssclLkr, Math.round(taxableBase * 0.025));
+});
+
+test('charges invoice CIF in the customer total while taxing the higher Yellow Book CIF', () => {
+  const result = calculateImportCost(
+    baseCost({
+      auctionPriceJpy: 900_000,
+      yellowBookValueJpy: 2_200_000,
+      engineCapacity: 1_190,
+    }),
+  );
+
+  assert.ok(result.taxableCifLkr! > result.invoiceCifLkr!);
+  assert.equal(
+    result.totalLkr,
+    result.invoiceCifLkr! + result.importDutyLkr + result.totalOtherCostsLkr!,
+  );
 });
 
 test('applies propulsion-specific luxury tax rates above the CIF threshold', () => {

@@ -74,6 +74,7 @@ export type Car = {
   auctionGrade: string;
   chassisCode: string;
   location: string;
+  auctionDate?: string;
   source: string;
   sourceUrl?: string;
   images: string[];
@@ -84,4 +85,5 @@ export type Car = {
   createdBy?: string;
   createdByName?: string;
   createdAt?: string;
+  updatedAt?: string;
 };

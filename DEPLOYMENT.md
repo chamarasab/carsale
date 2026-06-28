@@ -57,3 +57,24 @@ JPCENTER_PASSWORD=your-jpcenter-password
 ## Notes
 
 The API currently serves scraped images from `apps/api/public/images`. Vehicle photos bypass the Next.js image proxy because a sleeping Render service can exceed its upstream timeout. Uploaded images still require persistent storage; use a Render persistent disk or move uploads to Cloudinary, S3, or Vercel Blob before relying on them in production.
+
+## JP Center scraper service
+
+The scraper is split between two services:
+
+- `carsale-api` authenticates with JP Center, imports/upserts cars, and stores run history in MongoDB.
+- `carsale-jpcenter-scraper` is a separate scheduled worker that triggers the API and waits for final counts.
+
+The included Render Blueprint runs the worker every six hours. Set the same
+`SCRAPER_SERVICE_KEY` value on both Render services. Keep
+`JPCENTER_USERNAME` and `JPCENTER_PASSWORD` on the API service only.
+
+Local commands:
+
+```text
+npm run dev:scraper
+npm run scraper:run
+```
+
+The admin can trigger a run and inspect fetched, inserted, updated, and failed
+counts at `/admin/scraper`.

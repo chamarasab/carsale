@@ -97,7 +97,7 @@ export class CarsService {
       throw new NotFoundException('Car not found');
     }
 
-    return car;
+    return this.withPublicImageUrls(car);
   }
 
   async setPublished(id: string, published: boolean) {

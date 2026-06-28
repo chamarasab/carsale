@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, ExternalLink } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Check, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { CarPhoto, hasAuctionPhoto } from '@/components/car-photo';
 import { InquiryForm } from '@/components/inquiry-form';
@@ -27,10 +27,15 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
   const invoiceCifLkr = car.cost.invoiceCifLkr ?? car.cost.auctionPriceLkr + car.cost.shippingLkr + car.cost.insuranceLkr;
   const taxableCifLkr = car.cost.taxableCifLkr ?? invoiceCifLkr;
   const taxableCifLabel = car.cost.taxableCifSource === 'yellow-book' ? 'Yellow Book CIF' : 'Invoice CIF';
-  const isCommercialVan = car.cost.vehicleType?.toLowerCase().includes('commercial van') ?? false;
-  const vatFormula = isCommercialVan
-    ? `(${lkr(taxableCifLkr)} x 110% + CID + surcharge + XID) x ${percent(car.cost.vatRate ?? 0)}`
-    : `(${lkr(taxableCifLkr)} + CID + surcharge + XID) x ${percent(car.cost.vatRate ?? 0)}`;
+  const vatFormula = `(${lkr(taxableCifLkr)} x 110% + CID + surcharge + XID) x ${percent(car.cost.vatRate ?? 0)}`;
+  const exciseUnit = car.cost.exciseUnit ?? 'cc';
+  const exciseQuantity = exciseUnit === 'kW' ? (car.cost.motorPowerKw ?? 0) : (car.cost.engineCapacity ?? 0);
+  const exciseRate = car.cost.exciseRatePerUnitLkr ?? 0;
+  const exciseDuty = car.cost.exciseDutyLkr ?? 0;
+  const exciseFormula =
+    exciseRate && Math.round(exciseQuantity * exciseRate) === exciseDuty
+      ? `${exciseQuantity}${exciseUnit} x ${lkr(exciseRate)}`
+      : `Fixed minimum duty for ${exciseQuantity}${exciseUnit}`;
   const rows = [
     ...(car.cost.referenceCifJpy
       ? [
@@ -69,7 +74,7 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
     ],
     ['CID', `${lkr(taxableCifLkr)} x ${percent(car.cost.cidRate ?? 0)}`, lkr(car.cost.cidBaseLkr ?? 0)],
     ['CID surcharge', `${lkr(car.cost.cidBaseLkr ?? 0)} x ${percent(car.cost.cidSurchargeRate ?? 0)}`, lkr(car.cost.cidSurchargeLkr ?? 0)],
-    ['Excise duty (XID)', car.cost.exciseRatePerUnitLkr ? `${car.cost.engineCapacity ?? 0}cc x ${lkr(car.cost.exciseRatePerUnitLkr)}` : 'Fixed value', lkr(car.cost.exciseDutyLkr ?? 0)],
+    ['Excise duty (XID)', exciseFormula, lkr(exciseDuty)],
     ['Luxury tax (LXT)', `Max(0, taxable CIF - ${lkr(car.cost.luxuryThresholdLkr ?? 0)}) x ${percent(car.cost.luxuryRate ?? 0)}`, lkr(car.cost.luxuryTaxLkr ?? 0)],
     ['Vehicle entitlement levy', 'Fixed levy', lkr(car.cost.vehicleEntitlementLevyLkr ?? 0)],
     ['COM / Exm / Seal', 'Fixed charge', lkr(car.cost.comExmSealLkr ?? 0)],
@@ -115,6 +120,26 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
                 {car.year} {car.maker} {car.model}, {car.mileageKm.toLocaleString()} km, {car.fuelType}, {car.transmission},
                 auction grade {car.auctionGrade}.
               </p>
+              <div className="mt-5 grid gap-3 border-y border-line py-4 sm:grid-cols-2">
+                <div className="flex items-start gap-3">
+                  <CalendarDays className="mt-0.5 shrink-0 text-signal" size={18} />
+                  <div>
+                    <p className="text-xs font-black uppercase text-muted">Auction date</p>
+                    <p className="mt-1 text-sm font-black text-foreground">
+                      {formatDate(car.auctionDate, 'Not provided')}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CalendarDays className="mt-0.5 shrink-0 text-signal" size={18} />
+                  <div>
+                    <p className="text-xs font-black uppercase text-muted">Advertisement created</p>
+                    <p className="mt-1 text-sm font-black text-foreground">
+                      {formatDate(car.createdAt, 'Not available')}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="rounded-panel border-l-4 border-brass bg-jdm-panel p-5 text-white">
               <p className="text-xs font-black uppercase tracking-wide text-white/70">Estimated delivered cost to Sri Lanka</p>
@@ -195,4 +220,15 @@ function rate(value: number) {
 
 function percent(value: number) {
   return `${(value * 100).toFixed(value * 100 % 1 === 0 ? 0 : 2)}%`;
+}
+
+function formatDate(value: string | undefined, fallback: string) {
+  if (!value) return fallback;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat('en-LK', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(parsed);
 }

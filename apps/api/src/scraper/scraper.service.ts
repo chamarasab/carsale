@@ -1,11 +1,14 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectModel } from '@nestjs/mongoose';
 import * as cheerio from 'cheerio';
+import { Model } from 'mongoose';
 import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import { CarsService } from '../cars/cars.service';
 import { CreateCarDto } from '../cars/dto';
+import { ScrapeJobResult, ScrapeRun, ScrapeRunDocument, ScrapeRunTrigger } from './scrape-run.schema';
 
 type JpCenterImportOptions = {
   maker?: string;
@@ -26,6 +29,11 @@ type JpCenterPayload = {
     page?: string;
   };
   body?: JpCenterRow[];
+};
+
+type JpCenterBatchJob = JpCenterImportOptions & {
+  maker: string;
+  model: string;
 };
 
 const JP_CENTER_BASE_URL = 'https://jpcenter.ru';
@@ -49,12 +57,191 @@ const JP_CENTER_VENDOR_IDS: Record<string, string> = {
   LEXUS: '23',
 };
 
+const DEFAULT_JP_CENTER_JOBS: JpCenterBatchJob[] = [
+  { maker: 'Toyota', model: 'Raize', yearFrom: 2023, pages: 1, listSize: 7 },
+  { maker: 'Toyota', model: 'Roomy', yearFrom: 2023, pages: 1, listSize: 7 },
+  { maker: 'Honda', model: 'Vezel', yearFrom: 2023, pages: 1, listSize: 7 },
+  { maker: 'Honda', model: 'N BOX', yearFrom: 2023, pages: 1, listSize: 6 },
+  { maker: 'Suzuki', model: 'Wagon R', yearFrom: 2023, pages: 1, listSize: 6 },
+  { maker: 'Suzuki', model: 'Spacia', yearFrom: 2023, pages: 1, listSize: 5 },
+  { maker: 'Daihatsu', model: 'Taft', yearFrom: 2023, pages: 1, listSize: 5 },
+  { maker: 'Daihatsu', model: 'Rocky', yearFrom: 2023, pages: 1, listSize: 5 },
+  { maker: 'Daihatsu', model: 'Thor', yearFrom: 2023, pages: 1, listSize: 2 },
+];
+
 @Injectable()
-export class ScraperService {
+export class ScraperService implements OnModuleInit {
+  private readonly logger = new Logger(ScraperService.name);
+  private isBatchRunning = false;
+
   constructor(
     private readonly carsService: CarsService,
     private readonly config: ConfigService,
+    @InjectModel(ScrapeRun.name) private readonly scrapeRunModel: Model<ScrapeRun>,
   ) {}
+
+  async onModuleInit() {
+    await this.scrapeRunModel.updateMany(
+      { status: 'running' },
+      {
+        $set: {
+          status: 'interrupted',
+          finishedAt: new Date(),
+          errors: ['API restarted before the scrape run completed'],
+        },
+      },
+    );
+  }
+
+  async getBotStatus() {
+    const runs = await this.scrapeRunModel.find().sort({ startedAt: -1 }).limit(10).lean();
+    return {
+      source: 'JP Center',
+      sourceUrl: JP_CENTER_BASE_URL,
+      enabled: this.config.get<string>('SCRAPER_BOT_ENABLED', 'true') !== 'false',
+      running: this.isBatchRunning,
+      schedule: this.config.get<string>('SCRAPER_SCHEDULE_LABEL', 'Every 6 hours'),
+      configuredJobs: this.batchJobs().map(({ maker, model, pages, listSize, yearFrom, yearTo }) => ({
+        maker,
+        model,
+        pages,
+        listSize,
+        yearFrom,
+        yearTo,
+      })),
+      lastRun: runs[0] ?? null,
+      runs,
+    };
+  }
+
+  async startJpCenterBatch(trigger: ScrapeRunTrigger) {
+    if (this.isBatchRunning) {
+      const current = await this.scrapeRunModel.findOne({ status: 'running' }).sort({ startedAt: -1 }).lean();
+      return { started: false, reason: 'A scrape run is already active', runId: current?._id };
+    }
+
+    this.isBatchRunning = true;
+    let run: ScrapeRunDocument;
+    try {
+      run = await this.scrapeRunModel.create({
+        source: 'JP Center',
+        trigger,
+        status: 'running',
+        startedAt: new Date(),
+      });
+    } catch (error) {
+      this.isBatchRunning = false;
+      throw error;
+    }
+
+    void this.executeBatch(run)
+      .catch((error) => this.recordUnexpectedFailure(run, error))
+      .finally(() => {
+        this.isBatchRunning = false;
+      });
+    return { started: true, runId: run._id };
+  }
+
+  private async recordUnexpectedFailure(run: ScrapeRunDocument, error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    const finishedAt = new Date();
+    this.logger.error(`[SCRAPE FAILED] run=${run.id}: ${message}`);
+    try {
+      await this.scrapeRunModel.findByIdAndUpdate(run._id, {
+        $set: {
+          status: 'failed',
+          finishedAt,
+          durationMs: finishedAt.getTime() - run.startedAt.getTime(),
+        },
+        $push: { errors: message },
+      });
+    } catch (persistenceError) {
+      const persistenceMessage =
+        persistenceError instanceof Error ? persistenceError.message : String(persistenceError);
+      this.logger.error(`[SCRAPE FAILURE SAVE FAILED] run=${run.id}: ${persistenceMessage}`);
+    }
+  }
+
+  private async executeBatch(run: ScrapeRunDocument) {
+    const totals = {
+      fetched: 0,
+      imported: 0,
+      inserted: 0,
+      updated: 0,
+      failedJobs: 0,
+    };
+    const jobs: ScrapeJobResult[] = [];
+    const errors: string[] = [];
+    this.logger.log(`[SCRAPE START] run=${run.id} trigger=${run.trigger}`);
+
+    for (const job of this.batchJobs()) {
+      try {
+        const result = await this.importFromJpCenter(job);
+        const jobResult: ScrapeJobResult = {
+          maker: job.maker,
+          model: job.model,
+          fetched: result.fetched,
+          imported: result.imported,
+          inserted: result.created,
+          updated: result.updated,
+        };
+        jobs.push(jobResult);
+        totals.fetched += result.fetched;
+        totals.imported += result.imported;
+        totals.inserted += result.created;
+        totals.updated += result.updated;
+        this.logger.log(
+          `[SCRAPE JOB] ${job.maker} ${job.model} fetched=${result.fetched} inserted=${result.created} updated=${result.updated}`,
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        jobs.push({
+          maker: job.maker,
+          model: job.model,
+          fetched: 0,
+          imported: 0,
+          inserted: 0,
+          updated: 0,
+          error: message,
+        });
+        totals.failedJobs += 1;
+        errors.push(`${job.maker} ${job.model}: ${message}`);
+        this.logger.error(`[SCRAPE JOB FAILED] ${job.maker} ${job.model}: ${message}`);
+      }
+
+      await this.scrapeRunModel.findByIdAndUpdate(run._id, {
+        $set: totals,
+        $push: { jobs: jobs[jobs.length - 1] },
+      });
+    }
+
+    const finishedAt = new Date();
+    const status = errors.length === 0 ? 'success' : totals.imported > 0 ? 'partial' : 'failed';
+    await this.scrapeRunModel.findByIdAndUpdate(run._id, {
+      $set: {
+        ...totals,
+        status,
+        errors,
+        finishedAt,
+        durationMs: finishedAt.getTime() - run.startedAt.getTime(),
+      },
+    });
+    this.logger.log(
+      `[SCRAPE COMPLETE] run=${run.id} status=${status} fetched=${totals.fetched} inserted=${totals.inserted} updated=${totals.updated} errors=${errors.length}`,
+    );
+  }
+
+  private batchJobs(): JpCenterBatchJob[] {
+    const configured = this.config.get<string>('SCRAPER_JOBS_JSON');
+    if (!configured) return DEFAULT_JP_CENTER_JOBS;
+    try {
+      const jobs = JSON.parse(configured) as JpCenterBatchJob[];
+      return Array.isArray(jobs) && jobs.length ? jobs : DEFAULT_JP_CENTER_JOBS;
+    } catch {
+      this.logger.warn('SCRAPER_JOBS_JSON is invalid; using default JP Center jobs');
+      return DEFAULT_JP_CENTER_JOBS;
+    }
+  }
 
   async importFromJsonFeed(url: string) {
     const response = await fetch(url);
@@ -186,6 +373,7 @@ export class ScraperService {
       auctionGrade: grade,
       chassisCode: [chassisPrefix, modelCode].filter(Boolean).join(' ') || lotNumber,
       location: auctionName,
+      auctionDate: cleanText(row.e) || undefined,
       source: 'JP Center',
       sourceUrl,
       images,

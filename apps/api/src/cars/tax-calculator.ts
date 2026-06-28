@@ -152,7 +152,7 @@ export function calculateImportCost(cost: CreateCarDto['cost'], settings: TaxSet
     taxPolicyName: settings.name ?? DEFAULT_TAX_SETTINGS.name,
     taxPolicyEffectiveFrom: settings.effectiveFrom ?? DEFAULT_TAX_SETTINGS.effectiveFrom,
     totalLkr: calculateTotalLkr({
-      taxableCifLkr,
+      invoiceCifLkr,
       importDutyLkr,
       totalOtherCostsLkr,
     }),
@@ -402,8 +402,6 @@ type PassengerCarExcise = {
   unit: ExciseUnit;
 };
 
-const MIN_AUTOMATIC_ENGINE_CAPACITY_CC = 990;
-
 const PETROL_EXCISE_BANDS = [
   { max: 1_000, rate: 2_450 },
   { max: 1_300, rate: 3_850 },
@@ -475,10 +473,6 @@ function calculatePassengerCarExcise(cost: CreateCarDto['cost']): PassengerCarEx
   if (!engineCapacity) {
     return { dutyLkr: 0, ratePerUnitLkr: 0, unit: 'cc' };
   }
-  if (engineCapacity < MIN_AUTOMATIC_ENGINE_CAPACITY_CC) {
-    return { dutyLkr: 0, ratePerUnitLkr: 0, unit: 'cc' };
-  }
-
   if (fuelType.includes('hybrid') && fuelType.includes('diesel')) {
     const ratePerUnitLkr = rateForCapacity(engineCapacity, DIESEL_HYBRID_EXCISE_BANDS);
     return { dutyLkr: engineCapacity * ratePerUnitLkr, ratePerUnitLkr, unit: 'cc' };

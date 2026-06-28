@@ -1,0 +1,12 @@
+{
+  "name": "@carsale/scraper-worker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node watch.cjs",
+    "run": "node run.cjs"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  }
+}

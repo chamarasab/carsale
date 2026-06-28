@@ -1,4 +1,5 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString, IsUrl, Max, Min } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -70,5 +71,42 @@ export class ScraperController {
   @Post('jpcenter')
   importJpCenter(@Body() dto: JpCenterImportDto) {
     return this.scraperService.importFromJpCenter(dto);
+  }
+
+  @Get('status')
+  status() {
+    return this.scraperService.getBotStatus();
+  }
+
+  @Post('run')
+  run() {
+    return this.scraperService.startJpCenterBatch('manual');
+  }
+}
+
+@Controller('scraper/internal')
+export class ScraperInternalController {
+  constructor(
+    private readonly scraperService: ScraperService,
+    private readonly config: ConfigService,
+  ) {}
+
+  @Get('status')
+  status(@Headers('x-scraper-service-key') key?: string) {
+    this.assertServiceKey(key);
+    return this.scraperService.getBotStatus();
+  }
+
+  @Post('run')
+  run(@Headers('x-scraper-service-key') key?: string) {
+    this.assertServiceKey(key);
+    return this.scraperService.startJpCenterBatch('scheduled');
+  }
+
+  private assertServiceKey(key?: string) {
+    const expected = this.config.get<string>('SCRAPER_SERVICE_KEY');
+    if (!expected || !key || key !== expected) {
+      throw new UnauthorizedException('Invalid scraper service key');
+    }
   }
 }

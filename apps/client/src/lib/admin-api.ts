@@ -38,6 +38,51 @@ export type AppUser = {
   createdAt?: string;
 };
 
+export type ScrapeJobResult = {
+  maker: string;
+  model: string;
+  fetched: number;
+  imported: number;
+  inserted: number;
+  updated: number;
+  error?: string;
+};
+
+export type ScrapeRun = {
+  _id: string;
+  source: string;
+  trigger: 'manual' | 'scheduled';
+  status: 'running' | 'success' | 'partial' | 'failed' | 'interrupted';
+  startedAt: string;
+  finishedAt?: string;
+  durationMs: number;
+  fetched: number;
+  imported: number;
+  inserted: number;
+  updated: number;
+  failedJobs: number;
+  jobs: ScrapeJobResult[];
+  errors: string[];
+};
+
+export type ScraperStatus = {
+  source: string;
+  sourceUrl: string;
+  enabled: boolean;
+  running: boolean;
+  schedule: string;
+  configuredJobs: Array<{
+    maker: string;
+    model: string;
+    pages?: number;
+    listSize?: number;
+    yearFrom?: number;
+    yearTo?: number;
+  }>;
+  lastRun: ScrapeRun | null;
+  runs: ScrapeRun[];
+};
+
 export type CreateCarAdInput = {
   title: string;
   maker: string;
@@ -52,6 +97,7 @@ export type CreateCarAdInput = {
   auctionGrade: string;
   chassisCode: string;
   location: string;
+  auctionDate?: string;
   source?: string;
   sourceUrl?: string;
   images: string[];
@@ -170,6 +216,23 @@ export async function createCarAdvertisement(car: CreateCarAdInput, idToken: str
   return (await response.json()) as Car;
 }
 
+export async function updateCarAdvertisement(id: string, car: CreateCarAdInput, idToken: string) {
+  const response = await fetch(`${apiUrl}/cars/${id}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(car),
+  });
+
+  if (!response.ok) {
+    throw new Error('Could not update vehicle advertisement');
+  }
+
+  return (await response.json()) as Car;
+}
+
 export async function getManageableCars(accessToken: string) {
   const response = await fetch(`${apiUrl}/cars/manage`, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -218,6 +281,24 @@ export async function deleteCarAdvertisement(id: string, accessToken: string) {
     throw new Error('Could not delete advertisement');
   }
   return (await response.json()) as { deleted: true };
+}
+
+export async function getScraperStatus(accessToken: string) {
+  const response = await fetch(`${apiUrl}/scraper/status`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: 'no-store',
+  });
+  if (!response.ok) throw new Error('Could not load scraper status');
+  return (await response.json()) as ScraperStatus;
+}
+
+export async function runScraper(accessToken: string) {
+  const response = await fetch(`${apiUrl}/scraper/run`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error('Could not start scraper');
+  return (await response.json()) as { started: boolean; reason?: string; runId?: string };
 }
 
 export async function updateTaxSettings(settings: TaxSettings, idToken: string) {
