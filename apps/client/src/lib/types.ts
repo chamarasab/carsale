@@ -11,6 +11,7 @@ export type CostBreakdown = {
   insuranceJpy?: number;
   invoiceCifJpy?: number;
   referenceCifJpy?: number;
+  referenceCifLkr?: number;
   referenceTotalLkr?: number;
   referenceExchangeRateLkr?: number;
   referenceModel?: string;

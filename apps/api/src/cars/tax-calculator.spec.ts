@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { applyWorkbookReferenceCost } from './cost-reference';
 import { calculateImportCost } from './tax-calculator';
 
 function baseCost(overrides: Record<string, unknown> = {}) {
@@ -114,6 +115,63 @@ test('charges invoice CIF in the customer total while taxing the higher Yellow B
     result.totalLkr,
     result.invoiceCifLkr! + result.importDutyLkr + result.totalOtherCostsLkr!,
   );
+});
+
+test('uses the workbook CIF as the taxable floor', () => {
+  const result = calculateImportCost(
+    baseCost({
+      auctionPriceJpy: 700_000,
+      engineCapacity: 660,
+      referenceCifJpy: 1_248_000,
+    }),
+  );
+
+  assert.equal(result.referenceCifLkr, Math.round(1_248_000 * 2.125));
+  assert.equal(result.taxableCifLkr, result.referenceCifLkr);
+  assert.equal(result.taxableCifSource, 'workbook-reference');
+});
+
+test('replaces an unusually low 660cc bid with the Every workbook CIF estimate', () => {
+  const cost = applyWorkbookReferenceCost({
+    title: '2026 Suzuki Spacia Hybrid G',
+    maker: 'Suzuki',
+    model: 'Spacia',
+    modelCode: 'MK94S',
+    chassisCode: 'MK94S',
+    auctionGrade: 'S',
+    features: [],
+    cost: baseCost({
+      auctionPriceJpy: 500_000,
+      engineCapacity: 660,
+      fuelType: 'Hybrid',
+    }),
+  });
+
+  assert.equal(cost.referenceCifJpy, 1_248_000);
+  assert.equal(cost.invoiceCifJpy, 1_095_000);
+  assert.equal(cost.referenceSource, 'docs/Every (2).xlsx');
+  assert.equal(cost.calculationBasis, 'Workbook reference CIF fallback');
+});
+
+test('uses the Raize workbook benchmark for a low 1000cc auction bid', () => {
+  const cost = applyWorkbookReferenceCost({
+    title: '2023 Daihatsu Thor G',
+    maker: 'Daihatsu',
+    model: 'Thor',
+    modelCode: 'M900S',
+    chassisCode: 'M900S',
+    auctionGrade: 'S',
+    features: [],
+    cost: baseCost({
+      auctionPriceJpy: 400_000,
+      engineCapacity: 1_000,
+    }),
+  });
+
+  assert.equal(cost.referenceCifJpy, 1_705_500);
+  assert.equal(cost.invoiceCifJpy, 2_120_000);
+  assert.equal(cost.referenceSource, 'docs/Raize (2).xlsx');
+  assert.equal(cost.calculationBasis, 'Workbook reference CIF fallback');
 });
 
 test('applies propulsion-specific luxury tax rates above the CIF threshold', () => {

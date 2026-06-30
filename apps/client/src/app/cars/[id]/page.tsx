@@ -1,6 +1,6 @@
 import { ArrowLeft, CalendarDays, Check, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
-import { CarPhoto, hasAuctionPhoto } from '@/components/car-photo';
+import { CarImageGallery } from '@/components/car-image-gallery';
 import { InquiryForm } from '@/components/inquiry-form';
 import { Nav } from '@/components/nav';
 import { getCar, getExchangeRate } from '@/lib/api';
@@ -26,7 +26,12 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
 
   const invoiceCifLkr = car.cost.invoiceCifLkr ?? car.cost.auctionPriceLkr + car.cost.shippingLkr + car.cost.insuranceLkr;
   const taxableCifLkr = car.cost.taxableCifLkr ?? invoiceCifLkr;
-  const taxableCifLabel = car.cost.taxableCifSource === 'yellow-book' ? 'Yellow Book CIF' : 'Invoice CIF';
+  const taxableCifLabel =
+    car.cost.taxableCifSource === 'workbook-reference'
+      ? 'Workbook reference CIF'
+      : car.cost.taxableCifSource === 'yellow-book'
+        ? 'Yellow Book CIF'
+        : 'Invoice CIF';
   const vatFormula = `(${lkr(taxableCifLkr)} x 110% + CID + surcharge + XID) x ${percent(car.cost.vatRate ?? 0)}`;
   const exciseUnit = car.cost.exciseUnit ?? 'cc';
   const exciseQuantity = exciseUnit === 'kW' ? (car.cost.motorPowerKw ?? 0) : (car.cost.engineCapacity ?? 0);
@@ -39,7 +44,11 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
   const rows = [
     ...(car.cost.referenceCifJpy
       ? [
-          ['Workbook reference', car.cost.referenceModel ?? 'Model/grade CIF reference', `${jpy(car.cost.referenceCifJpy)}`],
+          [
+            'Workbook reference CIF',
+            `${car.cost.referenceModel ?? 'Engine-band CIF reference'}: ${jpy(car.cost.referenceCifJpy)} x ${rate(car.cost.exchangeRateLkr)}`,
+            lkr(car.cost.referenceCifLkr ?? car.cost.referenceCifJpy * car.cost.exchangeRateLkr),
+          ],
           [
             'Workbook total',
             car.cost.referenceExchangeRateLkr ? `Shown in sheet at ${rate(car.cost.referenceExchangeRateLkr)}` : 'Shown in sheet',
@@ -98,20 +107,7 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
           <ArrowLeft size={16} /> Back to dashboard
         </Link>
         <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-          <div>
-            <div className="relative aspect-[16/10] overflow-hidden rounded-panel bg-field">
-              <CarPhoto car={car} priority sizes="(min-width: 1024px) 58vw, 100vw" />
-            </div>
-            {car.images.slice(1, 3).some(hasAuctionPhoto) ? (
-              <div className="mt-4 grid grid-cols-2 gap-4">
-                {car.images.slice(1, 3).filter(hasAuctionPhoto).map((image) => (
-                  <div className="relative aspect-[16/10] overflow-hidden rounded-panel bg-field" key={image}>
-                    <CarPhoto car={car} image={image} sizes="(min-width: 1024px) 29vw, 50vw" />
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
+          <CarImageGallery car={car} />
           <div className="space-y-5">
             <div>
               <p className="text-xs font-black uppercase tracking-wide text-signal">{car.location}</p>

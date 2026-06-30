@@ -18,6 +18,7 @@ type WorkbookReference = {
   code?: RegExp;
   grade: RegExp;
   cifJpy: number;
+  invoiceCifJpy?: number;
   label: string;
   totalLkr: number;
   fuelType?: string;
@@ -25,20 +26,23 @@ type WorkbookReference = {
 };
 
 const WORKBOOK_SOURCE = 'docs/ALL MODEL TAX WEB AND YELLOY BBOK NEW NEW NEW.xlsx';
+const EVERY_WORKBOOK_SOURCE = 'docs/Every (2).xlsx';
+const RAIZE_WORKBOOK_SOURCE = 'docs/Raize (2).xlsx';
 const MIN_TRUSTED_AUCTION_PRICE_JPY = 300_000;
+const MIN_REFERENCE_PRICE_RATIO = 0.8;
 
 const references: WorkbookReference[] = [
   { model: /yaris|vitz/i, code: /KSP210/i, grade: /\bG\b/i, cifJpy: 1_558_000, label: '5BA-KSP210 YARIS G' , totalLkr: 5_425_000 },
   { model: /yaris|vitz/i, code: /KSP210/i, grade: /\bX\b/i, cifJpy: 1_385_000, label: '5BA-KSP210 YARIS X' , totalLkr: 5_160_000 },
 
-  { model: /raize/i, code: /A210A/i, grade: /\bZ\b/i, cifJpy: 1_950_000, label: '5BA-A210A RAIZE Z 4WD' , totalLkr: 6_050_000 },
-  { model: /raize/i, code: /A210A/i, grade: /\bG\b/i, cifJpy: 1_812_000, label: '5BA-A210A RAIZE G 4WD' , totalLkr: 5_825_000 },
-  { model: /raize/i, code: /A210A/i, grade: /\bX\b/i, cifJpy: 1_691_000, label: '5BA-A210A RAIZE X 4WD' , totalLkr: 5_640_000 },
-  { model: /raize/i, code: /A201A/i, grade: /\bZ\b/i, cifJpy: 1_773_000, label: '5BA-A201A RAIZE Z 2WD' , totalLkr: 8_380_000 },
-  { model: /raize/i, code: /A201A/i, grade: /\bG\b/i, cifJpy: 1_623_000, label: '5BA-A201A RAIZE G 2WD' , totalLkr: 8_135_000 },
-  { model: /raize/i, code: /A201A/i, grade: /\bX\b/i, cifJpy: 1_500_000, label: '5BA-A201A RAIZE X 2WD' , totalLkr: 7_950_000 },
-  { model: /raize/i, code: /A202A/i, grade: /\bZ\b/i, cifJpy: 1_992_000, label: '5AA-A202A RAIZE HYBRID Z' , totalLkr: 7_025_000, fuelType: 'e-SMART Hybrid', motorPowerKw: 78 },
-  { model: /raize/i, code: /A202A/i, grade: /\bG\b/i, cifJpy: 1_854_000, label: '5AA-A202A RAIZE HYBRID G' , totalLkr: 6_810_000, fuelType: 'e-SMART Hybrid', motorPowerKw: 78 },
+  { model: /raize/i, code: /A210A/i, grade: /\bZ\b/i, cifJpy: 1_963_900, invoiceCifJpy: 2_249_000, label: '5BA-A210A RAIZE Z 4WD' , totalLkr: 10_948_388 },
+  { model: /raize/i, code: /A210A/i, grade: /\bG\b/i, cifJpy: 1_826_200, invoiceCifJpy: 2_149_000, label: '5BA-A210A RAIZE G 4WD' , totalLkr: 10_588_268 },
+  { model: /raize/i, code: /A210A/i, grade: /\bX\b/i, cifJpy: 1_705_500, invoiceCifJpy: 2_120_000, label: '5BA-A210A RAIZE X 4WD' , totalLkr: 10_422_946 },
+  { model: /raize/i, code: /A201A/i, grade: /\bZ\b/i, cifJpy: 1_763_950, invoiceCifJpy: 2_295_000, label: '5BA-A201A RAIZE Z 2WD' , totalLkr: 14_281_430 },
+  { model: /raize/i, code: /A201A/i, grade: /\bG\b/i, cifJpy: 1_613_500, invoiceCifJpy: 2_195_000, label: '5BA-A201A RAIZE G 2WD' , totalLkr: 13_138_731 },
+  { model: /raize/i, code: /A201A/i, grade: /\bX\b/i, cifJpy: 1_491_950, invoiceCifJpy: 1_560_000, label: '5BA-A201A RAIZE X 2WD' , totalLkr: 11_306_350 },
+  { model: /raize/i, code: /A202A/i, grade: /\bZ\b/i, cifJpy: 1_987_500, invoiceCifJpy: 1_995_000, label: '5AA-A202A RAIZE HYBRID Z' , totalLkr: 11_282_998, fuelType: 'e-SMART Hybrid', motorPowerKw: 78 },
+  { model: /raize/i, code: /A202A/i, grade: /\bG\b/i, cifJpy: 1_849_800, invoiceCifJpy: 2_570_000, label: '5AA-A202A RAIZE HYBRID G' , totalLkr: 12_941_339, fuelType: 'e-SMART Hybrid', motorPowerKw: 78 },
 
   { model: /roomy|thor/i, code: /M900/i, grade: /CUSTOM GT|G-T/i, cifJpy: 1_830_000, label: '4BA-M900A ROOMY CUSTOM GT/G-T' , totalLkr: 5_860_000 },
   { model: /roomy|thor/i, code: /M900/i, grade: /CUSTOM G/i, cifJpy: 1_717_000, label: '5BA-M900A ROOMY CUSTOM G' , totalLkr: 5_685_000 },
@@ -83,8 +87,15 @@ const references: WorkbookReference[] = [
 ];
 
 export function applyWorkbookReferenceCost(car: CarLike): CostInput {
-  const reference = findWorkbookReference(car);
   const taxProfile = inferTaxProfile(car);
+  const exactReference = findWorkbookReference(car);
+  const bandReference = engineBandReference(car, taxProfile.fuelType);
+  const reference =
+    exactReference && bandReference
+      ? exactReference.cifJpy >= bandReference.cifJpy
+        ? exactReference
+        : bandReference
+      : exactReference ?? bandReference;
   const profiledCost = {
     ...car.cost,
     fuelType: reference?.fuelType ?? taxProfile.fuelType ?? car.cost.fuelType,
@@ -94,24 +105,123 @@ export function applyWorkbookReferenceCost(car: CarLike): CostInput {
 
   const freightJpy = profiledCost.freightJpy ?? 220_000;
   const insuranceJpy = profiledCost.insuranceJpy ?? 50_000;
-  const fallbackAuctionPriceJpy = Math.max(0, reference.cifJpy - freightJpy - insuranceJpy);
+  const referenceInvoiceCifJpy = Math.max(
+    reference.invoiceCifJpy ?? reference.cifJpy,
+    bandReference?.invoiceCifJpy ?? bandReference?.cifJpy ?? 0,
+  );
+  const fallbackAuctionPriceJpy = Math.max(0, referenceInvoiceCifJpy - freightJpy - insuranceJpy);
+  const minimumTrustedAuctionPriceJpy = Math.max(
+    MIN_TRUSTED_AUCTION_PRICE_JPY,
+    fallbackAuctionPriceJpy * MIN_REFERENCE_PRICE_RATIO,
+  );
   const alreadyUsedFallback = profiledCost.calculationBasis === 'Workbook reference CIF fallback';
-  const needsFallback = alreadyUsedFallback || !profiledCost.auctionPriceJpy || profiledCost.auctionPriceJpy < MIN_TRUSTED_AUCTION_PRICE_JPY;
+  const needsFallback =
+    alreadyUsedFallback ||
+    !profiledCost.auctionPriceJpy ||
+    profiledCost.auctionPriceJpy < minimumTrustedAuctionPriceJpy;
+  const benchmark = workbookBenchmark(car, profiledCost.fuelType, reference);
 
   return {
     ...profiledCost,
     auctionPriceJpy: needsFallback ? fallbackAuctionPriceJpy : profiledCost.auctionPriceJpy,
-    invoiceCifJpy: needsFallback ? reference.cifJpy : profiledCost.invoiceCifJpy,
+    invoiceCifJpy: needsFallback ? referenceInvoiceCifJpy : profiledCost.invoiceCifJpy,
     exciseDutyLkr: undefined,
     vatLkr: undefined,
     ssclLkr: undefined,
     importDutyLkr: undefined,
     referenceCifJpy: reference.cifJpy,
-    referenceTotalLkr: reference.totalLkr,
-    referenceExchangeRateLkr: 1.97,
+    referenceTotalLkr: benchmark.totalLkr,
+    referenceExchangeRateLkr: benchmark.exchangeRateLkr,
     referenceModel: reference.label,
-    referenceSource: WORKBOOK_SOURCE,
+    referenceSource: benchmark.source,
     calculationBasis: needsFallback ? 'Workbook reference CIF fallback' : 'Auction price with workbook reference',
+  };
+}
+
+function engineBandReference(car: CarLike, inferredFuelType?: string): WorkbookReference | undefined {
+  const engineCapacity = car.cost.engineCapacity ?? 0;
+  const fuelType = inferredFuelType ?? car.cost.fuelType ?? '';
+
+  if (engineCapacity <= 0) return undefined;
+  if (engineCapacity <= 660) {
+    return {
+      model: /.*/,
+      grade: /.*/,
+      cifJpy: 1_248_000,
+      invoiceCifJpy: 1_095_000,
+      label: 'Every PC 660cc workbook benchmark',
+      totalLkr: 6_906_894,
+    };
+  }
+  if (engineCapacity > 0 && engineCapacity <= 1_000) {
+    return {
+      model: /.*/,
+      grade: /.*/,
+      cifJpy: 1_705_500,
+      invoiceCifJpy: 2_120_000,
+      label: 'Raize A210A-X 1000cc workbook benchmark',
+      totalLkr: 10_422_946,
+    };
+  }
+  if (engineCapacity > 0 && engineCapacity <= 1_500) {
+    const hybrid = fuelType.toLowerCase().includes('hybrid');
+    return {
+      model: /.*/,
+      grade: /.*/,
+      cifJpy: hybrid ? 1_849_800 : 1_491_950,
+      invoiceCifJpy: hybrid ? 1_995_000 : 1_560_000,
+      label: hybrid
+        ? 'Raize A202A-G hybrid workbook benchmark'
+        : 'Raize A201A-X petrol workbook benchmark',
+      totalLkr: hybrid ? 12_941_339 : 11_306_350,
+    };
+  }
+  return undefined;
+}
+
+function workbookBenchmark(car: CarLike, fuelType: string | undefined, reference: WorkbookReference) {
+  const engineCapacity = car.cost.engineCapacity ?? 0;
+  const identity = `${car.title ?? ''} ${car.model ?? ''} ${car.auctionGrade ?? ''}`;
+
+  if (/RAIZE/i.test(reference.label)) {
+    const exchangeRateLkr = /A210A/i.test(reference.label)
+      ? 2.125
+      : /A202A.*\bZ\b/i.test(reference.label)
+        ? 2
+        : 2.08;
+    return {
+      source: RAIZE_WORKBOOK_SOURCE,
+      totalLkr: reference.totalLkr,
+      exchangeRateLkr,
+    };
+  }
+  if (engineCapacity > 0 && engineCapacity <= 660) {
+    const turboOrPremium = /turbo|custom|zx|zt|join/i.test(identity);
+    return {
+      source: EVERY_WORKBOOK_SOURCE,
+      totalLkr: turboOrPremium ? 7_636_110 : 6_906_894,
+      exchangeRateLkr: 2,
+    };
+  }
+  if (engineCapacity > 0 && engineCapacity <= 1_000) {
+    return {
+      source: RAIZE_WORKBOOK_SOURCE,
+      totalLkr: 10_422_946,
+      exchangeRateLkr: 2.125,
+    };
+  }
+  if (engineCapacity > 0 && engineCapacity <= 1_500) {
+    const hybrid = fuelType?.toLowerCase().includes('hybrid') ?? false;
+    return {
+      source: RAIZE_WORKBOOK_SOURCE,
+      totalLkr: hybrid ? 11_282_998 : 11_306_350,
+      exchangeRateLkr: hybrid ? 2 : 2.08,
+    };
+  }
+  return {
+    source: WORKBOOK_SOURCE,
+    totalLkr: reference.totalLkr,
+    exchangeRateLkr: 1.97,
   };
 }
 

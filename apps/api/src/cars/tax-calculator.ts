@@ -28,8 +28,16 @@ export function calculateImportCost(cost: CreateCarDto['cost'], settings: TaxSet
           insuranceLkr,
       )
     : invoiceCifLkr;
-  const taxableCifLkr = Math.max(invoiceCifLkr, yellowBookCifLkr);
-  const taxableCifSource = taxableCifLkr === yellowBookCifLkr ? 'yellow-book' : 'invoice';
+  const referenceCifLkr = cost.referenceCifJpy
+    ? toLkr(cost.referenceCifJpy * exchangeRateLkr)
+    : 0;
+  const taxableCifLkr = Math.max(invoiceCifLkr, yellowBookCifLkr, referenceCifLkr);
+  const taxableCifSource =
+    taxableCifLkr === referenceCifLkr
+      ? 'workbook-reference'
+      : taxableCifLkr === yellowBookCifLkr
+        ? 'yellow-book'
+        : 'invoice';
 
   const cidRate = cost.cidRate ?? settings.cidRate ?? DEFAULT_TAX_SETTINGS.cidRate;
   const cidSurchargeRate =
@@ -120,6 +128,7 @@ export function calculateImportCost(cost: CreateCarDto['cost'], settings: TaxSet
     insuranceLkr,
     invoiceCifJpy,
     invoiceCifLkr,
+    referenceCifLkr,
     yellowBookCifLkr,
     taxableCifLkr,
     taxableCifSource,

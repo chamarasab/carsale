@@ -42,6 +42,9 @@ export class CostBreakdown {
   referenceCifJpy?: number;
 
   @Prop({ type: Number })
+  referenceCifLkr?: number;
+
+  @Prop({ type: Number })
   referenceTotalLkr?: number;
 
   @Prop({ type: Number })

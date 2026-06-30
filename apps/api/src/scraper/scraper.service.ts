@@ -41,7 +41,6 @@ const MIN_IMAGE_WIDTH = 320;
 const MIN_IMAGE_HEIGHT = 240;
 const MIN_AUCTION_SHEET_WIDTH = 220;
 const MIN_AUCTION_SHEET_HEIGHT = 320;
-const FALLBACK_IMAGE = '/blank-car-logo.svg';
 const LOCAL_IMAGE_ROUTE = '/images/jpcenter';
 const JP_CENTER_VENDOR_IDS: Record<string, string> = {
   TOYOTA: '1',
@@ -311,26 +310,31 @@ export class ScraperService implements OnModuleInit {
     let fetched = 0;
 
     for (let page = 1; page <= pages; page += 1) {
+      // New auction entries often omit mileage. Search deeper so each job imports
+      // complete listings instead of filling its quota with placeholder 0 km cars.
+      const sourceListSize = Math.min(Math.max(listSize * 5, 25), 50);
       const payload = await client.fetchAuctionPage({
         vendor,
         model,
         page,
-        listSize,
+        listSize: sourceListSize,
         yearFrom: options.yearFrom,
         yearTo: options.yearTo,
       });
-      const rows = (payload.body ?? []).slice(0, listSize);
-      fetched += rows.length;
+      const sourceRows = payload.body ?? [];
+      const rows = selectRowsWithMileage(sourceRows, listSize);
+      fetched += sourceRows.length;
 
       for (const row of rows) {
         const dto = await this.toCarDto(row, { maker, model }, client);
+        if (!dto) continue;
         const result = await this.carsService.upsertBySourceUrl(dto);
         imported.push(result.car);
         if (result.created) created += 1;
         else updated += 1;
       }
 
-      if (rows.length < listSize) {
+      if (sourceRows.length < sourceListSize) {
         break;
       }
     }
@@ -338,7 +342,11 @@ export class ScraperService implements OnModuleInit {
     return { fetched, imported: imported.length, created, updated, cars: imported };
   }
 
-  private async toCarDto(row: JpCenterRow, query: { maker: string; model: string }, client: JpCenterClient): Promise<CreateCarDto> {
+  private async toCarDto(
+    row: JpCenterRow,
+    query: { maker: string; model: string },
+    client: JpCenterClient,
+  ): Promise<CreateCarDto | null> {
     const year = toNumber(row.g) || new Date().getFullYear();
     const engineCapacity = toNumber(row.h);
     const auctionPriceJpy = toNumber(row.t) || toNumber(row.s) || toNumber(row.o) || 0;
@@ -354,12 +362,16 @@ export class ScraperService implements OnModuleInit {
     const motorPowerKw = inferMotorPowerKw(vehicleIdentity);
     const sourceUrl = `${JP_CENTER_BASE_URL}/${cleanText(row.f1) || 'aj'}-${cleanText(row.a)}.htm`;
     const imagePrefix = imageFilePrefix(query.model, lotNumber || cleanText(row.a));
-    const detailImageUrls = await client.fetchAuctionImageUrls(sourceUrl);
+    const details = await client.fetchAuctionDetails(sourceUrl);
     const images = await selectHighQualityImages(
-      detailImageUrls.length ? detailImageUrls : imageUrlsFromTokens([row.x, row.y, row.z]),
+      details.imageUrls.length ? details.imageUrls : imageUrlsFromTokens([row.x, row.y, row.z]),
       imagePrefix,
       this.config.get<string>('API_PUBLIC_URL') ?? 'http://localhost:4000',
     );
+    if (!images.length) {
+      this.logger.warn(`[SCRAPE SKIP] ${sourceUrl} has no usable auction images`);
+      return null;
+    }
 
     return {
       title: cleanDisplayText([year, titleCase(query.maker), titleCase(query.model), trim].filter(Boolean).join(' ')),
@@ -367,7 +379,7 @@ export class ScraperService implements OnModuleInit {
       model: titleCase(query.model),
       modelCode,
       year,
-      mileageKm: toNumber(row.q),
+      mileageKm: details.mileageKm ?? toNumber(row.q),
       fuelType,
       transmission: 'Automatic',
       auctionGrade: grade,
@@ -449,27 +461,49 @@ class JpCenterClient {
     return parseJpCenterLoader(body);
   }
 
-  async fetchAuctionImageUrls(sourceUrl: string) {
+  async fetchAuctionDetails(sourceUrl: string) {
     const path = new URL(sourceUrl).pathname;
     const response = await this.request(path);
-    return extractJpCenterImageUrls(await response.text());
+    const html = await response.text();
+    return {
+      imageUrls: extractJpCenterImageUrls(html),
+      mileageKm: extractJpCenterMileage(html),
+    };
   }
 
   private async request(path: string, init: RequestInit = {}) {
-    const headers = new Headers(init.headers);
-    const cookie = Array.from(this.cookies, ([key, value]) => `${key}=${value}`).join('; ');
-    if (cookie) {
-      headers.set('cookie', cookie);
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const headers = new Headers(init.headers);
+      const cookie = Array.from(this.cookies, ([key, value]) => `${key}=${value}`).join('; ');
+      if (cookie) {
+        headers.set('cookie', cookie);
+      }
+
+      try {
+        const response = await fetch(new URL(path, JP_CENTER_BASE_URL), {
+          ...init,
+          headers,
+          signal: init.signal ?? AbortSignal.timeout(30_000),
+        });
+        this.storeCookies(response.headers);
+        if (response.ok) return response;
+        if (response.status < 500 && response.status !== 429) {
+          throw new BadRequestException(`JP Center request failed: ${response.status}`);
+        }
+        lastError = new Error(`HTTP ${response.status}`);
+      } catch (error) {
+        if (error instanceof BadRequestException) throw error;
+        lastError = error;
+      }
+
+      if (attempt < 3) {
+        await delay(attempt * 750);
+      }
     }
 
-    const response = await fetch(new URL(path, JP_CENTER_BASE_URL), { ...init, headers });
-    this.storeCookies(response.headers);
-
-    if (!response.ok) {
-      throw new BadRequestException(`JP Center request failed: ${response.status}`);
-    }
-
-    return response;
+    const reason = lastError instanceof Error ? lastError.message : String(lastError);
+    throw new BadRequestException(`JP Center request failed after 3 attempts: ${reason}`);
   }
 
   private storeCookies(headers: Headers) {
@@ -573,16 +607,22 @@ function splitSetCookie(value: string | null) {
 }
 
 function toNumber(value: string | undefined) {
-  return Number.parseInt(value ?? '0', 10) || 0;
+  return Number.parseInt((value ?? '0').replace(/[^\d]/g, ''), 10) || 0;
+}
+
+export function selectRowsWithMileage(rows: JpCenterRow[], limit: number) {
+  return rows.filter((row) => toNumber(row.q) > 0).slice(0, limit);
 }
 
 function cleanText(value: string | undefined) {
   return (value ?? '').trim();
 }
 
-function cleanDisplayText(value: string | undefined) {
-  return cleanText(value)
-    .replace(/[\u3040-\u30ff\u3400-\u9fff\uff66-\uff9f]+/g, ' ')
+export function cleanDisplayText(value: string | undefined) {
+  const text = cleanText(value);
+  const invalidSuffix = text.search(/&#(?:\d+|x[\da-f]+);|[\u3040-\u30ff\u3400-\u9fff\uff66-\uff9f]/i);
+
+  return (invalidSuffix >= 0 ? text.slice(0, invalidSuffix) : text)
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -601,7 +641,7 @@ async function selectHighQualityImages(urls: string[], sourceKey: string, public
     highQuality.push(`${publicBaseUrl.replace(/\/$/, '')}${localPath}`);
   }
 
-  return highQuality.length ? highQuality : [FALLBACK_IMAGE];
+  return highQuality;
 }
 
 function imageUrlsFromTokens(tokens: Array<string | undefined>) {
@@ -617,6 +657,17 @@ function extractJpCenterImageUrls(html: string) {
     .map((url) => url.replace(/[?&]w=\d+$/, '').replace(/&w=\d+$/, ''));
 
   return [...new Set(urls)];
+}
+
+export function extractJpCenterMileage(html: string) {
+  const match = html.match(/<nobr[^>]*>\s*([\d\s,.]+)\s*(?:km|км)\s*<\/nobr>/i);
+  if (!match) return undefined;
+  const value = Number.parseInt(match[1].replace(/[^\d]/g, ''), 10);
+  return Number.isFinite(value) ? value : undefined;
+}
+
+function delay(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 async function fetchImage(url: string) {

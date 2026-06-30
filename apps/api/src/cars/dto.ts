@@ -71,6 +71,11 @@ export class CostBreakdownDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
+  referenceCifLkr?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   referenceTotalLkr?: number;
 
   @IsOptional()
