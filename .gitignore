@@ -11,3 +11,4 @@ docs/
 render logs*.txt*
 apps/api/public/images/uploads/
 apps/api/public/images/jpcenter/*
+apps/api/public/images/automarket/*

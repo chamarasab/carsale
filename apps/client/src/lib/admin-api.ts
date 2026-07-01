@@ -301,6 +301,30 @@ export async function runScraper(accessToken: string) {
   return (await response.json()) as { started: boolean; reason?: string; runId?: string };
 }
 
+export async function runAutomarketScraper(
+  input: { maker: string; model: string; yearFrom?: number; yearTo?: number; listSize: number },
+  accessToken: string,
+) {
+  const response = await fetch(`${apiUrl}/scraper/automarket`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.message || 'Could not run Automarket scraper');
+  return result as {
+    fetched: number;
+    eligible: number;
+    imported: number;
+    created: number;
+    updated: number;
+    runId: string;
+  };
+}
+
 export async function updateTaxSettings(settings: TaxSettings, idToken: string) {
   const response = await fetch(`${apiUrl}/settings/tax`, {
     method: 'PATCH',

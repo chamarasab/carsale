@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { cleanDisplayText, extractJpCenterMileage, selectRowsWithMileage } from './scraper.service';
+import {
+  cleanDisplayText,
+  extractAutomarketImageUrls,
+  extractJpCenterMileage,
+  normalizeEngineCapacity,
+  parseAutomarketRows,
+  selectRowsWithMileage,
+} from './scraper.service';
 
 test('extracts mileage from a JP Center desktop lot row', () => {
   const html = `
@@ -33,4 +40,53 @@ test('removes invalid encoded and Japanese title suffixes', () => {
     'G Dark',
   );
   assert.equal(cleanDisplayText('Hybrid ZX カスタム Package'), 'Hybrid ZX');
+});
+
+test('parses an Automarket auction result row', () => {
+  const html = `
+    <div id="currencyLot1">JPY</div><div id="priceLotS1">750</div>
+    <table><tr id="cell_1">
+      <td id="date_1">2026-07-02 00:00:00</td>
+      <td id="bid_number_1"><a href="/auctions/?p=project/lot&id=976641290&s"><b>73004</b></a></td>
+      <td id="auction_1">TAA Chubu</td>
+      <td id="photo_1"><img load_src="https://i.aleado.ru/image/auto/example/1.jpg?w=72"></td>
+      <td id="company_1">TOYOTA</td><td id="model_1">ROOMY</td><td id="grade_1">X</td>
+      <td id="year_1">2026</td><td id="mileage_1">8 000</td><td id="displacement_1">1000cc</td>
+      <td id="transmission_1">IAT</td><td id="color_1">BLACK</td><td id="model_type_1">M900A</td>
+      <td id="equipment_1">AC</td>
+    </tr></table>`;
+
+  assert.deepEqual(parseAutomarketRows(html), [{
+    id: '976641290',
+    lotNumber: '73004',
+    auctionDate: '2026-07-02',
+    auctionName: 'TAA Chubu',
+    maker: 'TOYOTA',
+    model: 'ROOMY',
+    grade: 'X',
+    year: 2026,
+    mileageKm: 8000,
+    engineCapacity: 1000,
+    transmission: 'IAT',
+    color: 'BLACK',
+    modelCode: 'M900A',
+    equipment: 'AC',
+    auctionPriceJpy: 750000,
+    detailPath: '/auctions/?p=project/lot&id=976641290&s',
+    previewImageUrl: 'https://i.aleado.ru/image/auto/example/1.jpg',
+  }]);
+});
+
+test('extracts Automarket detail images and normalizes known rounded capacities', () => {
+  assert.deepEqual(
+    extractAutomarketImageUrls(
+      '<a href="https://i.aleado.ru/pic/?system=auto&amp;number=0"></a><a href="https://i.aleado.ru/pic/?system=auto&amp;number=1"></a>',
+    ),
+    [
+      'https://i.aleado.ru/pic/?system=auto&number=0',
+      'https://i.aleado.ru/pic/?system=auto&number=1',
+    ],
+  );
+  assert.equal(normalizeEngineCapacity(1000, 'M900A'), 996);
+  assert.equal(normalizeEngineCapacity(1200, 'A202A'), 1196);
 });

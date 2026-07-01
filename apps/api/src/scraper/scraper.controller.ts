@@ -52,6 +52,33 @@ class JpCenterImportDto {
   listSize?: number;
 }
 
+class AutomarketImportDto {
+  @IsString()
+  maker: string;
+
+  @IsString()
+  model: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1980)
+  yearFrom?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1980)
+  yearTo?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  listSize?: number;
+}
+
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN')
 @Controller('scraper')
@@ -71,6 +98,11 @@ export class ScraperController {
   @Post('jpcenter')
   importJpCenter(@Body() dto: JpCenterImportDto) {
     return this.scraperService.importFromJpCenter(dto);
+  }
+
+  @Post('automarket')
+  importAutomarket(@Body() dto: AutomarketImportDto) {
+    return this.scraperService.runAutomarketImport(dto);
   }
 
   @Get('status')

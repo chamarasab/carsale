@@ -1,17 +1,28 @@
 'use client';
 
-import { DatabaseZap, Play, RefreshCcw } from 'lucide-react';
+import { DatabaseZap, Play, RefreshCcw, Search } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Nav } from '@/components/nav';
-import { getScraperStatus, runScraper, ScraperStatus } from '@/lib/admin-api';
+import { getScraperStatus, runAutomarketScraper, runScraper, ScraperStatus } from '@/lib/admin-api';
+
+const inputClass =
+  'mt-2 h-11 w-full rounded-panel border border-line bg-field px-3 text-sm font-bold text-foreground outline-none focus:border-signal';
 
 export default function AdminScraperPage() {
   const { data: session, status: sessionStatus } = useSession();
   const [scraper, setScraper] = useState<ScraperStatus | null>(null);
   const [message, setMessage] = useState('');
   const [starting, setStarting] = useState(false);
+  const [automarketRunning, setAutomarketRunning] = useState(false);
+  const [automarketForm, setAutomarketForm] = useState({
+    maker: 'Toyota',
+    model: 'Roomy',
+    yearFrom: 2023,
+    yearTo: new Date().getFullYear(),
+    listSize: 5,
+  });
   const isAdmin = session?.user.role === 'ADMIN';
 
   const refresh = useCallback(async () => {
@@ -44,6 +55,23 @@ export default function AdminScraperPage() {
     }
   }
 
+  async function runAutomarket() {
+    if (!session?.accessToken) return;
+    setAutomarketRunning(true);
+    setMessage('');
+    try {
+      const result = await runAutomarketScraper(automarketForm, session.accessToken);
+      setMessage(
+        `Automarket finished: ${result.fetched} fetched, ${result.eligible} eligible, ${result.created} inserted, ${result.updated} updated.`,
+      );
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not run the Automarket scraper.');
+    } finally {
+      setAutomarketRunning(false);
+    }
+  }
+
   const lastRun = scraper?.lastRun;
 
   return (
@@ -56,7 +84,7 @@ export default function AdminScraperPage() {
         <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-wide text-signal">Import service</p>
-            <h1 className="mt-2 text-4xl font-black text-foreground">JP Center scraper</h1>
+            <h1 className="mt-2 text-4xl font-black text-foreground">Auction scrapers</h1>
             <p className="mt-2 text-sm font-bold text-muted">
               {scraper?.schedule ?? 'Loading schedule'} · {scraper?.running ? 'Running now' : 'Waiting'}
             </p>
@@ -123,6 +151,86 @@ export default function AdminScraperPage() {
               ) : null}
             </section>
 
+            <section className="mt-6 rounded-panel border border-line bg-surface p-5 shadow-soft">
+              <div className="flex items-center gap-3">
+                <Search className="text-signal" size={22} />
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wide text-muted">Manual source</p>
+                  <h2 className="text-xl font-black text-foreground">A-Automarket import</h2>
+                </div>
+              </div>
+              <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                <label className="text-xs font-black uppercase text-muted">
+                  Maker
+                  <select
+                    className={inputClass}
+                    onChange={(event) => setAutomarketForm((current) => ({ ...current, maker: event.target.value }))}
+                    value={automarketForm.maker}
+                  >
+                    {['Toyota', 'Daihatsu', 'Honda', 'Suzuki', 'Nissan', 'Mazda', 'Mitsubishi', 'Subaru', 'Lexus'].map(
+                      (maker) => <option key={maker}>{maker}</option>,
+                    )}
+                  </select>
+                </label>
+                <label className="text-xs font-black uppercase text-muted">
+                  Model
+                  <input
+                    className={inputClass}
+                    onChange={(event) => setAutomarketForm((current) => ({ ...current, model: event.target.value }))}
+                    placeholder="Roomy"
+                    value={automarketForm.model}
+                  />
+                </label>
+                <label className="text-xs font-black uppercase text-muted">
+                  From year
+                  <input
+                    className={inputClass}
+                    max={new Date().getFullYear()}
+                    min={1980}
+                    onChange={(event) =>
+                      setAutomarketForm((current) => ({ ...current, yearFrom: Number(event.target.value) }))
+                    }
+                    type="number"
+                    value={automarketForm.yearFrom}
+                  />
+                </label>
+                <label className="text-xs font-black uppercase text-muted">
+                  To year
+                  <input
+                    className={inputClass}
+                    max={new Date().getFullYear()}
+                    min={1980}
+                    onChange={(event) =>
+                      setAutomarketForm((current) => ({ ...current, yearTo: Number(event.target.value) }))
+                    }
+                    type="number"
+                    value={automarketForm.yearTo}
+                  />
+                </label>
+                <label className="text-xs font-black uppercase text-muted">
+                  Import limit
+                  <select
+                    className={inputClass}
+                    onChange={(event) =>
+                      setAutomarketForm((current) => ({ ...current, listSize: Number(event.target.value) }))
+                    }
+                    value={automarketForm.listSize}
+                  >
+                    {[1, 3, 5, 10].map((limit) => <option key={limit}>{limit}</option>)}
+                  </select>
+                </label>
+              </div>
+              <button
+                className="bg-brand-gradient mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-panel px-5 text-sm font-black text-white disabled:opacity-50"
+                disabled={automarketRunning || !automarketForm.model.trim()}
+                onClick={runAutomarket}
+                type="button"
+              >
+                <Play size={17} />
+                {automarketRunning ? 'Importing...' : 'Run Automarket import'}
+              </button>
+            </section>
+
             <section className="mt-6 overflow-hidden rounded-panel border border-line bg-surface shadow-soft">
               <div className="border-b border-line p-5">
                 <h2 className="text-xl font-black text-foreground">Configured searches</h2>
@@ -161,7 +269,9 @@ export default function AdminScraperPage() {
                 {scraper?.runs.map((run) => (
                   <div className="grid gap-3 px-5 py-4 sm:grid-cols-[1fr_repeat(4,90px)] sm:items-center" key={run._id}>
                     <div>
-                      <p className="font-black capitalize text-foreground">{run.status} · {run.trigger}</p>
+                      <p className="font-black capitalize text-foreground">
+                        {run.source} · {run.status} · {run.trigger}
+                      </p>
                       <p className="mt-1 text-xs font-bold text-muted">{new Date(run.startedAt).toLocaleString()}</p>
                     </div>
                     <RunValue label="Fetched" value={run.fetched} />

@@ -36,7 +36,36 @@ type JpCenterBatchJob = JpCenterImportOptions & {
   model: string;
 };
 
+type AutomarketImportOptions = {
+  maker: string;
+  model: string;
+  yearFrom?: number;
+  yearTo?: number;
+  listSize?: number;
+};
+
+type AutomarketRow = {
+  id: string;
+  lotNumber: string;
+  auctionDate: string;
+  auctionName: string;
+  maker: string;
+  model: string;
+  grade: string;
+  year: number;
+  mileageKm: number;
+  engineCapacity: number;
+  transmission: string;
+  color: string;
+  modelCode: string;
+  equipment: string;
+  auctionPriceJpy: number;
+  detailPath: string;
+  previewImageUrl?: string;
+};
+
 const JP_CENTER_BASE_URL = 'https://jpcenter.ru';
+const AUTOMARKET_BASE_URL = 'https://auctions.a-automarket.com';
 const MIN_IMAGE_WIDTH = 320;
 const MIN_IMAGE_HEIGHT = 240;
 const MIN_AUCTION_SHEET_WIDTH = 220;
@@ -54,6 +83,17 @@ const JP_CENTER_VENDOR_IDS: Record<string, string> = {
   DAIHATSU: '9',
   MITSUOKA: '10',
   LEXUS: '23',
+};
+const AUTOMARKET_MAKER_IDS: Record<string, string> = {
+  DAIHATSU: '1',
+  HONDA: '2',
+  MAZDA: '4',
+  MITSUBISHI: '5',
+  NISSAN: '6',
+  SUBARU: '7',
+  SUZUKI: '8',
+  TOYOTA: '9',
+  LEXUS: '59',
 };
 
 const DEFAULT_JP_CENTER_JOBS: JpCenterBatchJob[] = [
@@ -342,15 +382,168 @@ export class ScraperService implements OnModuleInit {
     return { fetched, imported: imported.length, created, updated, cars: imported };
   }
 
+  async runAutomarketImport(options: AutomarketImportOptions) {
+    const startedAt = new Date();
+    const run = await this.scrapeRunModel.create({
+      source: 'A-Automarket',
+      trigger: 'manual',
+      status: 'running',
+      startedAt,
+    });
+
+    try {
+      const result = await this.importFromAutomarket(options);
+      const finishedAt = new Date();
+      const job: ScrapeJobResult = {
+        maker: options.maker,
+        model: options.model,
+        fetched: result.fetched,
+        imported: result.imported,
+        inserted: result.created,
+        updated: result.updated,
+      };
+      await this.scrapeRunModel.findByIdAndUpdate(run._id, {
+        $set: {
+          status: 'success',
+          finishedAt,
+          durationMs: finishedAt.getTime() - startedAt.getTime(),
+          fetched: result.fetched,
+          imported: result.imported,
+          inserted: result.created,
+          updated: result.updated,
+          jobs: [job],
+        },
+      });
+      return { ...result, runId: run.id };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const finishedAt = new Date();
+      await this.scrapeRunModel.findByIdAndUpdate(run._id, {
+        $set: {
+          status: 'failed',
+          finishedAt,
+          durationMs: finishedAt.getTime() - startedAt.getTime(),
+          failedJobs: 1,
+          errors: [message],
+        },
+      });
+      throw error;
+    }
+  }
+
+  private async importFromAutomarket(options: AutomarketImportOptions) {
+    const username = this.config.get<string>('AUTOMARKET_USERNAME');
+    const password = this.config.get<string>('AUTOMARKET_PASSWORD');
+    if (!username || !password) {
+      throw new BadRequestException('AUTOMARKET_USERNAME and AUTOMARKET_PASSWORD are required');
+    }
+
+    const maker = options.maker.trim();
+    const model = options.model.trim();
+    const makerId = AUTOMARKET_MAKER_IDS[maker.toUpperCase()];
+    if (!makerId) throw new BadRequestException(`Unsupported Automarket maker: ${maker}`);
+    if (!model) throw new BadRequestException('Automarket model is required');
+
+    const listSize = Math.min(Math.max(options.listSize ?? 5, 1), 10);
+    const client = new AutomarketClient(username, password);
+    await client.login();
+    const rows = await client.fetchAuctionRows({
+      makerId,
+      model,
+      yearFrom: options.yearFrom,
+      yearTo: options.yearTo,
+    });
+
+    const completeRows = rows
+      .filter((row) => row.mileageKm > 0 && row.auctionPriceJpy > 0)
+      .slice(0, listSize);
+    let created = 0;
+    let updated = 0;
+    const cars = [];
+
+    for (const row of completeRows) {
+      const details = await client.fetchLotImages(row.detailPath);
+      const sourceUrl = new URL(row.detailPath, AUTOMARKET_BASE_URL).toString();
+      const images = await selectHighQualityImages(
+        details.length ? details : row.previewImageUrl ? [row.previewImageUrl] : [],
+        imageFilePrefix(row.model, row.lotNumber || row.id),
+        this.config.get<string>('API_PUBLIC_URL') ?? 'http://localhost:4000',
+        '/images/automarket',
+      );
+      if (!images.length) {
+        this.logger.warn(`[AUTOMARKET SKIP] ${sourceUrl} has no usable auction images`);
+        continue;
+      }
+
+      const engineCapacity = normalizeEngineCapacity(row.engineCapacity, row.modelCode);
+      const identity = `${row.model} ${row.modelCode} ${row.grade}`;
+      const fuelType = inferFuelType(identity);
+      const dto: CreateCarDto = {
+        title: cleanDisplayText(
+          [row.year, titleCase(row.maker), titleCase(row.model), row.grade].filter(Boolean).join(' '),
+        ),
+        maker: titleCase(row.maker),
+        model: titleCase(row.model),
+        modelCode: row.modelCode,
+        year: row.year,
+        mileageKm: row.mileageKm,
+        fuelType,
+        transmission: row.transmission || 'Automatic',
+        auctionGrade: row.grade || 'N/A',
+        chassisCode: row.modelCode || row.lotNumber,
+        location: row.auctionName || 'Japan auction',
+        auctionDate: row.auctionDate || undefined,
+        source: 'A-Automarket',
+        sourceUrl,
+        images,
+        features: [
+          row.lotNumber ? `Lot ${row.lotNumber}` : '',
+          row.color ? `${titleCase(row.color)} exterior` : '',
+          engineCapacity ? `${engineCapacity}cc engine` : '',
+          row.equipment ? `Equipment ${row.equipment}` : '',
+        ].filter(Boolean),
+        cost: {
+          auctionPriceJpy: row.auctionPriceJpy,
+          exchangeRateLkr: this.config.get<number>('JPY_TO_LKR') ?? 2.08,
+          freightJpy: this.config.get<number>('DEFAULT_FREIGHT_JPY') ?? 220000,
+          insuranceJpy: this.config.get<number>('DEFAULT_INSURANCE_JPY') ?? 50000,
+          vehicleType: 'Car',
+          fuelType,
+          engineCapacity,
+          manufactureYear: row.year,
+          bankChargesLkr: this.config.get<number>('DEFAULT_BANK_CHARGES_LKR') ?? 45000,
+          clearingChargesLkr: this.config.get<number>('DEFAULT_CLEARING_CHARGES_LKR') ?? 220000,
+          importerCommissionLkr: this.config.get<number>('DEFAULT_IMPORTER_COMMISSION_LKR') ?? 220000,
+          localTransportLkr: this.config.get<number>('DEFAULT_LOCAL_TRANSPORT_LKR') ?? 95000,
+        },
+        status: 'available',
+        published: true,
+      };
+      const result = await this.carsService.upsertBySourceUrl(dto);
+      cars.push(result.car);
+      if (result.created) created += 1;
+      else updated += 1;
+    }
+
+    return {
+      fetched: rows.length,
+      eligible: completeRows.length,
+      imported: cars.length,
+      created,
+      updated,
+      cars,
+    };
+  }
+
   private async toCarDto(
     row: JpCenterRow,
     query: { maker: string; model: string },
     client: JpCenterClient,
   ): Promise<CreateCarDto | null> {
     const year = toNumber(row.g) || new Date().getFullYear();
-    const engineCapacity = toNumber(row.h);
     const auctionPriceJpy = toNumber(row.t) || toNumber(row.s) || toNumber(row.o) || 0;
     const modelCode = cleanText(row.j);
+    const engineCapacity = normalizeEngineCapacity(toNumber(row.h), modelCode);
     const chassisPrefix = cleanText(row.k);
     const grade = cleanText(row.r) || 'N/A';
     const trim = cleanDisplayText(row.l);
@@ -522,6 +715,105 @@ class JpCenterClient {
   }
 }
 
+class AutomarketClient {
+  private readonly cookies = new Map<string, string>();
+
+  constructor(
+    private readonly username: string,
+    private readonly password: string,
+  ) {}
+
+  async login() {
+    const loginPage = await this.request('/');
+    const html = await loginPage.text();
+    const $ = cheerio.load(html);
+    const action = $('form[action*="/auth/login.php"]').first().attr('action');
+    if (!action) throw new BadRequestException('Automarket login form was not found');
+
+    const response = await this.request(action, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        username: this.username,
+        password: this.password,
+        Submit: 'Sign in',
+      }),
+    });
+    const authenticatedHtml = await response.text();
+    if (!authenticatedHtml.includes('/auth/logout.php')) {
+      throw new BadRequestException('Automarket login failed');
+    }
+  }
+
+  async fetchAuctionRows(options: {
+    makerId: string;
+    model: string;
+    yearFrom?: number;
+    yearTo?: number;
+  }) {
+    const query = new URLSearchParams({
+      p: 'project/findlots',
+      s: '',
+      ld: '',
+      mrk: options.makerId,
+      word: options.model.toUpperCase(),
+      year1: options.yearFrom ? String(options.yearFrom) : '',
+      year2: options.yearTo ? String(options.yearTo) : '',
+      vs: '20',
+      pg: '1',
+    });
+    const response = await this.request(`/auctions?${query}`);
+    return parseAutomarketRows(await response.text());
+  }
+
+  async fetchLotImages(path: string) {
+    const response = await this.request(path);
+    return extractAutomarketImageUrls(await response.text());
+  }
+
+  private async request(path: string, init: RequestInit = {}) {
+    let url = new URL(path, AUTOMARKET_BASE_URL);
+    let requestInit = { ...init };
+
+    for (let redirect = 0; redirect < 10; redirect += 1) {
+      const headers = new Headers(requestInit.headers);
+      const cookie = Array.from(this.cookies, ([key, value]) => `${key}=${value}`).join('; ');
+      if (cookie) headers.set('cookie', cookie);
+      const response = await fetch(url, {
+        ...requestInit,
+        headers,
+        redirect: 'manual',
+        signal: AbortSignal.timeout(30_000),
+      });
+      this.storeCookies(response.headers);
+      if (![301, 302, 303, 307, 308].includes(response.status)) {
+        if (!response.ok) throw new BadRequestException(`Automarket request failed: ${response.status}`);
+        return response;
+      }
+
+      const location = response.headers.get('location');
+      if (!location) throw new BadRequestException('Automarket returned an invalid redirect');
+      url = new URL(location, url);
+      if (response.status === 303 || ((response.status === 301 || response.status === 302) && requestInit.method === 'POST')) {
+        requestInit = { method: 'GET' };
+      }
+    }
+    throw new BadRequestException('Automarket returned too many redirects');
+  }
+
+  private storeCookies(headers: Headers) {
+    const values =
+      typeof (headers as Headers & { getSetCookie?: () => string[] }).getSetCookie === 'function'
+        ? (headers as Headers & { getSetCookie: () => string[] }).getSetCookie()
+        : splitSetCookie(headers.get('set-cookie'));
+    for (const value of values) {
+      const [pair] = value.split(';');
+      const separator = pair.indexOf('=');
+      if (separator > 0) this.cookies.set(pair.slice(0, separator).trim(), pair.slice(separator + 1).trim());
+    }
+  }
+}
+
 function jpCenterLoaderFields(options: {
   vendor: string;
   model: string;
@@ -601,6 +893,57 @@ function parseJpCenterLoader(body: string): JpCenterPayload {
   return JSON.parse(json) as JpCenterPayload;
 }
 
+export function parseAutomarketRows(html: string): AutomarketRow[] {
+  const $ = cheerio.load(html);
+  const rows: AutomarketRow[] = [];
+
+  $('tr[id^="cell_"]').each((_, element) => {
+    const index = ($(element).attr('id') ?? '').replace('cell_', '');
+    if (!index) return;
+    const text = (selector: string) => cleanDisplayText($(selector).text());
+    const detailPath = $(`#bid_number_${index} a`).attr('href') ?? '';
+    const id = new URL(detailPath || '/', AUTOMARKET_BASE_URL).searchParams.get('id') ?? '';
+    const currency = text(`#currencyLot${index}`);
+    const auctionPriceJpy = currency === 'JPY' ? toNumber(text(`#priceLotS${index}`)) * 1000 : 0;
+    const previewImageUrl = $(`#photo_${index} img`).attr('load_src')?.replace(/[?&]w=\d+$/, '');
+
+    if (!id || !detailPath) return;
+    rows.push({
+      id,
+      lotNumber: text(`#bid_number_${index}`),
+      auctionDate: text(`#date_${index}`).split(' ')[0],
+      auctionName: text(`#auction_${index}`),
+      maker: text(`#company_${index}`),
+      model: text(`#model_${index}`),
+      grade: text(`#grade_${index}`),
+      year: toNumber(text(`#year_${index}`)),
+      mileageKm: toNumber(text(`#mileage_${index}`)),
+      engineCapacity: toNumber(text(`#displacement_${index}`)),
+      transmission: text(`#transmission_${index}`),
+      color: text(`#color_${index}`),
+      modelCode: text(`#model_type_${index}`),
+      equipment: text(`#equipment_${index}`),
+      auctionPriceJpy,
+      detailPath,
+      previewImageUrl,
+    });
+  });
+
+  return rows;
+}
+
+export function extractAutomarketImageUrls(html: string) {
+  const $ = cheerio.load(html);
+  return [
+    ...new Set(
+      $('a[href^="https://i.aleado.ru/pic/"]')
+        .map((_, element) => $(element).attr('href'))
+        .get()
+        .filter((url): url is string => Boolean(url)),
+    ),
+  ];
+}
+
 function splitSetCookie(value: string | null) {
   if (!value) return [];
   return value.split(/,(?=\s*[^;,]+=)/);
@@ -618,6 +961,12 @@ function cleanText(value: string | undefined) {
   return (value ?? '').trim();
 }
 
+export function normalizeEngineCapacity(engineCapacity: number, modelCode: string) {
+  if (engineCapacity === 1_000 && /^(?:M9[01]0|A2(?:00|01|10))/i.test(modelCode)) return 996;
+  if (engineCapacity === 1_200 && /^A202/i.test(modelCode)) return 1_196;
+  return engineCapacity;
+}
+
 export function cleanDisplayText(value: string | undefined) {
   const text = cleanText(value);
   const invalidSuffix = text.search(/&#(?:\d+|x[\da-f]+);|[\u3040-\u30ff\u3400-\u9fff\uff66-\uff9f]/i);
@@ -627,7 +976,12 @@ export function cleanDisplayText(value: string | undefined) {
     .trim();
 }
 
-async function selectHighQualityImages(urls: string[], sourceKey: string, publicBaseUrl: string) {
+async function selectHighQualityImages(
+  urls: string[],
+  sourceKey: string,
+  publicBaseUrl: string,
+  localRoute = LOCAL_IMAGE_ROUTE,
+) {
   const highQuality: string[] = [];
   const timestampBase = new Date();
 
@@ -637,7 +991,7 @@ async function selectHighQualityImages(urls: string[], sourceKey: string, public
       continue;
     }
 
-    const localPath = await saveImage(image, sourceKey, timestampBase, index);
+    const localPath = await saveImage(image, sourceKey, timestampBase, index, localRoute);
     highQuality.push(`${publicBaseUrl.replace(/\/$/, '')}${localPath}`);
   }
 
@@ -695,15 +1049,16 @@ async function saveImage(
   sourceKey: string,
   timestampBase: Date,
   index: number,
+  localRoute: string,
 ) {
-  const imagesDir = resolveApiPath('public/images/jpcenter');
+  const imagesDir = resolveApiPath(`public${localRoute}`);
   await mkdir(imagesDir, { recursive: true });
 
   const extension = imageExtension(image.buffer, image.contentType, image.url);
   const filename = `${sourceKey}_${formatFileTimestamp(addSeconds(timestampBase, index))}${extension}`;
   await writeFile(join(imagesDir, filename), image.buffer);
 
-  return `${LOCAL_IMAGE_ROUTE}/${filename}`;
+  return `${localRoute}/${filename}`;
 }
 
 function addSeconds(value: Date, seconds: number) {
