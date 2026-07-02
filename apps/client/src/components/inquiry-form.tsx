@@ -1,11 +1,35 @@
 'use client';
 
-import { Send } from 'lucide-react';
+import { Mail, MessageCircle, Phone, Send } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { createInquiry } from '@/lib/api';
 
-export function InquiryForm({ carId }: { carId: string }) {
+const vendorWhatsAppNumber = (process.env.NEXT_PUBLIC_VENDOR_WHATSAPP_NUMBER ?? '').replace(/\D/g, '');
+const vendorEmail = process.env.NEXT_PUBLIC_VENDOR_EMAIL ?? '';
+
+export function InquiryForm({ carId, carTitle }: { carId: string; carTitle: string }) {
   const [state, setState] = useState<'idle' | 'submitting' | 'sent' | 'error'>('idle');
+
+  function openWhatsApp() {
+    const message = [
+      `Hello, I am interested in the ${carTitle} listed on Ceylon JDM Orders.`,
+      `Listing: ${window.location.href}`,
+      'Could you please confirm its availability and share the next steps?',
+    ].join('\n\n');
+
+    window.open(`https://wa.me/${vendorWhatsAppNumber}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+  }
+
+  function openEmail() {
+    const subject = `Vehicle inquiry: ${carTitle}`;
+    const body = [
+      `Hello, I am interested in the ${carTitle} listed on Ceylon JDM Orders.`,
+      `Listing: ${window.location.href}`,
+      'Could you please confirm its availability and share the next steps?',
+    ].join('\n\n');
+
+    window.location.href = `mailto:${vendorEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -28,8 +52,49 @@ export function InquiryForm({ carId }: { carId: string }) {
   }
 
   return (
-    <form className="space-y-3 rounded-panel border border-line bg-surface p-5 shadow-soft" onSubmit={onSubmit}>
-      <h2 className="text-xl font-black text-foreground">Inquire about this car</h2>
+    <div className="space-y-4">
+      {vendorWhatsAppNumber ? (
+        <section className="rounded-panel border border-line bg-jdm-panel p-5 text-white shadow-soft">
+          <p className="text-xs font-black uppercase tracking-wide text-white/60">Fastest response</p>
+          <h2 className="mt-2 text-xl font-black">Talk to the vendor</h2>
+          <p className="mt-2 text-sm leading-6 text-white/70">
+            Ask about availability, ordering, payment stages, or the estimated handover cost.
+          </p>
+          <button
+            className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-panel bg-[#25D366] px-4 text-sm font-black text-[#082f1b] hover:bg-[#20bd5a]"
+            onClick={openWhatsApp}
+            type="button"
+          >
+            <MessageCircle size={19} />
+            Inquire on WhatsApp
+          </button>
+          {vendorEmail ? (
+            <button
+              className="mt-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-panel border border-white/20 px-4 text-sm font-black text-white hover:border-white/45 hover:bg-white/5"
+              onClick={openEmail}
+              type="button"
+            >
+              <Mail size={18} />
+              Email inquiry
+            </button>
+          ) : null}
+          <div className="mt-4 space-y-2 text-sm font-bold text-white/76">
+            <a className="flex items-center gap-2 hover:text-white" href={`tel:+${vendorWhatsAppNumber}`}>
+              <Phone size={16} />
+              +94 76 197 0838
+            </a>
+            {vendorEmail ? (
+              <a className="flex items-center gap-2 hover:text-white" href={`mailto:${vendorEmail}`}>
+                <Mail size={16} />
+                {vendorEmail}
+              </a>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      <form className="space-y-3 rounded-panel border border-line bg-surface p-5 shadow-soft" onSubmit={onSubmit}>
+      <h2 className="text-xl font-black text-foreground">Send a detailed inquiry</h2>
       <input className="h-11 w-full rounded-panel border border-line bg-field px-3 focus:border-signal focus:ring-signal/15" name="name" placeholder="Your name" required />
       <input className="h-11 w-full rounded-panel border border-line bg-field px-3 focus:border-signal focus:ring-signal/15" name="email" placeholder="Email" required type="email" />
       <input className="h-11 w-full rounded-panel border border-line bg-field px-3 focus:border-signal focus:ring-signal/15" name="phone" placeholder="Phone / WhatsApp" required />
@@ -48,6 +113,7 @@ export function InquiryForm({ carId }: { carId: string }) {
       </button>
       {state === 'sent' ? <p className="text-sm font-bold text-green-700 dark:text-green-400">Inquiry sent. We will contact you soon.</p> : null}
       {state === 'error' ? <p className="text-sm font-bold text-signal">Could not send inquiry. Check the API and try again.</p> : null}
-    </form>
+      </form>
+    </div>
   );
 }

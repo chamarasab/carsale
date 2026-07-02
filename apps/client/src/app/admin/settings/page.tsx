@@ -92,7 +92,10 @@ export default function AdminSettingsPage() {
         {settings && isAdmin ? (
           <form className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)]" onSubmit={onSubmit}>
             <div className="min-w-0 space-y-6">
-              <div className="rounded-panel border border-line bg-surface p-5 shadow-soft">
+              <div
+                className="scroll-mt-24 rounded-panel border border-line bg-surface p-5 shadow-soft"
+                id="tax-percentages"
+              >
                 <h2 className="text-xl font-black text-foreground">Policy</h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <label className="grid gap-2 text-sm font-bold text-muted">
@@ -173,7 +176,10 @@ export default function AdminSettingsPage() {
               </div>
             </div>
 
-            <aside className="h-fit min-w-0 rounded-panel border border-line bg-jdm-panel p-5 text-white shadow-soft">
+            <aside
+              className="h-fit min-w-0 scroll-mt-24 rounded-panel border border-line bg-jdm-panel p-5 text-white shadow-soft"
+              id="luxury-bands"
+            >
               <h2 className="text-xl font-black">Luxury bands</h2>
               <div className="mt-4 space-y-3">
                 {settings.luxuryBands.map((band, index) => (

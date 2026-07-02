@@ -12,8 +12,13 @@ export class CarsController {
   constructor(private readonly carsService: CarsService) {}
 
   @Get()
-  findAll(@Query('q') q?: string, @Query('maker') maker?: string, @Query('status') status?: string) {
-    return this.carsService.findAll({ q, maker, status });
+  findAll(
+    @Query('q') q?: string,
+    @Query('maker') maker?: string,
+    @Query('model') model?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.carsService.findAll({ q, maker, model, status });
   }
 
   @UseGuards(JwtAuthGuard)

@@ -652,7 +652,7 @@ export default function AdminVehiclesPage() {
           ref={rightColumnRef}
         >
           {status === 'authenticated' ? (
-            <section className={panelClass}>
+            <section className={`${panelClass} scroll-mt-24`} id="advertisement-queue">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-muted">{isAdmin ? 'Approval queue' : 'My advertisements'}</p>
@@ -695,7 +695,12 @@ export default function AdminVehiclesPage() {
             </section>
           ) : null}
 
-        <form className={panelClass} onSubmit={onCarSubmit} ref={carFormRef}>
+        <form
+          className={`${panelClass} scroll-mt-24`}
+          id="advertisement-editor"
+          onSubmit={onCarSubmit}
+          ref={carFormRef}
+        >
           <div className="flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-panel bg-signal/12">
               <CarFront className="text-signal" size={22} />

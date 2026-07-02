@@ -7,8 +7,14 @@ dist
 .vercel
 .DS_Store
 npm-debug.log*
+*.tsbuildinfo
 docs/
 render logs*.txt*
+demo-video/*.mp4
+demo-video/*.wav
+demo-video/create_demo
+demo-video/fine_tune_recording
+demo-video/frames/
 apps/api/public/images/uploads/
 apps/api/public/images/jpcenter/*
 apps/api/public/images/automarket/*

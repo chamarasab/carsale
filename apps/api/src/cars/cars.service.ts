@@ -17,7 +17,7 @@ export class CarsService {
     private readonly configService: ConfigService,
   ) {}
 
-  async findAll(query: { q?: string; maker?: string; status?: string }) {
+  async findAll(query: { q?: string; maker?: string; model?: string; status?: string }) {
     const filter: FilterQuery<Car> = { published: true };
 
     if (query.q) {
@@ -26,6 +26,10 @@ export class CarsService {
 
     if (query.maker) {
       filter.maker = new RegExp(`^${query.maker}$`, 'i');
+    }
+
+    if (query.model) {
+      filter.model = new RegExp(`^${query.model}$`, 'i');
     }
 
     if (query.status) {

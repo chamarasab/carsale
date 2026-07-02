@@ -163,7 +163,10 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
           </div>
         </div>
       </section>
-      <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-14 sm:px-6 lg:grid-cols-[1fr_380px] lg:px-8">
+      <section
+        className="mx-auto grid max-w-7xl scroll-mt-24 gap-8 px-4 pb-14 sm:px-6 lg:grid-cols-[1fr_380px] lg:px-8"
+        id="landed-cost"
+      >
         <div className="rounded-panel border border-line bg-surface p-5 shadow-soft">
           <h2 className="text-2xl font-black text-foreground">Transparent landed cost</h2>
           <p className="mt-2 text-sm leading-6 text-muted">
@@ -200,7 +203,7 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
             </p>
           ) : null}
         </div>
-        <InquiryForm carId={car._id} />
+        <InquiryForm carId={car._id} carTitle={car.title} />
       </section>
     </main>
   );

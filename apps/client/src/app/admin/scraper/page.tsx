@@ -231,7 +231,10 @@ export default function AdminScraperPage() {
               </button>
             </section>
 
-            <section className="mt-6 overflow-hidden rounded-panel border border-line bg-surface shadow-soft">
+            <section
+              className="mt-6 scroll-mt-24 overflow-hidden rounded-panel border border-line bg-surface shadow-soft"
+              id="configured-searches"
+            >
               <div className="border-b border-line p-5">
                 <h2 className="text-xl font-black text-foreground">Configured searches</h2>
               </div>
@@ -261,7 +264,10 @@ export default function AdminScraperPage() {
               </div>
             </section>
 
-            <section className="mt-6 overflow-hidden rounded-panel border border-line bg-surface shadow-soft">
+            <section
+              className="mt-6 scroll-mt-24 overflow-hidden rounded-panel border border-line bg-surface shadow-soft"
+              id="recent-runs"
+            >
               <div className="border-b border-line p-5">
                 <h2 className="text-xl font-black text-foreground">Recent runs</h2>
               </div>
