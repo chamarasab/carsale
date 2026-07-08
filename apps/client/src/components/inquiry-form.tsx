@@ -12,7 +12,7 @@ export function InquiryForm({ carId, carTitle }: { carId: string; carTitle: stri
 
   function openWhatsApp() {
     const message = [
-      `Hello, I am interested in the ${carTitle} listed on Ceylon JDM Orders.`,
+      `Hello, I am interested in the ${carTitle} listed on Genuine Automobiles.`,
       `Listing: ${window.location.href}`,
       'Could you please confirm its availability and share the next steps?',
     ].join('\n\n');
@@ -23,7 +23,7 @@ export function InquiryForm({ carId, carTitle }: { carId: string; carTitle: stri
   function openEmail() {
     const subject = `Vehicle inquiry: ${carTitle}`;
     const body = [
-      `Hello, I am interested in the ${carTitle} listed on Ceylon JDM Orders.`,
+      `Hello, I am interested in the ${carTitle} listed on Genuine Automobiles.`,
       `Listing: ${window.location.href}`,
       'Could you please confirm its availability and share the next steps?',
     ].join('\n\n');

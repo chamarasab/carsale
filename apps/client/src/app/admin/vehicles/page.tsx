@@ -503,7 +503,7 @@ export default function AdminVehiclesPage() {
               Vehicle advertisements.
             </h1>
             <p className="mt-4 max-w-3xl text-xl font-semibold leading-8 text-muted">
-              Create auction listings, review user submissions, and publish approved JDM advertisements to the public
+              Create auction listings, review user submissions, and publish approved Genuine Automobiles listings to the public
               dashboard.
             </p>
           </div>

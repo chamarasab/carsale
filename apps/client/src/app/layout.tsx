@@ -16,8 +16,17 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Ceylon JDM Orders',
-  description: 'Explore newer Japanese auction cars with a clear estimated landed cost for Sri Lanka.',
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://carsale-client.vercel.app'),
+  title: 'Genuine Automobiles',
+  description: 'Genuine quality Japanese auction cars with clear estimated landed costs for Sri Lanka.',
+  openGraph: {
+    title: 'Genuine Automobiles',
+    description: 'Genuine quality Japanese auction cars with clear estimated landed costs for Sri Lanka.',
+    images: ['/genuine-automobiles-logo-transparent.png'],
+  },
+  icons: {
+    icon: '/genuine-automobiles-logo-transparent.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

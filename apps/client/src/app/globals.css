@@ -91,6 +91,10 @@ select {
   background: linear-gradient(90deg, #2979ff, #00c4b4);
 }
 
+.bg-brand-gradient-inverse {
+  background: linear-gradient(90deg, #00c4b4, #2979ff);
+}
+
 .bg-owl-gradient {
   background: linear-gradient(135deg, #111a4b 0%, #0d1b3e 55%, #071d35 100%);
 }

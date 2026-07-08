@@ -49,7 +49,7 @@ export default function LoginPage() {
       <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:px-8">
         <div>
           <p className="text-xs font-black uppercase tracking-wide text-brass">Secure access</p>
-          <h1 className="mt-3 text-5xl font-black leading-tight">Manage and publish JDM advertisements</h1>
+          <h1 className="mt-3 text-5xl font-black leading-tight">Manage and publish Genuine Automobiles listings</h1>
           <p className="mt-5 text-base leading-7 text-sub">
             Administrators manage accounts and settings. Active publishers can create and manage their own vehicle
             advertisements.

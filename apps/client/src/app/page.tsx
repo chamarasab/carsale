@@ -24,11 +24,16 @@ export default async function Home({
         <HeroSlider />
         <div className="relative z-10 mx-auto flex min-h-[82vh] max-w-7xl items-center px-4 py-16 sm:px-6 lg:px-8">
           <div className="max-w-3xl text-white">
+            <img
+              alt="Genuine Automobiles"
+              className="mb-6 h-auto w-72 max-w-full object-contain sm:w-96"
+              src="/genuine-automobiles-logo-transparent.png"
+            />
             <p className="mb-5 inline-flex border border-white/15 bg-white/10 px-3 py-2 text-xs font-black uppercase tracking-wide text-white/84 backdrop-blur">
-              2023+ Japanese cars, ordered for Sri Lanka
+              Genuine quality, real wins
             </p>
             <h1 className="max-w-4xl text-5xl font-black leading-none sm:text-6xl lg:text-7xl">
-              Newer Japanese cars for Sri Lankan families.
+              Japanese cars sourced with confidence for Sri Lanka.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-white/78">
               A car is one of life&apos;s biggest dreams. Explore practical 2023+ models from Japan with the auction
