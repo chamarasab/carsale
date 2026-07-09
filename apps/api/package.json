@@ -11,6 +11,7 @@
     "test:scraper": "tsx --test src/scraper/scraper.service.spec.ts",
     "import:raize-average": "npm run build && node scripts/import-jpcenter-raize-average.cjs",
     "import:rocky-average": "npm run build && node scripts/import-jpcenter-rocky-average.cjs",
+    "migrate:images:gridfs": "node scripts/migrate-images-to-gridfs.cjs",
     "seed": "tsx src/seed.ts",
     "recalculate:cars": "npm run build && node scripts/recalculate-car-prices.cjs"
   },
@@ -29,6 +30,7 @@
     "dotenv": "^16.4.7",
     "google-auth-library": "^10.9.0",
     "helmet": "^8.1.0",
+    "mongodb": "^7.5.0",
     "mongoose": "^8.16.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",

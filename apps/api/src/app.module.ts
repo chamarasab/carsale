@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { CategoriesModule } from './categories/categories.module';
 import { CarsModule } from './cars/cars.module';
 import { InquiriesModule } from './inquiries/inquiries.module';
+import { MediaModule } from './media/media.module';
 import { ScraperModule } from './scraper/scraper.module';
 import { SettingsModule } from './settings/settings.module';
 import { UsersModule } from './users/users.module';
@@ -24,6 +25,7 @@ import { UploadsModule } from './uploads/uploads.module';
     CategoriesModule,
     CarsModule,
     InquiriesModule,
+    MediaModule,
     ScraperModule,
     SettingsModule,
     UsersModule,

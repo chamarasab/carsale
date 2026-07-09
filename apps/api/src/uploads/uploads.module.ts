@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
+import { MediaModule } from '../media/media.module';
 import { UploadsController } from './uploads.controller';
 import { UploadsService } from './uploads.service';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, MediaModule],
   controllers: [UploadsController],
   providers: [UploadsService],
 })

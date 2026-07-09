@@ -3,11 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import * as cheerio from 'cheerio';
 import { Model } from 'mongoose';
-import { existsSync } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { extname, join } from 'node:path';
+import { extname } from 'node:path';
 import { CarsService } from '../cars/cars.service';
 import { CreateCarDto } from '../cars/dto';
+import { MediaService } from '../media/media.service';
 import { ScrapeJobResult, ScrapeRun, ScrapeRunDocument, ScrapeRunTrigger } from './scrape-run.schema';
 
 type JpCenterImportOptions = {
@@ -116,6 +115,7 @@ export class ScraperService implements OnModuleInit {
   constructor(
     private readonly carsService: CarsService,
     private readonly config: ConfigService,
+    private readonly mediaService: MediaService,
     @InjectModel(ScrapeRun.name) private readonly scrapeRunModel: Model<ScrapeRun>,
   ) {}
 
@@ -468,6 +468,7 @@ export class ScraperService implements OnModuleInit {
         details.length ? details : row.previewImageUrl ? [row.previewImageUrl] : [],
         imageFilePrefix(row.model, row.lotNumber || row.id),
         this.config.get<string>('API_PUBLIC_URL') ?? 'http://localhost:4000',
+        this.mediaService,
         '/images/automarket',
       );
       if (!images.length) {
@@ -560,6 +561,7 @@ export class ScraperService implements OnModuleInit {
       details.imageUrls.length ? details.imageUrls : imageUrlsFromTokens([row.x, row.y, row.z]),
       imagePrefix,
       this.config.get<string>('API_PUBLIC_URL') ?? 'http://localhost:4000',
+      this.mediaService,
     );
     if (!images.length) {
       this.logger.warn(`[SCRAPE SKIP] ${sourceUrl} has no usable auction images`);
@@ -980,6 +982,7 @@ async function selectHighQualityImages(
   urls: string[],
   sourceKey: string,
   publicBaseUrl: string,
+  mediaService: MediaService,
   localRoute = LOCAL_IMAGE_ROUTE,
 ) {
   const highQuality: string[] = [];
@@ -991,8 +994,7 @@ async function selectHighQualityImages(
       continue;
     }
 
-    const localPath = await saveImage(image, sourceKey, timestampBase, index, localRoute);
-    highQuality.push(`${publicBaseUrl.replace(/\/$/, '')}${localPath}`);
+    highQuality.push(await saveImage(image, sourceKey, timestampBase, index, localRoute, mediaService));
   }
 
   return highQuality;
@@ -1050,15 +1052,18 @@ async function saveImage(
   timestampBase: Date,
   index: number,
   localRoute: string,
+  mediaService: MediaService,
 ) {
-  const imagesDir = resolveApiPath(`public${localRoute}`);
-  await mkdir(imagesDir, { recursive: true });
-
   const extension = imageExtension(image.buffer, image.contentType, image.url);
   const filename = `${sourceKey}_${formatFileTimestamp(addSeconds(timestampBase, index))}${extension}`;
-  await writeFile(join(imagesDir, filename), image.buffer);
 
-  return `${localRoute}/${filename}`;
+  return mediaService.saveImage({
+    buffer: image.buffer,
+    contentType: image.contentType,
+    filename,
+    source: localRoute.includes('automarket') ? 'A-Automarket' : 'JP Center',
+    sourceUrl: image.url,
+  });
 }
 
 function addSeconds(value: Date, seconds: number) {
@@ -1085,12 +1090,6 @@ function imageExtension(buffer: Buffer, contentType: string, url: string) {
   if (contentType.includes('png')) return '.png';
   if (contentType.includes('gif')) return '.gif';
   return extname(new URL(url).pathname) || '.jpg';
-}
-
-function resolveApiPath(relativePath: string) {
-  const cwdPath = join(process.cwd(), relativePath);
-  if (existsSync(join(process.cwd(), 'src'))) return cwdPath;
-  return join(process.cwd(), 'apps/api', relativePath);
 }
 
 function imageFilePrefix(model: string, lotOrId: string) {
