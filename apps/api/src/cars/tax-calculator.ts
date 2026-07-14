@@ -188,7 +188,10 @@ export function prepareCostForRecalculation(cost: CreateCarDto['cost']): CreateC
     ...input
   } = cost;
 
-  return input;
+  return {
+    ...input,
+    ...(_cidSurchargeRate === 0 ? { cidSurchargeRate: 0 } : {}),
+  };
 }
 
 function calculateCommercialVanCost(cost: CreateCarDto['cost'], settings: TaxSettingsLike) {

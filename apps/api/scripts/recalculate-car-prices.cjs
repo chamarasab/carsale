@@ -11,8 +11,7 @@ const repoRoot = resolve(apiRoot, '..', '..');
 
 dotenv.config({ path: join(apiRoot, '.env') });
 
-const JPY_TO_LKR_RATE_URL =
-  'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/jpy.json';
+const CBSL_JPY_RATE_URL = 'https://www.cbsl.gov.lk/cbsl_custom/charts/jpy/indexsmall.php';
 const API_PUBLIC_URL = (process.env.API_PUBLIC_URL || 'https://carsale-1.onrender.com').replace(/\/$/, '');
 const MIN_ENGINE_CAPACITY_CC = readNumberArgument('--min-engine-cc');
 
@@ -100,19 +99,19 @@ async function fetchJpyToLkrRate() {
   const fallbackRate = Number(process.env.JPY_TO_LKR || 2.08);
 
   try {
-    const response = await fetch(JPY_TO_LKR_RATE_URL, { signal: AbortSignal.timeout(8000) });
+    const response = await fetch(CBSL_JPY_RATE_URL, { signal: AbortSignal.timeout(8000) });
     if (!response.ok) throw new Error(`Exchange rate request failed: ${response.status}`);
-    const payload = await response.json();
-    const rate = payload.jpy?.lkr;
-    if (!rate || !Number.isFinite(rate)) throw new Error('JPY to LKR rate is missing');
+    const html = await response.text();
+    const rate = parseCbslJpySellingRate(html);
+    if (!rate) throw new Error('CBSL JPY selling rate is missing');
 
     return {
       base: 'JPY',
       quote: 'LKR',
       rate,
-      date: payload.date || new Date().toISOString().slice(0, 10),
-      provider: 'fawazahmed0 currency-api',
-      source: JPY_TO_LKR_RATE_URL,
+      date: new Date().toISOString().slice(0, 10),
+      provider: 'Central Bank of Sri Lanka',
+      source: CBSL_JPY_RATE_URL,
       fallback: false,
     };
   } catch {
@@ -126,6 +125,21 @@ async function fetchJpyToLkrRate() {
       fallback: true,
     };
   }
+}
+
+function parseCbslJpySellingRate(html) {
+  const paragraphMatches = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)];
+  const sellText = paragraphMatches
+    .map((match) =>
+      match[1]
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    )
+    .find((line) => /^Sell\b/i.test(line));
+  const rate = Number(sellText?.match(/(\d+(?:\.\d+)?)/)?.[1]);
+  return Number.isFinite(rate) && rate > 0 ? rate : null;
 }
 
 function isWorkbookLockedEvery(car) {

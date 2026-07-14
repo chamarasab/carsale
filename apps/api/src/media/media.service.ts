@@ -11,6 +11,9 @@ type SaveImageOptions = {
   filename: string;
   sourceUrl?: string;
   source?: string;
+  width?: number;
+  height?: number;
+  imageKind?: 'vehicle-photo' | 'auction-sheet';
 };
 
 @Injectable()
@@ -25,7 +28,7 @@ export class MediaService {
     this.bucket = new mongo.GridFSBucket(connection.db, { bucketName: 'images' });
   }
 
-  async saveImage({ buffer, contentType, filename, sourceUrl, source }: SaveImageOptions) {
+  async saveImage({ buffer, contentType, filename, sourceUrl, source, width, height, imageKind }: SaveImageOptions) {
     const safeFilename = this.safeFilename(filename);
     const id = new mongo.ObjectId();
 
@@ -35,6 +38,9 @@ export class MediaService {
           contentType: contentType || this.contentTypeFromFilename(safeFilename),
           source,
           sourceUrl,
+          width,
+          height,
+          imageKind,
           uploadedAt: new Date(),
         },
       });

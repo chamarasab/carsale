@@ -1,10 +1,12 @@
 import { Gauge, MapPin, ShieldCheck, Ship } from 'lucide-react';
 import Link from 'next/link';
-import { CarPhoto } from '@/components/car-photo';
+import { CarPhoto, firstVehiclePhoto } from '@/components/car-photo';
 import { compactNumber, lkr } from '@/lib/format';
 import { Car } from '@/lib/types';
 
 export function CarCard({ car }: { car: Car }) {
+  const thumbnail = firstVehiclePhoto(car.images);
+
   return (
     <Link
       className="car-card group block overflow-hidden rounded-panel border border-line bg-surface shadow-soft transition duration-300 hover:-translate-y-1 hover:border-signal/40 hover:shadow-theme"
@@ -14,7 +16,7 @@ export function CarCard({ car }: { car: Car }) {
         <CarPhoto
           car={car}
           className="transition duration-500 group-hover:scale-105"
-          image={car.images[0]}
+          image={thumbnail}
           sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
         />
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/72 to-transparent" />

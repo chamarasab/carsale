@@ -3,10 +3,12 @@
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Car } from '@/lib/types';
-import { CarPhoto, hasAuctionPhoto } from './car-photo';
+import { CarPhoto, hasAuctionPhoto, isLikelyAuctionSheet } from './car-photo';
 
 export function CarImageGallery({ car }: { car: Car }) {
-  const images = car.images.filter(hasAuctionPhoto);
+  const images = car.images
+    .filter(hasAuctionPhoto)
+    .sort((left, right) => Number(isLikelyAuctionSheet(left)) - Number(isLikelyAuctionSheet(right)));
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const isOpen = activeIndex !== null;
 

@@ -17,6 +17,15 @@ export function hasAuctionPhoto(image?: string) {
   return Boolean(image && !fallbackImages.has(image));
 }
 
+export function isLikelyAuctionSheet(image?: string) {
+  if (!image) return false;
+  return /auction[-_ ]?sheet|sheet|inspection|inspect|report|document|ais|uss|ju[-_ ]?sheet/i.test(decodeURIComponent(image));
+}
+
+export function firstVehiclePhoto(images: string[]) {
+  return images.find((image) => hasAuctionPhoto(image) && !isLikelyAuctionSheet(image)) ?? images.find(hasAuctionPhoto) ?? images[0];
+}
+
 export function CarPhoto({ car, className = '', image = car.images[0], priority = false, sizes }: CarPhotoProps) {
   if (hasAuctionPhoto(image)) {
     return (

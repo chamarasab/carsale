@@ -98,6 +98,16 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
     ['Local transport', 'Local cost', lkr(car.cost.localTransportLkr)],
     ['Total other costs', 'Bank + clearing + commissions + deposit + transport', lkr(car.cost.totalOtherCostsLkr ?? 0)],
   ];
+  const taxRows = [
+    ['CID', car.cost.cidBaseLkr ?? 0],
+    ['CID surcharge', car.cost.cidSurchargeLkr ?? 0],
+    ['Excise duty', car.cost.exciseDutyLkr ?? 0],
+    ['Luxury tax', car.cost.luxuryTaxLkr ?? 0],
+    ['VAT', car.cost.vatLkr ?? 0],
+    ['SSCL', car.cost.ssclLkr ?? 0],
+    ['Vehicle entitlement levy', car.cost.vehicleEntitlementLevyLkr ?? 0],
+    ['COM / Exm / Seal', car.cost.comExmSealLkr ?? 0],
+  ].filter(([, value]) => Number(value) > 0) as [string, number][];
 
   return (
     <main>
@@ -146,6 +156,16 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
               </p>
               <p className="mt-1 text-xs text-white/65">
                 Tax base follows the higher of invoiced CIF and grade/variant Yellow Book CIF.
+              </p>
+            </div>
+            <div className="rounded-panel border border-line bg-field p-4 text-sm leading-6 text-muted">
+              <p>
+                The price shown is an estimate. The final buying cost can be higher or lower when exchange rates,
+                taxes, duties, freight, or local charges change at the time of purchase.
+              </p>
+              <p className="mt-2">
+                For upcoming auctions, the auction price shown here is the average price usually seen for similar
+                auction lots. The actual winning bid can be higher or lower.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -203,7 +223,24 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
             </p>
           ) : null}
         </div>
-        <InquiryForm carId={car._id} carTitle={car.title} />
+        <div className="space-y-5">
+          <div className="rounded-panel border border-line bg-surface p-5 shadow-soft">
+            <p className="text-xs font-black uppercase tracking-wide text-signal">Tax summary</p>
+            <h2 className="mt-2 text-2xl font-black text-foreground">{lkr(car.cost.importDutyLkr)}</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Total calculated taxes, duties, and levies included in the landed estimate.
+            </p>
+            <div className="mt-4 divide-y divide-line">
+              {taxRows.map(([label, value]) => (
+                <div className="flex items-center justify-between gap-4 py-2 text-sm" key={label}>
+                  <span className="font-bold text-muted">{label}</span>
+                  <span className="text-right font-black text-foreground">{lkr(value)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <InquiryForm carId={car._id} carTitle={car.title} />
+        </div>
       </section>
     </main>
   );

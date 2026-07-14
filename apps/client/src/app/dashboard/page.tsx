@@ -1,5 +1,6 @@
-import { RotateCcw } from 'lucide-react';
+import { Grid2X2, List, RotateCcw } from 'lucide-react';
 import { CarCard } from '@/components/car-card';
+import { CarListItem } from '@/components/car-list-item';
 import { CarSearchForm } from '@/components/car-search-form';
 import { Nav } from '@/components/nav';
 import { getCars, getExchangeRate } from '@/lib/api';
@@ -11,6 +12,7 @@ type SearchParams = {
   year?: string;
   market?: string;
   grade?: string;
+  view?: string;
 };
 
 function inventoryMarket(car: Car) {
@@ -54,6 +56,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const selectedYear = years.includes(Number(filters.year)) ? Number(filters.year) : undefined;
   const selectedMarket = filters.market === 'japan' || filters.market === 'sri-lanka' ? filters.market : '';
   const selectedGrade = grades.find((grade) => grade.toLowerCase() === filters.grade?.toLowerCase()) ?? '';
+  const selectedView = filters.view === 'list' ? 'list' : 'tile';
   const visibleCars = cars.filter(
     (car) =>
       (!selectedMaker || car.maker.toLowerCase() === selectedMaker.toLowerCase()) &&
@@ -63,6 +66,16 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       (!selectedGrade || car.auctionGrade.toLowerCase() === selectedGrade.toLowerCase()),
   );
   const hasFilters = Boolean(selectedMaker || selectedModel || selectedYear || selectedMarket || selectedGrade);
+  const viewHref = (view: 'tile' | 'list') => {
+    const params = new URLSearchParams();
+    if (selectedMaker) params.set('maker', selectedMaker);
+    if (selectedModel) params.set('model', selectedModel);
+    if (selectedYear) params.set('year', String(selectedYear));
+    if (selectedMarket) params.set('market', selectedMarket);
+    if (selectedGrade) params.set('grade', selectedGrade);
+    params.set('view', view);
+    return `/dashboard?${params.toString()}`;
+  };
 
   return (
     <main>
@@ -92,6 +105,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               selectedMaker={selectedMaker}
               selectedMarket={selectedMarket}
               selectedModel={selectedModel}
+              selectedView={selectedView}
               selectedYear={selectedYear}
               years={years}
             />
@@ -99,24 +113,56 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         </div>
       </section>
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mb-6 flex items-end justify-between gap-4">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-black uppercase text-signal">{hasFilters ? 'Search results' : 'Current stock'}</p>
             <h2 className="mt-1 text-2xl font-black text-foreground">
               {visibleCars.length} {visibleCars.length === 1 ? 'vehicle' : 'vehicles'} available
             </h2>
           </div>
-          {hasFilters ? (
-            <a className="text-sm font-black text-signal hover:text-brass" href="/dashboard">
-              View all cars
-            </a>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="inline-flex rounded-panel border border-line bg-field p-1">
+              <a
+                aria-current={selectedView === 'tile' ? 'page' : undefined}
+                className={`inline-flex h-10 items-center gap-2 rounded-panel px-3 text-sm font-black transition ${
+                  selectedView === 'tile' ? 'bg-surface text-foreground shadow-sm' : 'text-muted hover:text-foreground'
+                }`}
+                href={viewHref('tile')}
+              >
+                <Grid2X2 size={17} />
+                Tile
+              </a>
+              <a
+                aria-current={selectedView === 'list' ? 'page' : undefined}
+                className={`inline-flex h-10 items-center gap-2 rounded-panel px-3 text-sm font-black transition ${
+                  selectedView === 'list' ? 'bg-surface text-foreground shadow-sm' : 'text-muted hover:text-foreground'
+                }`}
+                href={viewHref('list')}
+              >
+                <List size={17} />
+                List
+              </a>
+            </div>
+            {hasFilters ? (
+              <a className="text-sm font-black text-signal hover:text-brass" href="/dashboard">
+                View all cars
+              </a>
+            ) : null}
+          </div>
         </div>
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {visibleCars.map((car) => (
-            <CarCard car={car} key={car._id} />
-          ))}
-        </div>
+        {selectedView === 'list' ? (
+          <div className="space-y-4">
+            {visibleCars.map((car) => (
+              <CarListItem car={car} key={car._id} />
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {visibleCars.map((car) => (
+              <CarCard car={car} key={car._id} />
+            ))}
+          </div>
+        )}
         {visibleCars.length === 0 ? (
           <div className="rounded-panel border border-line bg-surface p-8 text-center shadow-soft">
             <p className="text-lg font-black text-foreground">No cars match this search</p>

@@ -14,6 +14,7 @@ type CarSearchFormProps = {
   selectedYear?: number;
   selectedMarket: string;
   selectedGrade: string;
+  selectedView?: string;
 };
 
 const fieldClass =
@@ -30,6 +31,7 @@ export function CarSearchForm({
   selectedYear,
   selectedMarket,
   selectedGrade,
+  selectedView,
 }: CarSearchFormProps) {
   const [maker, setMaker] = useState(selectedMaker);
   const [model, setModel] = useState(selectedModel);
@@ -57,6 +59,8 @@ export function CarSearchForm({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <input name="view" type="hidden" value={selectedView === 'list' ? 'list' : 'tile'} />
+
         <label className="text-xs font-black uppercase text-sub">
           Manufacturer
           <select

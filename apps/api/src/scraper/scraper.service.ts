@@ -7,6 +7,7 @@ import { extname } from 'node:path';
 import { CarsService } from '../cars/cars.service';
 import { CreateCarDto } from '../cars/dto';
 import { MediaService } from '../media/media.service';
+import { SettingsService } from '../settings/settings.service';
 import { ScrapeJobResult, ScrapeRun, ScrapeRunDocument, ScrapeRunTrigger } from './scrape-run.schema';
 
 type JpCenterImportOptions = {
@@ -116,6 +117,7 @@ export class ScraperService implements OnModuleInit {
     private readonly carsService: CarsService,
     private readonly config: ConfigService,
     private readonly mediaService: MediaService,
+    private readonly settingsService: SettingsService,
     @InjectModel(ScrapeRun.name) private readonly scrapeRunModel: Model<ScrapeRun>,
   ) {}
 
@@ -348,6 +350,7 @@ export class ScraperService implements OnModuleInit {
     let created = 0;
     let updated = 0;
     let fetched = 0;
+    const exchangeRate = await this.settingsService.getJpyToLkrRate();
 
     for (let page = 1; page <= pages; page += 1) {
       // New auction entries often omit mileage. Search deeper so each job imports
@@ -366,7 +369,7 @@ export class ScraperService implements OnModuleInit {
       fetched += sourceRows.length;
 
       for (const row of rows) {
-        const dto = await this.toCarDto(row, { maker, model }, client);
+        const dto = await this.toCarDto(row, { maker, model }, client, exchangeRate);
         if (!dto) continue;
         const result = await this.carsService.upsertBySourceUrl(dto);
         imported.push(result.car);
@@ -460,6 +463,7 @@ export class ScraperService implements OnModuleInit {
     let created = 0;
     let updated = 0;
     const cars = [];
+    const exchangeRate = await this.settingsService.getJpyToLkrRate();
 
     for (const row of completeRows) {
       const details = await client.fetchLotImages(row.detailPath);
@@ -505,7 +509,10 @@ export class ScraperService implements OnModuleInit {
         ].filter(Boolean),
         cost: {
           auctionPriceJpy: row.auctionPriceJpy,
-          exchangeRateLkr: this.config.get<number>('JPY_TO_LKR') ?? 2.08,
+          exchangeRateLkr: exchangeRate.rate,
+          exchangeRateDate: exchangeRate.date,
+          exchangeRateSource: exchangeRate.source,
+          exchangeRateProvider: exchangeRate.provider,
           freightJpy: this.config.get<number>('DEFAULT_FREIGHT_JPY') ?? 220000,
           insuranceJpy: this.config.get<number>('DEFAULT_INSURANCE_JPY') ?? 50000,
           vehicleType: 'Car',
@@ -540,6 +547,7 @@ export class ScraperService implements OnModuleInit {
     row: JpCenterRow,
     query: { maker: string; model: string },
     client: JpCenterClient,
+    exchangeRate: Awaited<ReturnType<SettingsService['getJpyToLkrRate']>>,
   ): Promise<CreateCarDto | null> {
     const year = toNumber(row.g) || new Date().getFullYear();
     const auctionPriceJpy = toNumber(row.t) || toNumber(row.s) || toNumber(row.o) || 0;
@@ -592,7 +600,10 @@ export class ScraperService implements OnModuleInit {
       ].filter(Boolean),
       cost: {
         auctionPriceJpy,
-        exchangeRateLkr: this.config.get<number>('JPY_TO_LKR') ?? 2.08,
+        exchangeRateLkr: exchangeRate.rate,
+        exchangeRateDate: exchangeRate.date,
+        exchangeRateSource: exchangeRate.source,
+        exchangeRateProvider: exchangeRate.provider,
         freightJpy: this.config.get<number>('DEFAULT_FREIGHT_JPY') ?? 220000,
         insuranceJpy: this.config.get<number>('DEFAULT_INSURANCE_JPY') ?? 50000,
         vehicleType: 'Car',
@@ -985,19 +996,23 @@ async function selectHighQualityImages(
   mediaService: MediaService,
   localRoute = LOCAL_IMAGE_ROUTE,
 ) {
-  const highQuality: string[] = [];
+  const highQuality: Array<NonNullable<Awaited<ReturnType<typeof fetchImage>>>> = [];
   const timestampBase = new Date();
 
-  for (const [index, url] of urls.entries()) {
+  for (const url of urls) {
     const image = await fetchImage(url);
     if (!image || !isUsableVehicleImage(image.dimensions)) {
       continue;
     }
 
-    highQuality.push(await saveImage(image, sourceKey, timestampBase, index, localRoute, mediaService));
+    highQuality.push(image);
   }
 
-  return highQuality;
+  const orderedImages = highQuality.sort((left, right) => imageDisplayRank(left.dimensions) - imageDisplayRank(right.dimensions));
+
+  return Promise.all(
+    orderedImages.map((image, index) => saveImage(image, sourceKey, timestampBase, index, localRoute, mediaService)),
+  );
 }
 
 function imageUrlsFromTokens(tokens: Array<string | undefined>) {
@@ -1047,7 +1062,7 @@ async function fetchImage(url: string) {
 }
 
 async function saveImage(
-  image: { buffer: Buffer; contentType: string; url: string },
+  image: { buffer: Buffer; contentType: string; url: string; dimensions: { width: number; height: number } },
   sourceKey: string,
   timestampBase: Date,
   index: number,
@@ -1063,6 +1078,9 @@ async function saveImage(
     filename,
     source: localRoute.includes('automarket') ? 'A-Automarket' : 'JP Center',
     sourceUrl: image.url,
+    width: image.dimensions.width,
+    height: image.dimensions.height,
+    imageKind: isLikelyAuctionSheet(image.dimensions) ? 'auction-sheet' : 'vehicle-photo',
   });
 }
 
@@ -1138,6 +1156,14 @@ function isUsableVehicleImage(dimensions: { width: number; height: number }) {
   const landscapePhoto = dimensions.width >= MIN_IMAGE_WIDTH && dimensions.height >= MIN_IMAGE_HEIGHT;
   const portraitAuctionSheet = dimensions.width >= MIN_AUCTION_SHEET_WIDTH && dimensions.height >= MIN_AUCTION_SHEET_HEIGHT;
   return landscapePhoto || portraitAuctionSheet;
+}
+
+function imageDisplayRank(dimensions: { width: number; height: number }) {
+  return isLikelyAuctionSheet(dimensions) ? 1 : 0;
+}
+
+function isLikelyAuctionSheet(dimensions: { width: number; height: number }) {
+  return dimensions.height > dimensions.width * 1.15;
 }
 
 function inferFuelType(model: string) {

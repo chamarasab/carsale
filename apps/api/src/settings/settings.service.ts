@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import * as cheerio from 'cheerio';
 import { Model } from 'mongoose';
 import { DEFAULT_TAX_SETTINGS } from './default-tax-settings';
 import { UpdateTaxSettingsDto } from './dto';
 import { TaxSettings } from './tax-settings.schema';
 
-const JPY_TO_LKR_RATE_URL =
-  'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/jpy.json';
+const CBSL_JPY_RATE_URL = 'https://www.cbsl.gov.lk/cbsl_custom/charts/jpy/indexsmall.php';
 
 @Injectable()
 export class SettingsService {
@@ -35,20 +35,20 @@ export class SettingsService {
     const fallbackRate = Number(process.env.JPY_TO_LKR || 2.08);
 
     try {
-      const response = await fetch(JPY_TO_LKR_RATE_URL, { signal: AbortSignal.timeout(5000) });
+      const response = await fetch(CBSL_JPY_RATE_URL, { signal: AbortSignal.timeout(5000) });
       if (!response.ok) throw new Error(`Exchange rate request failed: ${response.status}`);
 
-      const payload = (await response.json()) as { date?: string; jpy?: { lkr?: number } };
-      const rate = payload.jpy?.lkr;
-      if (!rate || !Number.isFinite(rate)) throw new Error('JPY to LKR rate is missing');
+      const html = await response.text();
+      const rate = this.parseCbslJpySellingRate(html);
+      if (!rate) throw new Error('CBSL JPY selling rate is missing');
 
       return {
         base: 'JPY',
         quote: 'LKR',
         rate,
-        date: payload.date ?? new Date().toISOString().slice(0, 10),
-        provider: 'fawazahmed0 currency-api',
-        source: JPY_TO_LKR_RATE_URL,
+        date: new Date().toISOString().slice(0, 10),
+        provider: 'Central Bank of Sri Lanka',
+        source: CBSL_JPY_RATE_URL,
         fallback: false,
       };
     } catch {
@@ -62,5 +62,16 @@ export class SettingsService {
         fallback: true,
       };
     }
+  }
+
+  private parseCbslJpySellingRate(html: string) {
+    const $ = cheerio.load(html);
+    const sellText = $('p')
+      .map((_, element) => $(element).text().replace(/\s+/g, ' ').trim())
+      .get()
+      .find((text) => /^Sell\b/i.test(text));
+    const match = sellText?.match(/(\d+(?:\.\d+)?)/);
+    const rate = match ? Number(match[1]) : Number.NaN;
+    return Number.isFinite(rate) && rate > 0 ? rate : null;
   }
 }
