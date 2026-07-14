@@ -17,7 +17,8 @@
     "start": "npm run start --workspace apps/api",
     "build": "npm run build --workspace apps/api && npm run build --workspace apps/client",
     "lint": "npm run lint --workspace apps/api && npm run lint --workspace apps/client",
-    "seed": "npm run seed --workspace apps/api"
+    "seed": "npm run seed --workspace apps/api",
+    "verify:production-auth": "node scripts/verify-production-auth.cjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

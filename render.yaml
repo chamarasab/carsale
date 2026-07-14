@@ -1,8 +1,9 @@
 services:
   - type: web
-    name: carsale-api
+    name: carsale-1
     runtime: node
     plan: free
+    healthCheckPath: /health
     buildCommand: npm install && npm run build --workspace apps/api
     startCommand: npm run start --workspace apps/api
     envVars:

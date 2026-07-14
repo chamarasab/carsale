@@ -20,6 +20,11 @@ export class AuthController {
     return this.authService.googleLogin(dto);
   }
 
+  @Get('readiness')
+  googleAuthReadiness() {
+    return this.authService.googleAuthReadiness();
+  }
+
   @Post('signup')
   signup(@Body() dto: CreateUserDto) {
     return this.authService.signup(dto);

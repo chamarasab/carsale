@@ -1,14 +1,16 @@
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
+import { googleClientIdFingerprint, serverEnvironment } from './server-environment';
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
+const { apiUrl, googleClientId, googleClientSecret, nextAuthSecret, siteUrl } = serverEnvironment;
 
 export const authOptions: NextAuthOptions = {
+  secret: nextAuthSecret,
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
     }),
     CredentialsProvider({
       name: 'Email and password',
@@ -45,12 +47,17 @@ export const authOptions: NextAuthOptions = {
       if (account?.provider !== 'google') return true;
       if (!account.id_token) return false;
 
+      if (!(await apiGoogleConfigurationMatches())) return false;
+
       const response = await fetch(`${apiUrl}/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken: account.id_token }),
       });
-      if (!response.ok) return false;
+      if (!response.ok) {
+        console.error('[google-auth] API rejected the verified Google identity', { status: response.status });
+        return false;
+      }
 
       const result = (await response.json()) as {
         status: 'PENDING' | 'AUTHENTICATED';
@@ -58,7 +65,6 @@ export const authOptions: NextAuthOptions = {
         user?: { id: string; email: string; name: string; role: 'ADMIN' | 'USER' };
       };
       if (result.status === 'PENDING') {
-        const siteUrl = process.env.NEXTAUTH_URL?.trim() || 'http://localhost:3000';
         return new URL('/?signup=pending', siteUrl).toString();
       }
       if (!result.user || !result.accessToken) return false;
@@ -93,3 +99,34 @@ export const authOptions: NextAuthOptions = {
     maxAge: 12 * 60 * 60,
   },
 };
+
+async function apiGoogleConfigurationMatches() {
+  try {
+    const response = await fetch(`${apiUrl}/auth/readiness`, { cache: 'no-store' });
+    if (!response.ok) {
+      console.error('[google-auth] API authentication readiness check failed', { status: response.status });
+      return false;
+    }
+
+    const readiness = (await response.json()) as {
+      ready?: boolean;
+      provider?: string;
+      clientIdFingerprint?: string;
+    };
+    const expectedFingerprint = googleClientIdFingerprint(googleClientId);
+    const matches =
+      readiness.ready === true &&
+      readiness.provider === 'google' &&
+      readiness.clientIdFingerprint === expectedFingerprint;
+
+    if (!matches) {
+      console.error('[google-auth] OAuth client configuration differs between Vercel and Render');
+    }
+    return matches;
+  } catch (error) {
+    console.error('[google-auth] Could not verify API authentication readiness', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+    return false;
+  }
+}

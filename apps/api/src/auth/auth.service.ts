@@ -6,6 +6,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { UsersService } from '../users/users.service';
 import { CreateUserDto } from '../users/dto';
 import { GoogleLoginDto, LoginDto } from './dto';
+import { googleClientIdFingerprint } from '../config/environment';
 
 @Injectable()
 export class AuthService {
@@ -50,6 +51,14 @@ export class AuthService {
       if (error instanceof UnauthorizedException) throw error;
       throw new UnauthorizedException('Google sign-in could not be verified');
     }
+  }
+
+  googleAuthReadiness() {
+    return {
+      ready: true,
+      provider: 'google' as const,
+      clientIdFingerprint: googleClientIdFingerprint(this.config.getOrThrow<string>('GOOGLE_CLIENT_ID')),
+    };
   }
 
   async signup(dto: CreateUserDto) {

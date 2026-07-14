@@ -29,6 +29,10 @@ GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
 ```
 
+The client validates these values during its production build. Missing,
+placeholder, or malformed OAuth settings fail the deployment instead of
+producing a broken login page.
+
 ## Render API
 
 Create a Render Blueprint from this repo, or create a Web Service manually:
@@ -53,6 +57,30 @@ ADMIN_EMAILS=owner@example.com,staff@example.com
 JPCENTER_USERNAME=your-jpcenter-username
 JPCENTER_PASSWORD=your-jpcenter-password
 ```
+
+`GOOGLE_CLIENT_ID` must be identical in Vercel and Render. The API validates
+it during startup and exposes only a one-way fingerprint at
+`/api/auth/readiness`; the OAuth client ID itself is not returned.
+
+## Google OAuth release check
+
+The production smoke test verifies all three parts of the deployed contract:
+
+- NextAuth can create a Google authorization request.
+- The redirect URI is exactly
+  `https://carsale-client.vercel.app/api/auth/callback/google`.
+- Vercel and Render use the same Google OAuth client ID.
+
+Run it at any time with:
+
+```text
+npm run verify:production-auth
+```
+
+GitHub Actions also runs this check after successful deployment status events
+and once per day. A missing API setting now prevents the Render service from
+starting; Render retains the last healthy deployment instead of replacing it
+with a release whose Google login fails at runtime.
 
 ## Notes
 

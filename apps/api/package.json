@@ -9,6 +9,7 @@
     "lint": "eslint \"src/**/*.ts\"",
     "test:tax": "tsx --test src/cars/tax-calculator.spec.ts",
     "test:scraper": "tsx --test src/scraper/scraper.service.spec.ts",
+    "test:config": "tsx --test src/config/environment.spec.ts",
     "import:raize-average": "npm run build && node scripts/import-jpcenter-raize-average.cjs",
     "import:rocky-average": "npm run build && node scripts/import-jpcenter-rocky-average.cjs",
     "migrate:images:gridfs": "node scripts/migrate-images-to-gridfs.cjs",
