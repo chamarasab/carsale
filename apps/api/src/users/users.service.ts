@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcryptjs';
 import { Model } from 'mongoose';
+import { getAdminEmails } from '../config/admin-emails';
 import { CreateUserDto } from './dto';
 import { User } from './user.schema';
 
@@ -16,7 +17,7 @@ export class UsersService implements OnModuleInit {
   async onModuleInit() {
     await this.removeSingleAdminConstraint();
 
-    const adminEmails = this.getAdminEmails();
+    const adminEmails = getAdminEmails(this.config);
     if (adminEmails.length) {
       await this.userModel.updateMany(
         { email: { $in: adminEmails } },
@@ -53,7 +54,7 @@ export class UsersService implements OnModuleInit {
 
   async findOrCreateGoogleUser(input: { googleSubject: string; email: string; name: string }) {
     const email = input.email.trim().toLowerCase();
-    const isAdmin = this.getAdminEmails().includes(email);
+    const isAdmin = getAdminEmails(this.config).includes(email);
     const existing = await this.userModel.findOne({
       $or: [{ googleSubject: input.googleSubject }, { email }],
     });
@@ -106,14 +107,6 @@ export class UsersService implements OnModuleInit {
     }
     user.active = active;
     return user.save();
-  }
-
-  private getAdminEmails() {
-    return this.config
-      .get<string>('ADMIN_EMAILS', '')
-      .split(',')
-      .map((email) => email.trim().toLowerCase())
-      .filter(Boolean);
   }
 
   private async removeSingleAdminConstraint() {

@@ -74,6 +74,8 @@ Every address in `ADMIN_EMAILS` is automatically activated and promoted to
 `ADMIN` when it signs in with Google. Multiple administrator accounts are
 supported; removing an address from the variable does not automatically
 demote an existing administrator.
+Repository-approved administrator addresses are merged with this list, so an
+environment update cannot accidentally remove those accounts.
 
 `GOOGLE_CLIENT_ID` must be identical in Vercel and Render. The API validates
 it during startup and exposes only a one-way fingerprint at

@@ -2,6 +2,7 @@ import { CanActivate, ExecutionContext, ForbiddenException, Injectable, Unauthor
 import { ConfigService } from '@nestjs/config';
 import { OAuth2Client } from 'google-auth-library';
 import type { Request } from 'express';
+import { getAdminEmails } from '../config/admin-emails';
 
 @Injectable()
 export class GoogleJwtGuard implements CanActivate {
@@ -30,11 +31,7 @@ export class GoogleJwtGuard implements CanActivate {
       throw new UnauthorizedException('Google account is not verified');
     }
 
-    const admins = this.config
-      .get<string>('ADMIN_EMAILS', '')
-      .split(',')
-      .map((item) => item.trim().toLowerCase())
-      .filter(Boolean);
+    const admins = getAdminEmails(this.config);
 
     if (!admins.includes(email)) {
       throw new ForbiddenException('This Google account is not an administrator');
