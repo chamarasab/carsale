@@ -479,8 +479,8 @@ export class ScraperService implements OnModuleInit {
   }
 
   private async importFromAutomarket(options: AutomarketImportOptions) {
-    const username = this.config.get<string>('AUTOMARKET_USERNAME');
-    const password = this.config.get<string>('AUTOMARKET_PASSWORD');
+    const username = this.config.get<string>('AUTOMARKET_USERNAME')?.trim();
+    const password = this.config.get<string>('AUTOMARKET_PASSWORD')?.trim();
     if (!username || !password) {
       throw new BadRequestException('AUTOMARKET_USERNAME and AUTOMARKET_PASSWORD are required');
     }
