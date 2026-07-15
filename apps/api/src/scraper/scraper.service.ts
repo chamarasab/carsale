@@ -71,6 +71,7 @@ const MIN_IMAGE_HEIGHT = 240;
 const MIN_AUCTION_SHEET_WIDTH = 220;
 const MIN_AUCTION_SHEET_HEIGHT = 320;
 const LOCAL_IMAGE_ROUTE = '/images/jpcenter';
+const DEFAULT_BATCH_JOB_DELAY_MS = 2_000;
 const JP_CENTER_VENDOR_IDS: Record<string, string> = {
   TOYOTA: '1',
   NISSAN: '2',
@@ -214,10 +215,16 @@ export class ScraperService implements OnModuleInit {
     const jobs: ScrapeJobResult[] = [];
     const errors: string[] = [];
     this.logger.log(`[SCRAPE START] run=${run.id} trigger=${run.trigger}`);
+    const client = await this.createJpCenterClient();
+    const jobDelayMs = Math.max(
+      0,
+      this.config.get<number>('SCRAPER_JOB_DELAY_MS') ?? DEFAULT_BATCH_JOB_DELAY_MS,
+    );
 
-    for (const job of this.batchJobs()) {
+    const batchJobs = this.batchJobs();
+    for (const [index, job] of batchJobs.entries()) {
       try {
-        const result = await this.importFromJpCenter(job);
+        const result = await this.importFromJpCenter(job, client);
         const jobResult: ScrapeJobResult = {
           maker: job.maker,
           model: job.model,
@@ -254,6 +261,10 @@ export class ScraperService implements OnModuleInit {
         $set: totals,
         $push: { jobs: jobs[jobs.length - 1] },
       });
+
+      if (jobDelayMs > 0 && index < batchJobs.length - 1) {
+        await delay(jobDelayMs);
+      }
     }
 
     const finishedAt = new Date();
@@ -324,7 +335,7 @@ export class ScraperService implements OnModuleInit {
     };
   }
 
-  async importFromJpCenter(options: JpCenterImportOptions) {
+  async importFromJpCenter(options: JpCenterImportOptions, authenticatedClient?: JpCenterClient) {
     const username = this.config.get<string>('JPCENTER_USERNAME');
     const password = this.config.get<string>('JPCENTER_PASSWORD');
 
@@ -342,9 +353,7 @@ export class ScraperService implements OnModuleInit {
 
     const pages = Math.min(Math.max(options.pages ?? 1, 1), 5);
     const listSize = Math.min(Math.max(options.listSize ?? 20, 1), 50);
-    const client = new JpCenterClient(username, password);
-
-    await client.login();
+    const client = authenticatedClient ?? (await this.createJpCenterClient());
 
     const imported = [];
     let created = 0;
@@ -383,6 +392,18 @@ export class ScraperService implements OnModuleInit {
     }
 
     return { fetched, imported: imported.length, created, updated, cars: imported };
+  }
+
+  private async createJpCenterClient() {
+    const username = this.config.get<string>('JPCENTER_USERNAME');
+    const password = this.config.get<string>('JPCENTER_PASSWORD');
+    if (!username || !password) {
+      throw new BadRequestException('JPCENTER_USERNAME and JPCENTER_PASSWORD are required');
+    }
+
+    const client = new JpCenterClient(username, password);
+    await client.login();
+    return client;
   }
 
   async runAutomarketImport(options: AutomarketImportOptions) {
