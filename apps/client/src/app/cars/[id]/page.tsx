@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarDays, Check, ExternalLink } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Check, ExternalLink, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { CarImageGallery } from '@/components/car-image-gallery';
 import { InquiryForm } from '@/components/inquiry-form';
@@ -23,6 +23,8 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
       </main>
     );
   }
+
+  const auctionExpired = isPastAuctionDate(car.auctionDate);
 
   const invoiceCifLkr = car.cost.invoiceCifLkr ?? car.cost.auctionPriceLkr + car.cost.shippingLkr + car.cost.insuranceLkr;
   const taxableCifLkr = car.cost.taxableCifLkr ?? invoiceCifLkr;
@@ -146,6 +148,12 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
                   </div>
                 </div>
               </div>
+              {auctionExpired ? (
+                <div className="mt-4 flex items-start gap-3 rounded-panel border border-amber-400/60 bg-amber-400/10 p-4 text-sm text-foreground">
+                  <TriangleAlert className="mt-0.5 shrink-0 text-amber-500" size={20} />
+                  <p><strong>This auction date has passed.</strong> Availability and the displayed average auction price may no longer be current.</p>
+                </div>
+              ) : null}
             </div>
             <div className="rounded-panel border-l-4 border-brass bg-jdm-panel p-5 text-white">
               <p className="text-xs font-black uppercase tracking-wide text-white/70">Estimated delivered cost to Sri Lanka</p>
@@ -244,6 +252,18 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
       </section>
     </main>
   );
+}
+
+function isPastAuctionDate(value?: string) {
+  if (!value) return false;
+  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const local = value.match(/^(\d{2})[./-](\d{2})[./-](\d{4})/);
+  const dateKey = iso ? `${iso[1]}-${iso[2]}-${iso[3]}` : local ? `${local[3]}-${local[2]}-${local[1]}` : undefined;
+  if (!dateKey) return false;
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+  return dateKey < today;
 }
 
 function jpy(value: number) {

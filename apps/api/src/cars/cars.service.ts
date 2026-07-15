@@ -4,6 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
 import { SettingsService } from '../settings/settings.service';
 import { AuthUser } from '../auth/auth.types';
+import { MediaService } from '../media/media.service';
 import { Car } from './car.schema';
 import { applyWorkbookReferenceCost } from './cost-reference';
 import { CreateCarDto, UpdateCarDto } from './dto';
@@ -15,6 +16,7 @@ export class CarsService {
     @InjectModel(Car.name) private readonly carModel: Model<Car>,
     private readonly settingsService: SettingsService,
     private readonly configService: ConfigService,
+    private readonly mediaService: MediaService,
   ) {}
 
   async findAll(query: { q?: string; maker?: string; model?: string; status?: string }) {
@@ -83,12 +85,14 @@ export class CarsService {
     const car = await this.carModel
       .findByIdAndUpdate(existing._id, payload, { new: true })
       .lean();
+    await this.mediaService.deleteImages(existing.images.filter((image) => !payload.images.includes(image)));
 
     return { car, created: false };
   }
 
   async update(id: string, dto: UpdateCarDto, user?: AuthUser) {
     await this.assertCanManage(id, user);
+    const existing = await this.carModel.findById(id).select('images').lean();
     const payload = await this.withCalculatedCost(dto);
     if (user?.role !== 'ADMIN') {
       delete payload.published;
@@ -99,6 +103,9 @@ export class CarsService {
 
     if (!car) {
       throw new NotFoundException('Car not found');
+    }
+    if (payload.images && existing) {
+      await this.mediaService.deleteImages(existing.images.filter((image) => !payload.images?.includes(image)));
     }
 
     return this.withPublicImageUrls(car);
@@ -118,7 +125,28 @@ export class CarsService {
     if (!car) {
       throw new NotFoundException('Car not found');
     }
+    await this.mediaService.deleteImages(car.images);
     return { deleted: true };
+  }
+
+  async removeExpiredScrapedAuctions(today = colomboDateKey()) {
+    const candidates = await this.carModel
+      .find({ source: { $in: ['JP Center', 'A-Automarket'] }, auctionDate: { $exists: true, $ne: '' } })
+      .select('_id auctionDate images')
+      .lean();
+    const expired = candidates.filter((car) => {
+      const date = normalizeAuctionDate(car.auctionDate);
+      return date !== undefined && date < today;
+    });
+
+    let deletedImages = 0;
+    for (const car of expired) {
+      deletedImages += await this.mediaService.deleteImages(car.images);
+    }
+    if (expired.length) {
+      await this.carModel.deleteMany({ _id: { $in: expired.map((car) => car._id) } });
+    }
+    return { deletedCars: expired.length, deletedImages, cutoffDate: today };
   }
 
   private async assertCanManage(id: string, user?: AuthUser) {
@@ -197,4 +225,26 @@ export class CarsService {
       car.cost.vehicleType?.toLowerCase().includes('commercial van')
     );
   }
+}
+
+export function normalizeAuctionDate(value?: string) {
+  const text = value?.trim();
+  if (!text) return undefined;
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const local = text.match(/^(\d{2})[./-](\d{2})[./-](\d{4})/);
+  const parts = iso ? [iso[1], iso[2], iso[3]] : local ? [local[3], local[2], local[1]] : undefined;
+  if (!parts) return undefined;
+  const [year, month, day] = parts.map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return undefined;
+  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function colomboDateKey() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Colombo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
 }

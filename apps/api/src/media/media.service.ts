@@ -62,6 +62,24 @@ export class MediaService {
     };
   }
 
+  async deleteImages(urls: string[]) {
+    const ids = new Set(
+      urls
+        .map((url) => url.match(/\/images\/gridfs\/([a-f\d]{24})(?:\/|$)/i)?.[1])
+        .filter((id): id is string => Boolean(id)),
+    );
+
+    let deleted = 0;
+    for (const id of ids) {
+      const objectId = new mongo.ObjectId(id);
+      const exists = await this.bucket.find({ _id: objectId }).hasNext();
+      if (!exists) continue;
+      await this.bucket.delete(objectId);
+      deleted += 1;
+    }
+    return deleted;
+  }
+
   private publicBaseUrl() {
     return (
       this.config.get<string>('API_PUBLIC_URL') ||

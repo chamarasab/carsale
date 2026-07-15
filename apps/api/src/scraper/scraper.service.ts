@@ -134,6 +134,10 @@ export class ScraperService implements OnModuleInit {
         },
       },
     );
+    const cleanup = await this.carsService.removeExpiredScrapedAuctions();
+    this.logger.log(
+      `[AUCTION CLEANUP] deletedCars=${cleanup.deletedCars} deletedImages=${cleanup.deletedImages} cutoff=${cleanup.cutoffDate}`,
+    );
   }
 
   async getBotStatus() {
@@ -279,8 +283,9 @@ export class ScraperService implements OnModuleInit {
         durationMs: finishedAt.getTime() - run.startedAt.getTime(),
       },
     });
+    const cleanup = await this.carsService.removeExpiredScrapedAuctions();
     this.logger.log(
-      `[SCRAPE COMPLETE] run=${run.id} status=${status} fetched=${totals.fetched} inserted=${totals.inserted} updated=${totals.updated} errors=${errors.length}`,
+      `[SCRAPE COMPLETE] run=${run.id} status=${status} fetched=${totals.fetched} inserted=${totals.inserted} updated=${totals.updated} errors=${errors.length} expiredDeleted=${cleanup.deletedCars}`,
     );
   }
 

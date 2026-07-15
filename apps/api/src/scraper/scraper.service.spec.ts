@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { normalizeAuctionDate } from '../cars/cars.service';
 import {
   cleanDisplayText,
   extractAutomarketImageUrls,
@@ -16,6 +17,13 @@ test('extracts mileage from a JP Center desktop lot row', () => {
   `;
 
   assert.equal(extractJpCenterMileage(html), 2000);
+});
+
+test('normalizes supported auction dates for expiry cleanup', () => {
+  assert.equal(normalizeAuctionDate('2026-07-15'), '2026-07-15');
+  assert.equal(normalizeAuctionDate('15.07.2026'), '2026-07-15');
+  assert.equal(normalizeAuctionDate('15/07/2026'), '2026-07-15');
+  assert.equal(normalizeAuctionDate('31.02.2026'), undefined);
 });
 
 test('normalizes formatted JP Center mileage', () => {
