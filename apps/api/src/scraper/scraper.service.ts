@@ -4,7 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import * as cheerio from 'cheerio';
 import { Model } from 'mongoose';
 import { extname } from 'node:path';
-import { CarsService } from '../cars/cars.service';
+import { CarsService, colomboDateKey, normalizeAuctionDate } from '../cars/cars.service';
 import { CreateCarDto } from '../cars/dto';
 import { MediaService } from '../media/media.service';
 import { SettingsService } from '../settings/settings.service';
@@ -397,7 +397,7 @@ export class ScraperService implements OnModuleInit {
         yearTo: options.yearTo,
       });
       const sourceRows = payload.body ?? [];
-      const rows = selectRowsWithMileage(sourceRows, listSize);
+      const rows = selectCurrentAuctionRows(sourceRows, listSize, colomboDateKey());
       fetched += sourceRows.length;
 
       for (const row of rows) {
@@ -1021,6 +1021,15 @@ function toNumber(value: string | undefined) {
 
 export function selectRowsWithMileage(rows: JpCenterRow[], limit: number) {
   return rows.filter((row) => toNumber(row.q) > 0).slice(0, limit);
+}
+
+export function selectCurrentAuctionRows(rows: JpCenterRow[], limit: number, today: string) {
+  return rows
+    .filter((row) => {
+      const auctionDate = normalizeAuctionDate(row.e);
+      return toNumber(row.q) > 0 && auctionDate !== undefined && auctionDate >= today;
+    })
+    .slice(0, limit);
 }
 
 function cleanText(value: string | undefined) {

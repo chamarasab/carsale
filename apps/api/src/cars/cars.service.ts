@@ -240,7 +240,7 @@ export function normalizeAuctionDate(value?: string) {
   return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-function colomboDateKey() {
+export function colomboDateKey() {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Colombo',
     year: 'numeric',

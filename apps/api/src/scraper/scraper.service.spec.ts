@@ -8,6 +8,7 @@ import {
   normalizeEngineCapacity,
   parseAutomarketRows,
   selectRowsWithMileage,
+  selectCurrentAuctionRows,
 } from './scraper.service';
 
 test('extracts mileage from a JP Center desktop lot row', () => {
@@ -40,6 +41,16 @@ test('selects only JP Center rows with a known positive mileage', () => {
   const rows = [{ q: '0' }, { q: '2000' }, { q: '' }, { q: '8,000' }, { q: '12000' }];
 
   assert.deepEqual(selectRowsWithMileage(rows, 2), [{ q: '2000' }, { q: '8,000' }]);
+});
+
+test('selects only current or future JP Center auctions', () => {
+  const rows = [
+    { q: '10,000', e: '14.07.2026' },
+    { q: '20,000', e: '15.07.2026' },
+    { q: '30,000', e: '2026-07-16' },
+    { q: '40,000', e: '' },
+  ];
+  assert.deepEqual(selectCurrentAuctionRows(rows, 10, '2026-07-15'), [rows[1], rows[2]]);
 });
 
 test('removes invalid encoded and Japanese title suffixes', () => {
