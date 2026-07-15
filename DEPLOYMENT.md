@@ -70,6 +70,11 @@ JPCENTER_USERNAME=your-jpcenter-username
 JPCENTER_PASSWORD=your-jpcenter-password
 ```
 
+Every address in `ADMIN_EMAILS` is automatically activated and promoted to
+`ADMIN` when it signs in with Google. Multiple administrator accounts are
+supported; removing an address from the variable does not automatically
+demote an existing administrator.
+
 `GOOGLE_CLIENT_ID` must be identical in Vercel and Render. The API validates
 it during startup and exposes only a one-way fingerprint at
 `/api/auth/readiness`; the OAuth client ID itself is not returned.

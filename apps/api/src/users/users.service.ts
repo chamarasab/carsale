@@ -14,9 +14,19 @@ export class UsersService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
+    await this.removeSingleAdminConstraint();
+
+    const adminEmails = this.getAdminEmails();
+    if (adminEmails.length) {
+      await this.userModel.updateMany(
+        { email: { $in: adminEmails } },
+        { $set: { role: 'ADMIN', active: true } },
+      );
+    }
+
     const email =
       this.config.get<string>('ADMIN_INITIAL_EMAIL')?.trim().toLowerCase() ||
-      this.config.get<string>('ADMIN_EMAILS')?.split(',')[0]?.trim().toLowerCase();
+      adminEmails[0];
     const password = this.config.get<string>('ADMIN_INITIAL_PASSWORD');
 
     if (!email || !password) return;
@@ -43,6 +53,7 @@ export class UsersService implements OnModuleInit {
 
   async findOrCreateGoogleUser(input: { googleSubject: string; email: string; name: string }) {
     const email = input.email.trim().toLowerCase();
+    const isAdmin = this.getAdminEmails().includes(email);
     const existing = await this.userModel.findOne({
       $or: [{ googleSubject: input.googleSubject }, { email }],
     });
@@ -50,6 +61,10 @@ export class UsersService implements OnModuleInit {
     if (existing) {
       existing.googleSubject = input.googleSubject;
       if (!existing.name) existing.name = input.name.trim();
+      if (isAdmin) {
+        existing.role = 'ADMIN';
+        existing.active = true;
+      }
       return { user: await existing.save(), created: false };
     }
 
@@ -58,8 +73,8 @@ export class UsersService implements OnModuleInit {
         name: input.name.trim(),
         email,
         googleSubject: input.googleSubject,
-        role: 'USER',
-        active: false,
+        role: isAdmin ? 'ADMIN' : 'USER',
+        active: isAdmin,
       }),
       created: true,
     };
@@ -91,5 +106,24 @@ export class UsersService implements OnModuleInit {
     }
     user.active = active;
     return user.save();
+  }
+
+  private getAdminEmails() {
+    return this.config
+      .get<string>('ADMIN_EMAILS', '')
+      .split(',')
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  private async removeSingleAdminConstraint() {
+    try {
+      const indexes = await this.userModel.collection.indexes();
+      const legacyIndexName = indexes.find((index) => index.name === 'role_1' && index.unique === true)?.name;
+      if (legacyIndexName) await this.userModel.collection.dropIndex(legacyIndexName);
+    } catch (error) {
+      const mongoError = error as { code?: number; codeName?: string };
+      if (mongoError.code !== 26 && mongoError.codeName !== 'NamespaceNotFound') throw error;
+    }
   }
 }
