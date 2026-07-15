@@ -41,6 +41,8 @@ services:
         value: Every 6 hours
       - key: SCRAPER_JOB_DELAY_MS
         value: "2000"
+      - key: SCRAPER_JOB_RETRY_DELAY_MS
+        value: "5000"
       - key: JPY_TO_LKR
         value: "2.08"
       - key: DEFAULT_FREIGHT_JPY

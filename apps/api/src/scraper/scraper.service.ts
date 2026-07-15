@@ -72,6 +72,7 @@ const MIN_AUCTION_SHEET_WIDTH = 220;
 const MIN_AUCTION_SHEET_HEIGHT = 320;
 const LOCAL_IMAGE_ROUTE = '/images/jpcenter';
 const DEFAULT_BATCH_JOB_DELAY_MS = 2_000;
+const DEFAULT_BATCH_JOB_RETRY_DELAY_MS = 5_000;
 const JP_CENTER_VENDOR_IDS: Record<string, string> = {
   TOYOTA: '1',
   NISSAN: '2',
@@ -224,7 +225,7 @@ export class ScraperService implements OnModuleInit {
     const batchJobs = this.batchJobs();
     for (const [index, job] of batchJobs.entries()) {
       try {
-        const result = await this.importFromJpCenter(job, client);
+        const result = await this.runJpCenterJob(job, client);
         const jobResult: ScrapeJobResult = {
           maker: job.maker,
           model: job.model,
@@ -292,6 +293,23 @@ export class ScraperService implements OnModuleInit {
     } catch {
       this.logger.warn('SCRAPER_JOBS_JSON is invalid; using default JP Center jobs');
       return DEFAULT_JP_CENTER_JOBS;
+    }
+  }
+
+  private async runJpCenterJob(job: JpCenterBatchJob, batchClient: JpCenterClient) {
+    try {
+      return await this.importFromJpCenter(job, batchClient);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const retryDelayMs = Math.max(
+        0,
+        this.config.get<number>('SCRAPER_JOB_RETRY_DELAY_MS') ?? DEFAULT_BATCH_JOB_RETRY_DELAY_MS,
+      );
+      this.logger.warn(
+        `[SCRAPE JOB RETRY] ${job.maker} ${job.model} after ${retryDelayMs}ms: ${message}`,
+      );
+      if (retryDelayMs > 0) await delay(retryDelayMs);
+      return this.importFromJpCenter(job);
     }
   }
 
@@ -585,9 +603,18 @@ export class ScraperService implements OnModuleInit {
     const motorPowerKw = inferMotorPowerKw(vehicleIdentity);
     const sourceUrl = `${JP_CENTER_BASE_URL}/${cleanText(row.f1) || 'aj'}-${cleanText(row.a)}.htm`;
     const imagePrefix = imageFilePrefix(query.model, lotNumber || cleanText(row.a));
-    const details = await client.fetchAuctionDetails(sourceUrl);
+    let detailImages: string[] = [];
+    let detailMileage: number | undefined;
+    try {
+      const details = await client.fetchAuctionDetails(sourceUrl);
+      detailImages = details.imageUrls;
+      detailMileage = details.mileageKm;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`[SCRAPE DETAIL FALLBACK] ${sourceUrl}: ${message}`);
+    }
     const images = await selectHighQualityImages(
-      details.imageUrls.length ? details.imageUrls : imageUrlsFromTokens([row.x, row.y, row.z]),
+      detailImages.length ? detailImages : imageUrlsFromTokens([row.x, row.y, row.z]),
       imagePrefix,
       this.config.get<string>('API_PUBLIC_URL') ?? 'http://localhost:4000',
       this.mediaService,
@@ -603,7 +630,7 @@ export class ScraperService implements OnModuleInit {
       model: titleCase(query.model),
       modelCode,
       year,
-      mileageKm: details.mileageKm ?? toNumber(row.q),
+      mileageKm: detailMileage ?? toNumber(row.q),
       fuelType,
       transmission: 'Automatic',
       auctionGrade: grade,
