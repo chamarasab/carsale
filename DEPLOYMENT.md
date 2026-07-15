@@ -5,6 +5,18 @@ This repository is a monorepo with:
 - `apps/client`: Next.js storefront/admin client
 - `apps/api`: NestJS API, MongoDB connection, JP Center scraper, local image serving
 
+## Canonical production services
+
+Only these services should be connected to the `main` branch:
+
+- Vercel project `carsale-client`, with Root Directory set to `apps/client`
+- Render web service `carsale-1`, with build command
+  `npm install && npm run build --workspace apps/api`
+
+Do not connect a second Vercel API project or a repository-root Vercel project.
+Render must not run the root `npm run build`, because that also builds the
+Next.js client using environment variables that belong exclusively to Vercel.
+
 ## Vercel client
 
 Import the GitHub repository in Vercel and use these settings:
