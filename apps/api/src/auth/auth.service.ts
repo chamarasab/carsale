@@ -5,7 +5,7 @@ import * as bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
 import { UsersService } from '../users/users.service';
 import { CreateUserDto } from '../users/dto';
-import { GoogleLoginDto, LoginDto } from './dto';
+import { GoogleLoginDto, LoginDto, RefreshTokenDto } from './dto';
 import { googleClientIdFingerprint } from '../config/environment';
 
 @Injectable()
@@ -61,6 +61,20 @@ export class AuthService {
     };
   }
 
+  async refresh(dto: RefreshTokenDto) {
+    try {
+      const payload = await this.jwtService.verifyAsync<{ sub: string; tokenType?: string }>(dto.refreshToken);
+      if (payload.tokenType !== 'refresh') throw new UnauthorizedException('Invalid refresh token');
+
+      const user = await this.usersService.findActiveById(payload.sub);
+      if (!user) throw new UnauthorizedException('Account is inactive or unavailable');
+      return this.createSession(user);
+    } catch (error) {
+      if (error instanceof UnauthorizedException) throw error;
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+  }
+
   async signup(dto: CreateUserDto) {
     const user = await this.usersService.createUser(dto);
     return this.createSession(user);
@@ -86,7 +100,12 @@ export class AuthService {
         email: authUser.email,
         name: authUser.name,
         role: authUser.role,
+        tokenType: 'access',
       }),
+      refreshToken: await this.jwtService.signAsync(
+        { sub: authUser.id, tokenType: 'refresh' },
+        { expiresIn: '30d' },
+      ),
       user: authUser,
     };
   }

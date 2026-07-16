@@ -17,7 +17,8 @@ export class JwtAuthGuard implements CanActivate {
     if (type !== 'Bearer' || !token) throw new UnauthorizedException('Missing bearer token');
 
     try {
-      const payload = await this.jwtService.verifyAsync<{ sub: string }>(token);
+      const payload = await this.jwtService.verifyAsync<{ sub: string; tokenType?: string }>(token);
+      if (payload.tokenType === 'refresh') throw new UnauthorizedException('Refresh tokens cannot access the API');
       const user = await this.usersService.findActiveById(payload.sub);
       if (!user) throw new UnauthorizedException('Account is inactive or unavailable');
       request.user = { id: String(user._id), email: user.email, name: user.name, role: user.role };

@@ -14,3 +14,9 @@ export class GoogleLoginDto {
   @IsNotEmpty()
   idToken: string;
 }
+
+export class RefreshTokenDto {
+  @IsString()
+  @IsNotEmpty()
+  refreshToken: string;
+}

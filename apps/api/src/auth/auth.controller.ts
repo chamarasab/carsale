@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { AuthUser } from './auth.types';
-import { GoogleLoginDto, LoginDto } from './dto';
+import { GoogleLoginDto, LoginDto, RefreshTokenDto } from './dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CreateUserDto } from '../users/dto';
 
@@ -23,6 +23,11 @@ export class AuthController {
   @Get('readiness')
   googleAuthReadiness() {
     return this.authService.googleAuthReadiness();
+  }
+
+  @Post('refresh')
+  refresh(@Body() dto: RefreshTokenDto) {
+    return this.authService.refresh(dto);
   }
 
   @Post('signup')
