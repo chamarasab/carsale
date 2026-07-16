@@ -75,6 +75,8 @@ const MIN_AUCTION_SHEET_HEIGHT = 320;
 const LOCAL_IMAGE_ROUTE = '/images/jpcenter';
 const DEFAULT_BATCH_JOB_DELAY_MS = 2_000;
 const DEFAULT_BATCH_JOB_RETRY_DELAY_MS = 5_000;
+const DEFAULT_LOGIN_RETRY_DELAY_MS = 15_000;
+const DEFAULT_LOGIN_ATTEMPTS = 3;
 const JP_CENTER_VENDOR_IDS: Record<string, string> = {
   TOYOTA: '1',
   NISSAN: '2',
@@ -438,9 +440,32 @@ export class ScraperService implements OnModuleInit {
       throw new BadRequestException('JPCENTER_USERNAME and JPCENTER_PASSWORD are required');
     }
 
-    const client = new JpCenterClient(username, password);
-    await client.login();
-    return client;
+    const attempts = Math.max(
+      1,
+      this.config.get<number>('SCRAPER_LOGIN_ATTEMPTS') ?? DEFAULT_LOGIN_ATTEMPTS,
+    );
+    const retryDelayMs = Math.max(
+      0,
+      this.config.get<number>('SCRAPER_LOGIN_RETRY_DELAY_MS') ?? DEFAULT_LOGIN_RETRY_DELAY_MS,
+    );
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        const client = new JpCenterClient(username, password);
+        await client.login();
+        return client;
+      } catch (error) {
+        lastError = error;
+        if (attempt < attempts) {
+          const waitMs = retryDelayMs * attempt;
+          this.logger.warn(`[SCRAPE LOGIN RETRY] attempt=${attempt + 1}/${attempts} waitMs=${waitMs}`);
+          if (waitMs > 0) await delay(waitMs);
+        }
+      }
+    }
+
+    throw lastError;
   }
 
   async runAutomarketImport(options: AutomarketImportOptions) {
