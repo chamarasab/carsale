@@ -6,6 +6,7 @@ import {
   cleanDisplayText,
   extractAutomarketImageUrls,
   extractJpCenterMileage,
+  isAutomarketAuctionSheetUrl,
   normalizeEngineCapacity,
   parseAutomarketRows,
   selectRowsWithMileage,
@@ -118,4 +119,19 @@ test('extracts Automarket detail images and normalizes known rounded capacities'
   );
   assert.equal(normalizeEngineCapacity(1000, 'M900A'), 996);
   assert.equal(normalizeEngineCapacity(1200, 'A202A'), 1196);
+});
+
+test('recognizes Automarket image zero as the auction sheet', () => {
+  assert.equal(
+    isAutomarketAuctionSheetUrl(
+      'https://i.aleado.ru/pic/?system=auto&date=2026-07-18&auct=81&bid=3006&number=0',
+    ),
+    true,
+  );
+  assert.equal(
+    isAutomarketAuctionSheetUrl(
+      'https://i.aleado.ru/pic/?system=auto&date=2026-07-18&auct=81&bid=3006&number=1',
+    ),
+    false,
+  );
 });

@@ -1117,7 +1117,7 @@ async function selectHighQualityImages(
     highQuality.push(image);
   }
 
-  const orderedImages = highQuality.sort((left, right) => imageDisplayRank(left.dimensions) - imageDisplayRank(right.dimensions));
+  const orderedImages = highQuality.sort((left, right) => imageDisplayRank(left) - imageDisplayRank(right));
 
   return Promise.all(
     orderedImages.map((image, index) => saveImage(image, sourceKey, timestampBase, index, localRoute, mediaService)),
@@ -1189,7 +1189,7 @@ async function saveImage(
     sourceUrl: image.url,
     width: image.dimensions.width,
     height: image.dimensions.height,
-    imageKind: isLikelyAuctionSheet(image.dimensions) ? 'auction-sheet' : 'vehicle-photo',
+    imageKind: isLikelyAuctionSheet(image) ? 'auction-sheet' : 'vehicle-photo',
   });
 }
 
@@ -1267,12 +1267,26 @@ function isUsableVehicleImage(dimensions: { width: number; height: number }) {
   return landscapePhoto || portraitAuctionSheet;
 }
 
-function imageDisplayRank(dimensions: { width: number; height: number }) {
-  return isLikelyAuctionSheet(dimensions) ? 1 : 0;
+function imageDisplayRank(image: { url: string; dimensions: { width: number; height: number } }) {
+  return isLikelyAuctionSheet(image) ? 1 : 0;
 }
 
-function isLikelyAuctionSheet(dimensions: { width: number; height: number }) {
-  return dimensions.height > dimensions.width * 1.15;
+function isLikelyAuctionSheet(image: { url: string; dimensions: { width: number; height: number } }) {
+  return isAutomarketAuctionSheetUrl(image.url) || image.dimensions.height > image.dimensions.width * 1.15;
+}
+
+export function isAutomarketAuctionSheetUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return (
+      url.hostname === 'i.aleado.ru'
+      && url.pathname === '/pic/'
+      && url.searchParams.get('system') === 'auto'
+      && url.searchParams.get('number') === '0'
+    );
+  } catch {
+    return false;
+  }
 }
 
 function inferFuelType(model: string) {
