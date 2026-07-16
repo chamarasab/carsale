@@ -80,6 +80,10 @@ export type ScraperStatus = {
     yearTo?: number;
   }>;
   lastRun: ScrapeRun | null;
+  lastRuns?: {
+    jpCenter: ScrapeRun | null;
+    automarket: ScrapeRun | null;
+  };
   runs: ScrapeRun[];
 };
 

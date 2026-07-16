@@ -141,7 +141,11 @@ export class ScraperService implements OnModuleInit {
   }
 
   async getBotStatus() {
-    const runs = await this.scrapeRunModel.find().sort({ startedAt: -1 }).limit(10).lean();
+    const [runs, lastJpCenterRun, lastAutomarketRun] = await Promise.all([
+      this.scrapeRunModel.find().sort({ startedAt: -1 }).limit(10).lean(),
+      this.scrapeRunModel.findOne({ source: 'JP Center' }).sort({ startedAt: -1 }).lean(),
+      this.scrapeRunModel.findOne({ source: 'A-Automarket' }).sort({ startedAt: -1 }).lean(),
+    ]);
     return {
       source: 'JP Center',
       sourceUrl: JP_CENTER_BASE_URL,
@@ -157,6 +161,10 @@ export class ScraperService implements OnModuleInit {
         yearTo,
       })),
       lastRun: runs[0] ?? null,
+      lastRuns: {
+        jpCenter: lastJpCenterRun,
+        automarket: lastAutomarketRun,
+      },
       runs,
     };
   }

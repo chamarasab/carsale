@@ -3,9 +3,15 @@
 import { DatabaseZap, Play, RefreshCcw, Search } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { Nav } from '@/components/nav';
-import { getScraperStatus, runAutomarketScraper, runScraper, ScraperStatus } from '@/lib/admin-api';
+import {
+  getScraperStatus,
+  runAutomarketScraper,
+  runScraper,
+  ScrapeRun,
+  ScraperStatus,
+} from '@/lib/admin-api';
 
 const inputClass =
   'mt-2 h-11 w-full rounded-panel border border-line bg-field px-3 text-sm font-bold text-foreground outline-none focus:border-signal';
@@ -72,7 +78,12 @@ export default function AdminScraperPage() {
     }
   }
 
-  const lastRun = scraper?.lastRun;
+  const lastJpCenterRun = scraper?.lastRuns?.jpCenter
+    ?? scraper?.runs.find((run) => run.source === 'JP Center')
+    ?? null;
+  const lastAutomarketRun = scraper?.lastRuns?.automarket
+    ?? scraper?.runs.find((run) => run.source === 'A-Automarket')
+    ?? null;
 
   return (
     <main className="min-h-screen">
@@ -121,35 +132,10 @@ export default function AdminScraperPage() {
           </section>
         ) : (
           <>
-            <section className="mt-8 rounded-panel border border-line bg-surface p-5 shadow-soft">
-              <div className="flex items-center gap-3">
-                <DatabaseZap className="text-signal" size={22} />
-                <div>
-                  <p className="text-xs font-black uppercase tracking-wide text-muted">Latest run</p>
-                  <h2 className="text-xl font-black text-foreground">
-                    {lastRun ? `${lastRun.status} · ${lastRun.trigger}` : 'No runs recorded'}
-                  </h2>
-                </div>
-              </div>
-              <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-panel bg-line sm:grid-cols-4">
-                {[
-                  ['Fetched', lastRun?.fetched ?? 0],
-                  ['Inserted', lastRun?.inserted ?? 0],
-                  ['Updated', lastRun?.updated ?? 0],
-                  ['Failed jobs', lastRun?.failedJobs ?? 0],
-                ].map(([label, value]) => (
-                  <div className="bg-field p-4" key={label}>
-                    <p className="text-xs font-black uppercase text-muted">{label}</p>
-                    <p className="mt-1 text-2xl font-black text-foreground">{value}</p>
-                  </div>
-                ))}
-              </div>
-              {lastRun?.errors.length ? (
-                <div className="mt-4 border-l-4 border-red-500 bg-red-500/8 p-4 text-sm font-bold text-red-500">
-                  {lastRun.errors.map((error) => <p key={error}>{error}</p>)}
-                </div>
-              ) : null}
-            </section>
+            <div className="mt-8 grid gap-6 lg:grid-cols-2">
+              <RunSummary icon={<DatabaseZap size={22} />} run={lastJpCenterRun} source="JP Center" />
+              <RunSummary icon={<Search size={22} />} run={lastAutomarketRun} source="A-Automarket" />
+            </div>
 
             <section className="mt-6 rounded-panel border border-line bg-surface p-5 shadow-soft">
               <div className="flex items-center gap-3">
@@ -303,5 +289,40 @@ function RunValue({ label, value }: { label: string; value: number }) {
       <p className="text-xs font-black uppercase text-muted">{label}</p>
       <p className="mt-1 font-black text-foreground">{value}</p>
     </div>
+  );
+}
+
+function RunSummary({ icon, run, source }: { icon: ReactNode; run: ScrapeRun | null; source: string }) {
+  return (
+    <section className="rounded-panel border border-line bg-surface p-5 shadow-soft">
+      <div className="flex items-center gap-3">
+        <span className="text-signal">{icon}</span>
+        <div>
+          <p className="text-xs font-black uppercase tracking-wide text-muted">Latest {source} run</p>
+          <h2 className="text-xl font-black capitalize text-foreground">
+            {run ? `${run.status} · ${run.trigger}` : 'No runs recorded'}
+          </h2>
+          {run ? <p className="mt-1 text-xs font-bold text-muted">{new Date(run.startedAt).toLocaleString()}</p> : null}
+        </div>
+      </div>
+      <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-panel bg-line sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+        {[
+          ['Fetched', run?.fetched ?? 0],
+          ['Inserted', run?.inserted ?? 0],
+          ['Updated', run?.updated ?? 0],
+          ['Failed jobs', run?.failedJobs ?? 0],
+        ].map(([label, value]) => (
+          <div className="bg-field p-4" key={label}>
+            <p className="text-xs font-black uppercase text-muted">{label}</p>
+            <p className="mt-1 text-2xl font-black text-foreground">{value}</p>
+          </div>
+        ))}
+      </div>
+      {run?.errors.length ? (
+        <div className="mt-4 border-l-4 border-red-500 bg-red-500/8 p-4 text-sm font-bold text-red-500">
+          {run.errors.map((error) => <p key={error}>{error}</p>)}
+        </div>
+      ) : null}
+    </section>
   );
 }
