@@ -5,7 +5,9 @@ type CarLike = {
   maker?: string;
   model?: string;
   modelCode?: string;
+  vehicleGrade?: string;
   chassisCode?: string;
+  // Auction condition grade is intentionally excluded from vehicle-variant matching.
   auctionGrade?: string;
   features?: string[];
   cost: CreateCarDto['cost'];
@@ -211,7 +213,7 @@ function engineBandReference(car: CarLike, inferredFuelType?: string): WorkbookR
 
 function workbookBenchmark(car: CarLike, fuelType: string | undefined, reference: WorkbookReference) {
   const engineCapacity = car.cost.engineCapacity ?? 0;
-  const identity = `${car.title ?? ''} ${car.model ?? ''} ${car.auctionGrade ?? ''}`;
+  const identity = `${car.title ?? ''} ${car.model ?? ''} ${car.vehicleGrade ?? ''}`;
 
   if (/RAIZE/i.test(reference.label)) {
     const exchangeRateLkr = /A210A/i.test(reference.label)
@@ -265,7 +267,7 @@ function workbookBenchmark(car: CarLike, fuelType: string | undefined, reference
 function findWorkbookReference(car: CarLike) {
   const model = `${car.maker ?? ''} ${car.model ?? ''} ${car.title ?? ''}`;
   const code = `${car.modelCode ?? ''} ${car.chassisCode ?? ''}`;
-  const grade = `${car.auctionGrade ?? ''} ${car.title ?? ''} ${(car.features ?? []).join(' ')}`;
+  const grade = `${car.vehicleGrade ?? ''} ${car.title ?? ''} ${(car.features ?? []).join(' ')}`;
 
   return references.find((reference) => {
     if (!reference.model.test(model)) return false;
@@ -281,7 +283,7 @@ function inferTaxProfile(car: CarLike) {
     car.model,
     car.modelCode,
     car.chassisCode,
-    car.auctionGrade,
+    car.vehicleGrade,
     ...(car.features ?? []),
   ]
     .filter(Boolean)

@@ -66,6 +66,7 @@ export type Car = {
   maker: string;
   model: string;
   modelCode?: string;
+  vehicleGrade?: string;
   categoryId?: string;
   categoryMeaning?: string;
   year: number;

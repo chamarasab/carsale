@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { normalizeAuctionGrade } from '../cars/auction-grades';
 import { normalizeAuctionDate } from '../cars/cars.service';
 import {
   cleanDisplayText,
@@ -25,6 +26,13 @@ test('normalizes supported auction dates for expiry cleanup', () => {
   assert.equal(normalizeAuctionDate('15.07.2026'), '2026-07-15');
   assert.equal(normalizeAuctionDate('15/07/2026'), '2026-07-15');
   assert.equal(normalizeAuctionDate('31.02.2026'), undefined);
+});
+
+test('accepts only supported auction condition grades', () => {
+  assert.equal(normalizeAuctionGrade('4.0'), '4');
+  assert.equal(normalizeAuctionGrade('ra'), 'RA');
+  assert.equal(normalizeAuctionGrade('Premium G HEV'), undefined);
+  assert.equal(normalizeAuctionGrade('A'), undefined);
 });
 
 test('normalizes formatted JP Center mileage', () => {
@@ -61,7 +69,7 @@ test('removes invalid encoded and Japanese title suffixes', () => {
   assert.equal(cleanDisplayText('Hybrid ZX カスタム Package'), 'Hybrid ZX');
 });
 
-test('parses an Automarket auction result row', () => {
+test('parses Automarket vehicle trim and auction score separately', () => {
   const html = `
     <div id="currencyLot1">JPY</div><div id="priceLotS1">750</div>
     <table><tr id="cell_1">
@@ -73,6 +81,7 @@ test('parses an Automarket auction result row', () => {
       <td id="year_1">2026</td><td id="mileage_1">8 000</td><td id="displacement_1">1000cc</td>
       <td id="transmission_1">IAT</td><td id="color_1">BLACK</td><td id="model_type_1">M900A</td>
       <td id="equipment_1">AC</td>
+      <td id="scores_1">4.5</td>
     </tr></table>`;
 
   assert.deepEqual(parseAutomarketRows(html), [{
@@ -82,7 +91,8 @@ test('parses an Automarket auction result row', () => {
     auctionName: 'TAA Chubu',
     maker: 'TOYOTA',
     model: 'ROOMY',
-    grade: 'X',
+    vehicleGrade: 'X',
+    auctionGrade: '4.5',
     year: 2026,
     mileageKm: 8000,
     engineCapacity: 1000,

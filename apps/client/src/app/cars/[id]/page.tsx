@@ -4,6 +4,7 @@ import { CarImageGallery } from '@/components/car-image-gallery';
 import { InquiryForm } from '@/components/inquiry-form';
 import { Nav } from '@/components/nav';
 import { getCar, getExchangeRate } from '@/lib/api';
+import { auctionGradeDescription } from '@/lib/auction-grades';
 import { lkr } from '@/lib/format';
 
 export default async function CarDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -25,6 +26,7 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
   }
 
   const auctionExpired = isPastAuctionDate(car.auctionDate);
+  const gradeDescription = auctionGradeDescription(car.auctionGrade);
 
   const invoiceCifLkr = car.cost.invoiceCifLkr ?? car.cost.auctionPriceLkr + car.cost.shippingLkr + car.cost.insuranceLkr;
   const taxableCifLkr = car.cost.taxableCifLkr ?? invoiceCifLkr;
@@ -125,8 +127,8 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
               <p className="text-xs font-black uppercase tracking-wide text-signal">{car.location}</p>
               <h1 className="mt-2 text-4xl font-black leading-tight text-foreground">{car.title}</h1>
               <p className="mt-3 text-sm leading-6 text-muted">
-                {car.year} {car.maker} {car.model}, {car.mileageKm.toLocaleString()} km, {car.fuelType}, {car.transmission},
-                auction grade {car.auctionGrade}.
+                {car.year} {car.maker} {car.model}{car.vehicleGrade ? ` ${car.vehicleGrade}` : ''}, {car.mileageKm.toLocaleString()} km, {car.fuelType}, {car.transmission},
+                auction condition grade {car.auctionGrade}.
               </p>
               <div className="mt-5 grid gap-3 border-y border-line py-4 sm:grid-cols-2">
                 <div className="flex items-start gap-3">
@@ -147,6 +149,11 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
                     </p>
                   </div>
                 </div>
+              </div>
+              <div className="mt-4 border-l-4 border-signal bg-field p-4">
+                <p className="text-xs font-black uppercase tracking-wide text-muted">Auction condition grade {car.auctionGrade}</p>
+                {gradeDescription ? <p className="mt-1 text-sm font-bold leading-6 text-foreground">{gradeDescription}</p> : null}
+                {car.vehicleGrade ? <p className="mt-2 text-xs font-bold text-muted">Vehicle grade / trim: {car.vehicleGrade}</p> : null}
               </div>
               {auctionExpired ? (
                 <div className="mt-4 flex items-start gap-3 rounded-panel border border-amber-400/60 bg-amber-400/10 p-4 text-sm text-foreground">

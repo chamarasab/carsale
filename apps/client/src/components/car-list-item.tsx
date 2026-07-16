@@ -1,6 +1,7 @@
 import { ArrowRight, Gauge, MapPin, ShieldCheck, Ship } from 'lucide-react';
 import Link from 'next/link';
 import { CarPhoto, firstVehiclePhoto } from '@/components/car-photo';
+import { auctionGradeDescription } from '@/lib/auction-grades';
 import { compactNumber, lkr } from '@/lib/format';
 import { Car } from '@/lib/types';
 
@@ -19,8 +20,11 @@ export function CarListItem({ car }: { car: Car }) {
           image={thumbnail}
           sizes="(min-width: 768px) 230px, 100vw"
         />
-        <div className="bg-brand-gradient-inverse absolute left-3 top-3 rounded-panel px-3 py-1 text-xs font-black uppercase text-white shadow">
-          Grade {car.auctionGrade}
+        <div
+          className="bg-brand-gradient-inverse absolute left-3 top-3 rounded-panel px-3 py-1 text-xs font-black uppercase text-white shadow"
+          title={auctionGradeDescription(car.auctionGrade)}
+        >
+          Auction {car.auctionGrade}
         </div>
       </div>
       <div className="min-w-0 p-5">

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { CarPhoto } from '@/components/car-photo';
 import { Nav } from '@/components/nav';
+import { AUCTION_GRADE_OPTIONS } from '@/lib/auction-grades';
 import {
   createCarAdvertisement,
   createVehicleCategory,
@@ -26,6 +27,7 @@ type CarForm = {
   maker: string;
   model: string;
   modelCode: string;
+  vehicleGrade: string;
   categoryId: string;
   categoryMeaning: string;
   year: string;
@@ -86,6 +88,7 @@ const initialCarForm: CarForm = {
   maker: '',
   model: '',
   modelCode: '',
+  vehicleGrade: '',
   categoryId: '',
   categoryMeaning: '',
   year: '2026',
@@ -308,6 +311,7 @@ export default function AdminVehiclesPage() {
         maker: carForm.maker,
         model: carForm.model,
         modelCode: carForm.modelCode || undefined,
+        vehicleGrade: carForm.vehicleGrade || undefined,
         categoryId: carForm.categoryId || undefined,
         categoryMeaning: carForm.categoryMeaning || undefined,
         year: Number(carForm.year),
@@ -428,6 +432,7 @@ export default function AdminVehiclesPage() {
       maker: car.maker,
       model: car.model,
       modelCode: car.modelCode ?? '',
+      vehicleGrade: car.vehicleGrade ?? '',
       categoryId: car.categoryId ?? '',
       categoryMeaning: car.categoryMeaning ?? '',
       year: String(car.year),
@@ -580,7 +585,7 @@ export default function AdminVehiclesPage() {
                 </label>
               </div>
               <label className={labelClass}>
-                Grades
+                Vehicle grades / trims
                 <input
                   className={inputClass}
                   value={categoryForm.grades?.join(', ') ?? ''}
@@ -744,6 +749,10 @@ export default function AdminVehiclesPage() {
                 <input className={inputClass} required value={carForm.model} onChange={(event) => setCarForm({ ...carForm, model: event.target.value })} />
               </label>
               <label className={labelClass}>
+                Vehicle grade / trim
+                <input className={inputClass} value={carForm.vehicleGrade} onChange={(event) => setCarForm({ ...carForm, vehicleGrade: event.target.value })} />
+              </label>
+              <label className={labelClass}>
                 Year
                 <input className={inputClass} min="1980" required type="number" value={carForm.year} onChange={(event) => setCarForm({ ...carForm, year: event.target.value })} />
               </label>
@@ -760,8 +769,12 @@ export default function AdminVehiclesPage() {
                 <input className={inputClass} required value={carForm.transmission} onChange={(event) => setCarForm({ ...carForm, transmission: event.target.value })} />
               </label>
               <label className={labelClass}>
-                Auction grade
-                <input className={inputClass} required value={carForm.auctionGrade} onChange={(event) => setCarForm({ ...carForm, auctionGrade: event.target.value })} />
+                Auction condition grade
+                <select className={inputClass} required value={carForm.auctionGrade} onChange={(event) => setCarForm({ ...carForm, auctionGrade: event.target.value })}>
+                  {AUCTION_GRADE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.value} - {option.description}</option>
+                  ))}
+                </select>
               </label>
               <label className={labelClass}>
                 Chassis code
@@ -928,10 +941,11 @@ export default function AdminVehiclesPage() {
                     ['Year', previewCar.year],
                     ['Maker', previewCar.maker],
                     ['Model', previewCar.model],
+                    ['Vehicle grade / trim', previewCar.vehicleGrade ?? 'Not provided'],
                     ['Mileage', `${previewCar.mileageKm.toLocaleString()} km`],
                     ['Fuel', previewCar.fuelType],
                     ['Transmission', previewCar.transmission],
-                    ['Auction grade', previewCar.auctionGrade],
+                    ['Auction condition grade', previewCar.auctionGrade],
                     ['Chassis', previewCar.chassisCode],
                     ['Location', previewCar.location],
                     ['Auction date', displayDate(previewCar.auctionDate)],

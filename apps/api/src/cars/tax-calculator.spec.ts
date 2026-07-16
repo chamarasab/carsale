@@ -187,7 +187,8 @@ test('matches the Roomy declaration tax structure from website value to customs 
     model: 'Roomy',
     modelCode: 'M900A',
     chassisCode: 'M900A',
-    auctionGrade: 'Custom G',
+    vehicleGrade: 'Custom G',
+    auctionGrade: '4',
     features: [],
     cost: baseCost({
       auctionPriceJpy: 400_000,

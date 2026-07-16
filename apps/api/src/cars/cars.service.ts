@@ -1,10 +1,11 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
 import { SettingsService } from '../settings/settings.service';
 import { AuthUser } from '../auth/auth.types';
 import { MediaService } from '../media/media.service';
+import { AUCTION_GRADES, normalizeAuctionGrade } from './auction-grades';
 import { Car } from './car.schema';
 import { applyWorkbookReferenceCost } from './cost-reference';
 import { CreateCarDto, UpdateCarDto } from './dto';
@@ -20,7 +21,7 @@ export class CarsService {
   ) {}
 
   async findAll(query: { q?: string; maker?: string; model?: string; status?: string }) {
-    const filter: FilterQuery<Car> = { published: true };
+    const filter: FilterQuery<Car> = { published: true, auctionGrade: { $in: AUCTION_GRADES } };
 
     if (query.q) {
       filter.$text = { $search: query.q };
@@ -54,7 +55,9 @@ export class CarsService {
   }
 
   async findOne(id: string) {
-    const car = await this.carModel.findOne({ _id: id, published: true }).lean();
+    const car = await this.carModel
+      .findOne({ _id: id, published: true, auctionGrade: { $in: AUCTION_GRADES } })
+      .lean();
     if (!car) {
       throw new NotFoundException('Car not found');
     }
@@ -149,6 +152,39 @@ export class CarsService {
     return { deletedCars: expired.length, deletedImages, cutoffDate: today };
   }
 
+  async sanitizeAuctionGrades() {
+    const cars = await this.carModel
+      .find()
+      .select('_id auctionGrade source images published')
+      .lean();
+    let normalizedCars = 0;
+    let deletedCars = 0;
+    let unpublishedCars = 0;
+    let deletedImages = 0;
+
+    for (const car of cars) {
+      const grade = normalizeAuctionGrade(car.auctionGrade);
+      if (grade) {
+        if (grade !== car.auctionGrade) {
+          await this.carModel.findByIdAndUpdate(car._id, { auctionGrade: grade });
+          normalizedCars += 1;
+        }
+        continue;
+      }
+
+      if (['JP Center', 'A-Automarket'].includes(car.source)) {
+        deletedImages += await this.mediaService.deleteImages(car.images);
+        await this.carModel.findByIdAndDelete(car._id);
+        deletedCars += 1;
+      } else if (car.published) {
+        await this.carModel.findByIdAndUpdate(car._id, { published: false });
+        unpublishedCars += 1;
+      }
+    }
+
+    return { normalizedCars, deletedCars, unpublishedCars, deletedImages };
+  }
+
   private async assertCanManage(id: string, user?: AuthUser) {
     if (!user || user.role === 'ADMIN') return;
     const car = await this.carModel.findById(id).select('createdBy').lean();
@@ -176,12 +212,25 @@ export class CarsService {
   private async withCalculatedCost(dto: CreateCarDto): Promise<CreateCarDto & { cost: ReturnType<typeof calculateImportCost> }>;
   private async withCalculatedCost(dto: UpdateCarDto): Promise<UpdateCarDto>;
   private async withCalculatedCost(dto: CreateCarDto | UpdateCarDto) {
-    if (!dto.cost) {
-      return dto;
+    const normalizedDto = this.withValidAuctionGrade(dto);
+    if (!normalizedDto.cost) {
+      return normalizedDto;
     }
 
     const settings = await this.settingsService.getTaxSettings();
-    return { ...dto, cost: calculateImportCost(dto.cost as CreateCarDto['cost'], settings) };
+    return {
+      ...normalizedDto,
+      cost: calculateImportCost(normalizedDto.cost as CreateCarDto['cost'], settings),
+    };
+  }
+
+  private withValidAuctionGrade<T extends CreateCarDto | UpdateCarDto>(dto: T): T {
+    if (dto.auctionGrade === undefined) return dto;
+    const auctionGrade = normalizeAuctionGrade(dto.auctionGrade);
+    if (!auctionGrade) {
+      throw new BadRequestException(`Auction grade must be one of: ${AUCTION_GRADES.join(', ')}`);
+    }
+    return { ...dto, auctionGrade };
   }
 
   private withPublicImageUrls<T extends { images?: string[] }>(car: T): T {

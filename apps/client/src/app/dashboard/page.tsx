@@ -3,6 +3,7 @@ import { CarCard } from '@/components/car-card';
 import { CarListItem } from '@/components/car-list-item';
 import { CarSearchForm } from '@/components/car-search-form';
 import { Nav } from '@/components/nav';
+import { AUCTION_GRADES } from '@/lib/auction-grades';
 import { getCars, getExchangeRate } from '@/lib/api';
 import type { Car } from '@/lib/types';
 
@@ -22,14 +23,13 @@ function inventoryMarket(car: Car) {
 
 function gradeRank(grade: string) {
   if (grade.toUpperCase() === 'S') return 100;
-  if (grade.toUpperCase() === 'A') return 99;
   if (grade.toUpperCase() === 'RA') return 2;
   if (grade.toUpperCase() === 'R') return 1;
   return Number.parseFloat(grade) || 0;
 }
 
 function isAuctionGrade(grade: string) {
-  return /^(?:[0-6](?:\.5)?|S|A|R|RA)$/i.test(grade);
+  return AUCTION_GRADES.includes(grade.toUpperCase() as (typeof AUCTION_GRADES)[number]);
 }
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<SearchParams> }) {

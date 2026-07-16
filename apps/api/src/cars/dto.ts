@@ -11,6 +11,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { AUCTION_GRADES } from './auction-grades';
 
 export class CostBreakdownDto {
   @IsNumber()
@@ -269,6 +270,10 @@ export class CreateCarDto {
 
   @IsOptional()
   @IsString()
+  vehicleGrade?: string;
+
+  @IsOptional()
+  @IsString()
   categoryId?: string;
 
   @IsOptional()
@@ -289,7 +294,7 @@ export class CreateCarDto {
   @IsString()
   transmission: string;
 
-  @IsString()
+  @IsIn(AUCTION_GRADES)
   auctionGrade: string;
 
   @IsString()

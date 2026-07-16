@@ -4,6 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import * as cheerio from 'cheerio';
 import { Model } from 'mongoose';
 import { extname } from 'node:path';
+import { normalizeAuctionGrade } from '../cars/auction-grades';
 import { CarsService, colomboDateKey, normalizeAuctionDate } from '../cars/cars.service';
 import { CreateCarDto } from '../cars/dto';
 import { MediaService } from '../media/media.service';
@@ -51,7 +52,8 @@ type AutomarketRow = {
   auctionName: string;
   maker: string;
   model: string;
-  grade: string;
+  vehicleGrade: string;
+  auctionGrade?: string;
   year: number;
   mileageKm: number;
   engineCapacity: number;
@@ -137,6 +139,10 @@ export class ScraperService implements OnModuleInit {
     const cleanup = await this.carsService.removeExpiredScrapedAuctions();
     this.logger.log(
       `[AUCTION CLEANUP] deletedCars=${cleanup.deletedCars} deletedImages=${cleanup.deletedImages} cutoff=${cleanup.cutoffDate}`,
+    );
+    const gradeCleanup = await this.carsService.sanitizeAuctionGrades();
+    this.logger.log(
+      `[AUCTION GRADE CLEANUP] normalizedCars=${gradeCleanup.normalizedCars} deletedCars=${gradeCleanup.deletedCars} unpublishedCars=${gradeCleanup.unpublishedCars} deletedImages=${gradeCleanup.deletedImages}`,
     );
   }
 
@@ -510,7 +516,7 @@ export class ScraperService implements OnModuleInit {
     });
 
     const completeRows = rows
-      .filter((row) => row.mileageKm > 0 && row.auctionPriceJpy > 0)
+      .filter((row) => row.mileageKm > 0 && row.auctionPriceJpy > 0 && row.auctionGrade)
       .slice(0, listSize);
     let created = 0;
     let updated = 0;
@@ -533,20 +539,21 @@ export class ScraperService implements OnModuleInit {
       }
 
       const engineCapacity = normalizeEngineCapacity(row.engineCapacity, row.modelCode);
-      const identity = `${row.model} ${row.modelCode} ${row.grade}`;
+      const identity = `${row.model} ${row.modelCode} ${row.vehicleGrade}`;
       const fuelType = inferFuelType(identity);
       const dto: CreateCarDto = {
         title: cleanDisplayText(
-          [row.year, titleCase(row.maker), titleCase(row.model), row.grade].filter(Boolean).join(' '),
+          [row.year, titleCase(row.maker), titleCase(row.model), row.vehicleGrade].filter(Boolean).join(' '),
         ),
         maker: titleCase(row.maker),
         model: titleCase(row.model),
         modelCode: row.modelCode,
+        vehicleGrade: row.vehicleGrade || undefined,
         year: row.year,
         mileageKm: row.mileageKm,
         fuelType,
         transmission: row.transmission || 'Automatic',
-        auctionGrade: row.grade || 'N/A',
+        auctionGrade: row.auctionGrade!,
         chassisCode: row.modelCode || row.lotNumber,
         location: row.auctionName || 'Japan auction',
         auctionDate: row.auctionDate || undefined,
@@ -557,6 +564,7 @@ export class ScraperService implements OnModuleInit {
           row.lotNumber ? `Lot ${row.lotNumber}` : '',
           row.color ? `${titleCase(row.color)} exterior` : '',
           engineCapacity ? `${engineCapacity}cc engine` : '',
+          row.vehicleGrade ? `Vehicle grade ${row.vehicleGrade}` : '',
           row.equipment ? `Equipment ${row.equipment}` : '',
         ].filter(Boolean),
         cost: {
@@ -606,7 +614,7 @@ export class ScraperService implements OnModuleInit {
     const modelCode = cleanText(row.j);
     const engineCapacity = normalizeEngineCapacity(toNumber(row.h), modelCode);
     const chassisPrefix = cleanText(row.k);
-    const grade = cleanText(row.r) || 'N/A';
+    const auctionGrade = normalizeAuctionGrade(cleanText(row.r));
     const trim = cleanDisplayText(row.l);
     const auctionName = cleanText(row.d) || 'Japan auction';
     const lotNumber = cleanText(row.c);
@@ -615,6 +623,10 @@ export class ScraperService implements OnModuleInit {
     const fuelType = inferFuelType(vehicleIdentity);
     const motorPowerKw = inferMotorPowerKw(vehicleIdentity);
     const sourceUrl = `${JP_CENTER_BASE_URL}/${cleanText(row.f1) || 'aj'}-${cleanText(row.a)}.htm`;
+    if (!auctionGrade) {
+      this.logger.warn(`[SCRAPE SKIP] ${sourceUrl} has no supported auction grade`);
+      return null;
+    }
     const imagePrefix = imageFilePrefix(query.model, lotNumber || cleanText(row.a));
     let detailImages: string[] = [];
     let detailMileage: number | undefined;
@@ -642,11 +654,12 @@ export class ScraperService implements OnModuleInit {
       maker: titleCase(query.maker),
       model: titleCase(query.model),
       modelCode,
+      vehicleGrade: trim || undefined,
       year,
       mileageKm: detailMileage ?? toNumber(row.q),
       fuelType,
       transmission: 'Automatic',
-      auctionGrade: grade,
+      auctionGrade,
       chassisCode: [chassisPrefix, modelCode].filter(Boolean).join(' ') || lotNumber,
       location: auctionName,
       auctionDate: cleanText(row.e) || undefined,
@@ -657,7 +670,7 @@ export class ScraperService implements OnModuleInit {
         lotNumber ? `Lot ${lotNumber}` : '',
         color ? `${titleCase(color)} exterior` : '',
         engineCapacity ? `${engineCapacity}cc engine` : '',
-        trim ? `Grade ${trim}` : '',
+        trim ? `Vehicle grade ${trim}` : '',
       ].filter(Boolean),
       cost: {
         auctionPriceJpy,
@@ -989,7 +1002,8 @@ export function parseAutomarketRows(html: string): AutomarketRow[] {
       auctionName: text(`#auction_${index}`),
       maker: text(`#company_${index}`),
       model: text(`#model_${index}`),
-      grade: text(`#grade_${index}`),
+      vehicleGrade: text(`#grade_${index}`),
+      auctionGrade: normalizeAuctionGrade(text(`#scores_${index}`)),
       year: toNumber(text(`#year_${index}`)),
       mileageKm: toNumber(text(`#mileage_${index}`)),
       engineCapacity: toNumber(text(`#displacement_${index}`)),

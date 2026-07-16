@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { AUCTION_GRADES } from './auction-grades';
 
 export type CarDocument = HydratedDocument<Car>;
 
@@ -200,6 +201,9 @@ export class Car {
   modelCode?: string;
 
   @Prop({ trim: true, type: String })
+  vehicleGrade?: string;
+
+  @Prop({ trim: true, type: String })
   categoryId?: string;
 
   @Prop({ trim: true, type: String })
@@ -217,7 +221,7 @@ export class Car {
   @Prop({ required: true, trim: true, type: String })
   transmission: string;
 
-  @Prop({ required: true, trim: true, type: String })
+  @Prop({ enum: AUCTION_GRADES, required: true, trim: true, type: String })
   auctionGrade: string;
 
   @Prop({ required: true, trim: true, type: String })
