@@ -80,7 +80,7 @@ export default async function Home({
       <section className="bg-jdm-panel text-white">
         <div className="mx-auto grid max-w-7xl gap-0 px-4 py-8 sm:px-6 lg:grid-cols-3 lg:px-8">
           {[
-            ['Sourced in Japan', 'Newer cars are published with their auction source, grade, and key details.', FileCheck2],
+            ['Sourced in Japan', 'Newer cars are published with their auction source, auction grade, and key details.', FileCheck2],
             ['A clearer budget', 'Vehicle cost, shipping, taxes, clearance, and local charges are estimated together.', Calculator],
             ['Supported to handover', 'Follow one understandable path from the Japanese auction to your Sri Lankan driveway.', Ship],
           ].map(([title, text, Icon]) => (

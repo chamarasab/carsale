@@ -87,7 +87,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             <div>
               <h1 className="text-4xl font-black text-foreground">Available Japan auction cars</h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
-                Compare total landed cost, vehicle grade, mileage, and auction location before sending an inquiry.
+                Compare total landed cost, auction grade, mileage, and auction location before sending an inquiry.
               </p>
               {exchangeRate ? (
                 <p className="mt-3 inline-flex rounded-panel border border-line bg-field px-3 py-2 text-xs font-black uppercase text-sub">
