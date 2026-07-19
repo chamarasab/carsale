@@ -5,6 +5,7 @@ import { FilterQuery, Model } from 'mongoose';
 import { SettingsService } from '../settings/settings.service';
 import { AuthUser } from '../auth/auth.types';
 import { MediaService } from '../media/media.service';
+import { WebsiteValuesService } from '../website-values/website-values.service';
 import { AUCTION_GRADES, normalizeAuctionGrade } from './auction-grades';
 import { Car } from './car.schema';
 import { applyWorkbookReferenceCost } from './cost-reference';
@@ -18,6 +19,7 @@ export class CarsService {
     private readonly settingsService: SettingsService,
     private readonly configService: ConfigService,
     private readonly mediaService: MediaService,
+    private readonly websiteValuesService: WebsiteValuesService,
   ) {}
 
   async findAll(query: { q?: string; maker?: string; model?: string; status?: string }) {
@@ -95,8 +97,11 @@ export class CarsService {
 
   async update(id: string, dto: UpdateCarDto, user?: AuthUser) {
     await this.assertCanManage(id, user);
-    const existing = await this.carModel.findById(id).select('images').lean();
-    const payload = await this.withCalculatedCost(dto);
+    const existing = await this.carModel.findById(id).lean();
+    if (!existing) {
+      throw new NotFoundException('Car not found');
+    }
+    const payload = await this.withCalculatedCost(dto, existing);
     if (user?.role !== 'ADMIN') {
       delete payload.published;
     }
@@ -198,7 +203,13 @@ export class CarsService {
     const cars = await this.carModel.find().lean();
 
     for (const car of cars) {
-      const cost = prepareCostForRecalculation(this.withCurrentExchangeRate(car, exchangeRate));
+      const websiteCost = await this.websiteValuesService.applyToCost(
+        car,
+        this.migrateLegacyRoomyCost(car.cost),
+      );
+      const cost = prepareCostForRecalculation(
+        this.withCurrentExchangeRate({ ...car, cost: websiteCost }, exchangeRate),
+      );
       const calculatedCost = calculateImportCost(cost as CreateCarDto['cost'], settings);
       await this.carModel.findByIdAndUpdate(car._id, {
         cost: calculatedCost,
@@ -210,17 +221,28 @@ export class CarsService {
   }
 
   private async withCalculatedCost(dto: CreateCarDto): Promise<CreateCarDto & { cost: ReturnType<typeof calculateImportCost> }>;
-  private async withCalculatedCost(dto: UpdateCarDto): Promise<UpdateCarDto>;
-  private async withCalculatedCost(dto: CreateCarDto | UpdateCarDto) {
+  private async withCalculatedCost(dto: UpdateCarDto, existing: Car): Promise<UpdateCarDto>;
+  private async withCalculatedCost(dto: CreateCarDto | UpdateCarDto, existing?: Car) {
     const normalizedDto = this.withValidAuctionGrade(dto);
-    if (!normalizedDto.cost) {
+    const rawCost = normalizedDto.cost
+      ? { ...(existing?.cost ?? {}), ...normalizedDto.cost }
+      : existing?.cost;
+    if (!rawCost) {
       return normalizedDto;
     }
 
+    const identity = { ...existing, ...normalizedDto };
+    const websiteCost = await this.websiteValuesService.applyToCost(
+      identity,
+      this.migrateLegacyRoomyCost(rawCost as CreateCarDto['cost']),
+    );
+    const referenceCost = this.isWorkbookLockedEvery({ ...identity, cost: websiteCost } as Car)
+      ? websiteCost
+      : applyWorkbookReferenceCost({ ...identity, cost: websiteCost });
     const settings = await this.settingsService.getTaxSettings();
     return {
       ...normalizedDto,
-      cost: calculateImportCost(normalizedDto.cost as CreateCarDto['cost'], settings),
+      cost: calculateImportCost(referenceCost, settings),
     };
   }
 
@@ -250,7 +272,10 @@ export class CarsService {
   }
 
   private withCurrentExchangeRate(
-    car: Pick<Car, 'maker' | 'model' | 'chassisCode' | 'cost'>,
+    car: Pick<
+      Car,
+      'title' | 'maker' | 'model' | 'modelCode' | 'vehicleGrade' | 'auctionGrade' | 'chassisCode' | 'features'
+    > & { cost: CreateCarDto['cost'] },
     exchangeRate: Awaited<ReturnType<SettingsService['getJpyToLkrRate']>>,
   ) {
     if (this.isWorkbookLockedEvery(car)) {
@@ -266,13 +291,25 @@ export class CarsService {
     };
   }
 
-  private isWorkbookLockedEvery(car: Pick<Car, 'maker' | 'model' | 'chassisCode' | 'cost'>) {
+  private isWorkbookLockedEvery(
+    car: Pick<Car, 'maker' | 'model' | 'chassisCode'> & { cost: CreateCarDto['cost'] },
+  ) {
     return (
       /suzuki/i.test(car.maker) &&
       /every/i.test(car.model) &&
       /DA17V/i.test(car.chassisCode || '') &&
       car.cost.vehicleType?.toLowerCase().includes('commercial van')
     );
+  }
+
+  private migrateLegacyRoomyCost(cost: CreateCarDto['cost']): CreateCarDto['cost'] {
+    if (cost.referenceSource !== 'docs/roomy_tax.pdf page 2') return cost;
+    return {
+      ...cost,
+      freightJpy: this.configService.get<number>('DEFAULT_FREIGHT_JPY') ?? 220_000,
+      insuranceJpy: this.configService.get<number>('DEFAULT_INSURANCE_JPY') ?? 50_000,
+      invoiceCifJpy: undefined,
+    };
   }
 }
 

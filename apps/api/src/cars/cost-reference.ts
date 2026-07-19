@@ -38,7 +38,7 @@ type WorkbookReference = {
 const WORKBOOK_SOURCE = 'docs/ALL MODEL TAX WEB AND YELLOY BBOK NEW NEW NEW.xlsx';
 const EVERY_WORKBOOK_SOURCE = 'docs/Every (2).xlsx';
 const RAIZE_WORKBOOK_SOURCE = 'docs/Raize (2).xlsx';
-const ROOMY_TAX_SOURCE = 'docs/roomy_tax.pdf page 2';
+const LEGACY_ROOMY_TAX_SOURCE = 'docs/roomy_tax.pdf page 2';
 const MIN_TRUSTED_AUCTION_PRICE_JPY = 300_000;
 const MIN_REFERENCE_PRICE_RATIO = 0.8;
 
@@ -54,24 +54,6 @@ const references: WorkbookReference[] = [
   { model: /raize/i, code: /A201A/i, grade: /\bX\b/i, cifJpy: 1_491_950, invoiceCifJpy: 1_560_000, label: '5BA-A201A RAIZE X 2WD' , totalLkr: 11_306_350 },
   { model: /raize/i, code: /A202A/i, grade: /\bZ\b/i, cifJpy: 1_987_500, invoiceCifJpy: 1_995_000, label: '5AA-A202A RAIZE HYBRID Z' , totalLkr: 11_282_998, fuelType: 'e-SMART Hybrid', motorPowerKw: 78 },
   { model: /raize/i, code: /A202A/i, grade: /\bG\b/i, cifJpy: 1_849_800, invoiceCifJpy: 2_570_000, label: '5AA-A202A RAIZE HYBRID G' , totalLkr: 12_941_339, fuelType: 'e-SMART Hybrid', motorPowerKw: 78 },
-
-  {
-    model: /roomy|thor/i,
-    code: /M9(?:00|10)/i,
-    grade: /.*/i,
-    cifJpy: 1_742_276,
-    invoiceCifJpy: 1_742_276,
-    label: 'Roomy customs declaration website value 2,118,600 JPY',
-    totalLkr: 8_758_700,
-    freightJpy: 102_176,
-    insuranceJpy: 3_000,
-    yellowBookValueJpy: 2_118_600,
-    yellowBookFreightJpy: 102_176,
-    depreciationRate: 0.85,
-    cidSurchargeRate: 0,
-    vehicleEntitlementLevyLkr: 15_000,
-    preferReferenceCharges: true,
-  },
 
   { model: /wagon r/i, code: /MH85S/i, grade: /\bFX\b/i, cifJpy: 1_075_000, label: '5AA-MH85S WAGON R FX' , totalLkr: 4_125_000 },
   { model: /wagon r/i, code: /MH95S/i, grade: /FX-S/i, cifJpy: 1_200_000, label: '5AA-MH95S WAGON R HYBRID FX-S' , totalLkr: 4_325_000 },
@@ -113,7 +95,9 @@ const references: WorkbookReference[] = [
 export function applyWorkbookReferenceCost(car: CarLike): CostInput {
   const taxProfile = inferTaxProfile(car);
   const exactReference = findWorkbookReference(car);
-  const bandReference = engineBandReference(car, taxProfile.fuelType);
+  const bandReference = car.cost.websiteValueJpy
+    ? undefined
+    : engineBandReference(car, taxProfile.fuelType);
   const reference =
     exactReference?.preferReferenceCharges
       ? exactReference
@@ -122,17 +106,18 @@ export function applyWorkbookReferenceCost(car: CarLike): CostInput {
         ? exactReference
         : bandReference
       : exactReference ?? bandReference;
+  const baseCost = withoutPreviousReference(car.cost);
   const profiledCost = {
-    ...car.cost,
-    freightJpy: reference?.preferReferenceCharges ? (reference.freightJpy ?? car.cost.freightJpy) : car.cost.freightJpy,
-    insuranceJpy: reference?.preferReferenceCharges ? (reference.insuranceJpy ?? car.cost.insuranceJpy) : car.cost.insuranceJpy,
-    yellowBookValueJpy: reference?.yellowBookValueJpy ?? car.cost.yellowBookValueJpy,
-    yellowBookFreightJpy: reference?.yellowBookFreightJpy ?? car.cost.yellowBookFreightJpy,
-    depreciationRate: reference?.depreciationRate ?? car.cost.depreciationRate,
-    cidSurchargeRate: reference?.cidSurchargeRate ?? car.cost.cidSurchargeRate,
-    vehicleEntitlementLevyLkr: reference?.vehicleEntitlementLevyLkr ?? car.cost.vehicleEntitlementLevyLkr,
-    fuelType: reference?.fuelType ?? taxProfile.fuelType ?? car.cost.fuelType,
-    motorPowerKw: reference?.motorPowerKw ?? taxProfile.motorPowerKw ?? car.cost.motorPowerKw,
+    ...baseCost,
+    freightJpy: reference?.preferReferenceCharges ? (reference.freightJpy ?? baseCost.freightJpy) : baseCost.freightJpy,
+    insuranceJpy: reference?.preferReferenceCharges ? (reference.insuranceJpy ?? baseCost.insuranceJpy) : baseCost.insuranceJpy,
+    yellowBookValueJpy: reference?.yellowBookValueJpy ?? baseCost.yellowBookValueJpy,
+    yellowBookFreightJpy: reference?.yellowBookFreightJpy ?? baseCost.yellowBookFreightJpy,
+    depreciationRate: reference?.depreciationRate ?? baseCost.depreciationRate,
+    cidSurchargeRate: reference?.cidSurchargeRate ?? baseCost.cidSurchargeRate,
+    vehicleEntitlementLevyLkr: reference?.vehicleEntitlementLevyLkr ?? baseCost.vehicleEntitlementLevyLkr,
+    fuelType: reference?.fuelType ?? taxProfile.fuelType ?? baseCost.fuelType,
+    motorPowerKw: reference?.motorPowerKw ?? taxProfile.motorPowerKw ?? baseCost.motorPowerKw,
   };
   if (!reference) return profiledCost;
 
@@ -146,7 +131,7 @@ export function applyWorkbookReferenceCost(car: CarLike): CostInput {
     MIN_TRUSTED_AUCTION_PRICE_JPY,
     fallbackAuctionPriceJpy * MIN_REFERENCE_PRICE_RATIO,
   );
-  const alreadyUsedFallback = profiledCost.calculationBasis === 'Workbook reference CIF fallback';
+  const alreadyUsedFallback = car.cost.calculationBasis === 'Workbook reference CIF fallback';
   const needsFallback =
     alreadyUsedFallback ||
     !profiledCost.auctionPriceJpy ||
@@ -227,13 +212,6 @@ function workbookBenchmark(car: CarLike, fuelType: string | undefined, reference
       exchangeRateLkr,
     };
   }
-  if (/ROOMY|THOR|WEBSITE VALUE/i.test(reference.label)) {
-    return {
-      source: ROOMY_TAX_SOURCE,
-      totalLkr: reference.totalLkr,
-      exchangeRateLkr: 2.0982,
-    };
-  }
   if (engineCapacity > 0 && engineCapacity <= 660) {
     const turboOrPremium = /turbo|custom|zx|zt|join/i.test(identity);
     return {
@@ -302,4 +280,28 @@ function inferTaxProfile(car: CarLike) {
     return { fuelType: 'Diesel' };
   }
   return {};
+}
+
+function withoutPreviousReference(cost: CostInput): CostInput {
+  const {
+    referenceCifJpy: _referenceCifJpy,
+    referenceCifLkr: _referenceCifLkr,
+    referenceTotalLkr: _referenceTotalLkr,
+    referenceExchangeRateLkr: _referenceExchangeRateLkr,
+    referenceModel: _referenceModel,
+    referenceSource: _referenceSource,
+    calculationBasis: _calculationBasis,
+    ...baseCost
+  } = cost;
+
+  if (cost.referenceSource !== LEGACY_ROOMY_TAX_SOURCE) return baseCost;
+  const {
+    yellowBookValueJpy: _yellowBookValueJpy,
+    yellowBookFreightJpy: _yellowBookFreightJpy,
+    depreciationRate: _depreciationRate,
+    cidSurchargeRate: _cidSurchargeRate,
+    vehicleEntitlementLevyLkr: _vehicleEntitlementLevyLkr,
+    ...withoutLegacyRoomy
+  } = baseCost;
+  return withoutLegacyRoomy;
 }

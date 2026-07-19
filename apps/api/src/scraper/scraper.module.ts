@@ -4,6 +4,7 @@ import { AuthModule } from '../auth/auth.module';
 import { CarsModule } from '../cars/cars.module';
 import { MediaModule } from '../media/media.module';
 import { SettingsModule } from '../settings/settings.module';
+import { WebsiteValuesModule } from '../website-values/website-values.module';
 import { ScraperController, ScraperInternalController } from './scraper.controller';
 import { ScrapeRun, ScrapeRunSchema } from './scrape-run.schema';
 import { ScraperService } from './scraper.service';
@@ -14,6 +15,7 @@ import { ScraperService } from './scraper.service';
     CarsModule,
     MediaModule,
     SettingsModule,
+    WebsiteValuesModule,
     MongooseModule.forFeature([{ name: ScrapeRun.name, schema: ScrapeRunSchema }]),
   ],
   controllers: [ScraperController, ScraperInternalController],

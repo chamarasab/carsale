@@ -145,6 +145,7 @@ export type TaxSettings = {
   vatRate: number;
   ssclRate: number;
   defaultDepreciationRate: number;
+  vehicleEntitlementLevyLkr: number;
   comExmSealLkr: number;
   luxuryThresholds: {
     petrol: number;
@@ -157,6 +158,31 @@ export type TaxSettings = {
     rate: number;
   }>;
 };
+
+export type WebsiteValue = {
+  _id: string;
+  no: number;
+  key: string;
+  maker: string;
+  model: string;
+  vehicleModel: string;
+  vehicleGrade: string;
+  aliases: string[];
+  drivetrain: '2WD' | '4WD';
+  modelCodes: string[];
+  price: number;
+  currency: 'JPY';
+  taxIncluded: boolean;
+  consumptionTaxRate: number;
+  customsDepreciationRate: number;
+  sourceUrl: string;
+  sourceDataUrl?: string;
+  effectiveFrom?: string;
+  lastSyncedAt?: string;
+  active: boolean;
+};
+
+export type WebsiteValueInput = Omit<WebsiteValue, '_id' | 'lastSyncedAt'>;
 
 export async function signupUser(input: { name: string; email: string; password: string }) {
   const response = await fetch(`${apiUrl}/auth/signup`, {
@@ -358,6 +384,59 @@ export async function recalculateCars(idToken: string) {
   }
 
   return (await response.json()) as { recalculated: number };
+}
+
+export async function getWebsiteValues(accessToken: string) {
+  const response = await fetch(`${apiUrl}/website-values`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: 'no-store',
+  });
+  if (!response.ok) throw new Error('Could not load manufacturer website values');
+  return (await response.json()) as WebsiteValue[];
+}
+
+export async function createWebsiteValue(input: WebsiteValueInput, accessToken: string) {
+  const response = await fetch(`${apiUrl}/website-values`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) throw new Error('Could not create manufacturer website value');
+  return (await response.json()) as WebsiteValue;
+}
+
+export async function updateWebsiteValue(id: string, input: WebsiteValueInput, accessToken: string) {
+  const response = await fetch(`${apiUrl}/website-values/${id}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) throw new Error('Could not update manufacturer website value');
+  return (await response.json()) as WebsiteValue;
+}
+
+export async function deleteWebsiteValue(id: string, accessToken: string) {
+  const response = await fetch(`${apiUrl}/website-values/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error('Could not delete manufacturer website value');
+  return (await response.json()) as { deleted: boolean; deactivated?: boolean };
+}
+
+export async function refreshWebsiteValues(accessToken: string) {
+  const response = await fetch(`${apiUrl}/website-values/refresh`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error('Could not refresh manufacturer website values');
+  return (await response.json()) as { fetched: number; updated: number; syncedAt: string };
 }
 
 export async function uploadCarImages(files: File[], accessToken: string) {

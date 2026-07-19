@@ -10,6 +10,7 @@ import { ScraperModule } from './scraper/scraper.module';
 import { SettingsModule } from './settings/settings.module';
 import { UsersModule } from './users/users.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { WebsiteValuesModule } from './website-values/website-values.module';
 import { validateEnvironment } from './config/environment';
 
 @Module({
@@ -31,6 +32,7 @@ import { validateEnvironment } from './config/environment';
     SettingsModule,
     UsersModule,
     UploadsModule,
+    WebsiteValuesModule,
   ],
 })
 export class AppModule {}

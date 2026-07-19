@@ -18,6 +18,10 @@ export function calculateImportCost(cost: CreateCarDto['cost'], settings: TaxSet
 
   const invoiceCifJpy = cost.invoiceCifJpy ?? cost.auctionPriceJpy + freightJpy + insuranceJpy;
   const invoiceCifLkr = toLkr(invoiceCifJpy * exchangeRateLkr);
+  const websiteValue = calculateWebsiteValueCif(cost, freightJpy, insuranceJpy);
+  const websiteValueCifLkr = websiteValue.websiteValueCifJpy
+    ? toLkr(websiteValue.websiteValueCifJpy * exchangeRateLkr)
+    : undefined;
   const yellowBookFreightJpy = cost.yellowBookFreightJpy ?? freightJpy;
   const yellowBookCifLkr = cost.yellowBookValueJpy
     ? toLkr(
@@ -31,13 +35,14 @@ export function calculateImportCost(cost: CreateCarDto['cost'], settings: TaxSet
   const referenceCifLkr = cost.referenceCifJpy
     ? toLkr(cost.referenceCifJpy * exchangeRateLkr)
     : 0;
-  const taxableCifLkr = Math.max(invoiceCifLkr, yellowBookCifLkr, referenceCifLkr);
-  const taxableCifSource =
-    taxableCifLkr === referenceCifLkr
-      ? 'workbook-reference'
-      : taxableCifLkr === yellowBookCifLkr
-        ? 'yellow-book'
-        : 'invoice';
+  const taxableCif = highestCif([
+    { source: 'invoice', value: invoiceCifLkr },
+    ...(websiteValueCifLkr ? [{ source: 'website-value', value: websiteValueCifLkr }] : []),
+    ...(cost.yellowBookValueJpy ? [{ source: 'yellow-book', value: yellowBookCifLkr }] : []),
+    ...(referenceCifLkr ? [{ source: 'workbook-reference', value: referenceCifLkr }] : []),
+  ]);
+  const taxableCifLkr = taxableCif.value;
+  const taxableCifSource = taxableCif.source;
 
   const cidRate = cost.cidRate ?? settings.cidRate ?? DEFAULT_TAX_SETTINGS.cidRate;
   const cidSurchargeRate =
@@ -49,10 +54,13 @@ export function calculateImportCost(cost: CreateCarDto['cost'], settings: TaxSet
     cost.luxuryRate ??
     defaultLuxuryRate(taxableCifLkr, luxuryThresholdLkr, cost.fuelType, settings);
 
-  const cidBaseLkr = cost.cidBaseLkr ?? toLkr(taxableCifLkr * cidRate);
-  const cidSurchargeLkr = cost.cidSurchargeLkr ?? toLkr(cidBaseLkr * cidSurchargeRate);
-  const luxuryTaxLkr = cost.luxuryTaxLkr ?? toLkr(Math.max(0, taxableCifLkr - luxuryThresholdLkr) * luxuryRate);
-  const vehicleEntitlementLevyLkr = cost.vehicleEntitlementLevyLkr ?? 0;
+  const cidBaseLkr = cost.cidBaseLkr ?? toCustomsLkr(taxableCifLkr * cidRate);
+  const cidSurchargeLkr = cost.cidSurchargeLkr ?? toCustomsLkr(cidBaseLkr * cidSurchargeRate);
+  const luxuryTaxLkr = cost.luxuryTaxLkr ?? toCustomsLkr(Math.max(0, taxableCifLkr - luxuryThresholdLkr) * luxuryRate);
+  const vehicleEntitlementLevyLkr =
+    cost.vehicleEntitlementLevyLkr ??
+    settings.vehicleEntitlementLevyLkr ??
+    DEFAULT_TAX_SETTINGS.vehicleEntitlementLevyLkr;
   const comExmSealLkr = cost.comExmSealLkr ?? settings.comExmSealLkr ?? DEFAULT_TAX_SETTINGS.comExmSealLkr;
   const bankChargesLkr = cost.bankChargesLkr ?? 0;
   const clearingChargesLkr = cost.clearingChargesLkr ?? cost.portHandlingLkr ?? 0;
@@ -65,7 +73,7 @@ export function calculateImportCost(cost: CreateCarDto['cost'], settings: TaxSet
   const exciseUnit = cost.exciseUnit ?? defaultExcise.unit;
   const exciseQuantity =
     exciseUnit === 'kW' ? (cost.motorPowerKw ?? 0) : (cost.engineCapacity ?? 0);
-  const baseExciseDutyLkr = toLkr(
+  const baseExciseDutyLkr = toCustomsLkr(
     cost.exciseRatePerUnitLkr !== undefined
       ? exciseQuantity * cost.exciseRatePerUnitLkr
       : defaultExcise.dutyLkr,
@@ -94,8 +102,8 @@ export function calculateImportCost(cost: CreateCarDto['cost'], settings: TaxSet
     (useReferenceExcise ? solvedReferenceExciseDutyLkr : baseExciseDutyLkr);
   const consumptionTaxBaseLkr =
     taxableCifLkr * 1.1 + cidBaseLkr + cidSurchargeLkr + exciseDutyLkr;
-  const vatLkr = cost.vatLkr ?? toLkr(consumptionTaxBaseLkr * vatRate);
-  const ssclLkr = cost.ssclLkr ?? toLkr(consumptionTaxBaseLkr * ssclRate);
+  const vatLkr = cost.vatLkr ?? toCustomsLkr(consumptionTaxBaseLkr * vatRate);
+  const ssclLkr = cost.ssclLkr ?? toCustomsLkr(consumptionTaxBaseLkr * ssclRate);
   const importDutyLkr = calculateTotalLkr({
     cidBaseLkr,
     cidSurchargeLkr,
@@ -128,6 +136,8 @@ export function calculateImportCost(cost: CreateCarDto['cost'], settings: TaxSet
     insuranceLkr,
     invoiceCifJpy,
     invoiceCifLkr,
+    ...websiteValue,
+    websiteValueCifLkr,
     referenceCifLkr,
     yellowBookCifLkr,
     taxableCifLkr,
@@ -203,13 +213,22 @@ function calculateCommercialVanCost(cost: CreateCarDto['cost'], settings: TaxSet
   const insuranceLkr = cost.insuranceLkr ?? toLkr(insuranceJpy * exchangeRateLkr);
   const invoiceCifJpy = cost.invoiceCifJpy ?? cost.auctionPriceJpy + freightJpy;
   const invoiceCifLkr = toLkr(invoiceCifJpy * exchangeRateLkr);
+  const websiteValue = calculateWebsiteValueCif(cost, freightJpy, insuranceJpy);
+  const websiteValueCifLkr = websiteValue.websiteValueCifJpy
+    ? toLkr(websiteValue.websiteValueCifJpy * exchangeRateLkr)
+    : undefined;
   const depreciationRate = cost.depreciationRate ?? settings.defaultDepreciationRate ?? DEFAULT_TAX_SETTINGS.defaultDepreciationRate;
   const yellowBookFreightJpy = cost.yellowBookFreightJpy ?? freightJpy;
   const yellowBookCifLkr = cost.yellowBookValueJpy
     ? toLkr((((cost.yellowBookValueJpy * 100) / 110) * depreciationRate + yellowBookFreightJpy + insuranceJpy) * exchangeRateLkr)
     : invoiceCifLkr;
-  const taxableCifLkr = Math.max(invoiceCifLkr, yellowBookCifLkr);
-  const taxableCifSource = taxableCifLkr === yellowBookCifLkr ? 'yellow-book' : 'invoice';
+  const taxableCif = highestCif([
+    { source: 'invoice', value: invoiceCifLkr },
+    ...(websiteValueCifLkr ? [{ source: 'website-value', value: websiteValueCifLkr }] : []),
+    ...(cost.yellowBookValueJpy ? [{ source: 'yellow-book', value: yellowBookCifLkr }] : []),
+  ]);
+  const taxableCifLkr = taxableCif.value;
+  const taxableCifSource = taxableCif.source;
   const cidRate = cost.cidRate ?? settings.cidRate ?? DEFAULT_TAX_SETTINGS.cidRate;
   const cidSurchargeRate = cost.cidSurchargeRate ?? settings.cidSurchargeRate ?? DEFAULT_TAX_SETTINGS.cidSurchargeRate;
   const vatRate = cost.vatRate ?? settings.vatRate ?? DEFAULT_TAX_SETTINGS.vatRate;
@@ -218,17 +237,20 @@ function calculateCommercialVanCost(cost: CreateCarDto['cost'], settings: TaxSet
   const luxuryRate =
     cost.luxuryRate ??
     defaultLuxuryRate(taxableCifLkr, luxuryThresholdLkr, cost.fuelType, settings);
-  const cidBaseLkr = cost.cidBaseLkr ?? toLkr(taxableCifLkr * cidRate);
-  const cidSurchargeLkr = cost.cidSurchargeLkr ?? toLkr(cidBaseLkr * cidSurchargeRate);
+  const cidBaseLkr = cost.cidBaseLkr ?? toCustomsLkr(taxableCifLkr * cidRate);
+  const cidSurchargeLkr = cost.cidSurchargeLkr ?? toCustomsLkr(cidBaseLkr * cidSurchargeRate);
   const exciseDutyLkr =
     cost.exciseDutyLkr ??
-    toLkr((cost.engineCapacity ?? 0) * (cost.exciseRatePerUnitLkr ?? 0));
-  const luxuryTaxLkr = cost.luxuryTaxLkr ?? toLkr(Math.max(0, taxableCifLkr - luxuryThresholdLkr) * luxuryRate);
-  const vatLkr = cost.vatLkr ?? toLkr((taxableCifLkr * 1.1 + cidBaseLkr + cidSurchargeLkr + exciseDutyLkr) * vatRate);
+    toCustomsLkr((cost.engineCapacity ?? 0) * (cost.exciseRatePerUnitLkr ?? 0));
+  const luxuryTaxLkr = cost.luxuryTaxLkr ?? toCustomsLkr(Math.max(0, taxableCifLkr - luxuryThresholdLkr) * luxuryRate);
+  const vatLkr = cost.vatLkr ?? toCustomsLkr((taxableCifLkr * 1.1 + cidBaseLkr + cidSurchargeLkr + exciseDutyLkr) * vatRate);
   const consumptionTaxBaseLkr =
     taxableCifLkr * 1.1 + cidBaseLkr + cidSurchargeLkr + exciseDutyLkr;
-  const ssclLkr = cost.ssclLkr ?? toLkr(consumptionTaxBaseLkr * ssclRate);
-  const vehicleEntitlementLevyLkr = cost.vehicleEntitlementLevyLkr ?? 0;
+  const ssclLkr = cost.ssclLkr ?? toCustomsLkr(consumptionTaxBaseLkr * ssclRate);
+  const vehicleEntitlementLevyLkr =
+    cost.vehicleEntitlementLevyLkr ??
+    settings.vehicleEntitlementLevyLkr ??
+    DEFAULT_TAX_SETTINGS.vehicleEntitlementLevyLkr;
   const comExmSealLkr = cost.comExmSealLkr ?? settings.comExmSealLkr ?? DEFAULT_TAX_SETTINGS.comExmSealLkr;
   const importDutyLkr = calculateTotalLkr({
     cidBaseLkr,
@@ -267,6 +289,8 @@ function calculateCommercialVanCost(cost: CreateCarDto['cost'], settings: TaxSet
     insuranceLkr,
     invoiceCifJpy,
     invoiceCifLkr,
+    ...websiteValue,
+    websiteValueCifLkr,
     yellowBookCifLkr,
     taxableCifLkr,
     taxableCifSource,
@@ -306,6 +330,42 @@ function calculateCommercialVanCost(cost: CreateCarDto['cost'], settings: TaxSet
 
 function isCommercialVanCost(cost: CreateCarDto['cost']) {
   return cost.vehicleType?.toLowerCase().includes('commercial van') ?? false;
+}
+
+function calculateWebsiteValueCif(
+  cost: CreateCarDto['cost'],
+  freightJpy: number,
+  insuranceJpy: number,
+) {
+  if (!cost.websiteValueJpy) {
+    return {
+      websiteValueNetJpy: undefined,
+      websiteValueAssessedFobJpy: undefined,
+      websiteValueCifJpy: undefined,
+    };
+  }
+
+  const taxRate = cost.websiteValueTaxRate ?? 0.1;
+  const netPrice = cost.websiteValueTaxIncluded === false
+    ? cost.websiteValueJpy
+    : cost.websiteValueJpy / (1 + taxRate);
+  const assessedFob = netPrice * (cost.websiteValueDepreciationRate ?? 0.85);
+
+  return {
+    websiteValueNetJpy: toLkr(netPrice),
+    websiteValueAssessedFobJpy: toLkr(assessedFob),
+    websiteValueCifJpy: toLkr(assessedFob + freightJpy + insuranceJpy),
+  };
+}
+
+function highestCif(values: Array<{ source: string; value: number }>) {
+  return values.reduce((highest, candidate) =>
+    candidate.value > highest.value ? candidate : highest,
+  );
+}
+
+function toCustomsLkr(value: number) {
+  return Math.ceil(value);
 }
 
 function referenceExciseDutyLkr(

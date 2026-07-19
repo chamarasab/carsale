@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { applyWorkbookReferenceCost } from './cost-reference';
-import { calculateImportCost, prepareCostForRecalculation } from './tax-calculator';
+import { calculateImportCost } from './tax-calculator';
 
 function baseCost(overrides: Record<string, unknown> = {}) {
   return {
@@ -97,8 +97,8 @@ test('uses the expanded CIF base for VAT and SSCL', () => {
     result.cidSurchargeLkr! +
     result.exciseDutyLkr!;
 
-  assert.equal(result.vatLkr, Math.round(taxableBase * 0.18));
-  assert.equal(result.ssclLkr, Math.round(taxableBase * 0.025));
+  assert.equal(result.vatLkr, Math.ceil(taxableBase * 0.18));
+  assert.equal(result.ssclLkr, Math.ceil(taxableBase * 0.025));
 });
 
 test('charges invoice CIF in the customer total while taxing the higher Yellow Book CIF', () => {
@@ -153,7 +153,7 @@ test('replaces an unusually low 660cc bid with the Every workbook CIF estimate',
   assert.equal(cost.calculationBasis, 'Workbook reference CIF fallback');
 });
 
-test('uses the Roomy customs declaration website value for a low Roomy/Thor 1000cc auction bid', () => {
+test('does not assign Toyota Roomy manufacturer pricing to a Daihatsu Thor', () => {
   const cost = applyWorkbookReferenceCost({
     title: '2023 Daihatsu Thor G',
     maker: 'Daihatsu',
@@ -168,51 +168,47 @@ test('uses the Roomy customs declaration website value for a low Roomy/Thor 1000
     }),
   });
 
-  assert.equal(cost.yellowBookValueJpy, 2_118_600);
-  assert.equal(cost.referenceCifJpy, 1_742_276);
-  assert.equal(cost.invoiceCifJpy, 1_742_276);
-  assert.equal(cost.freightJpy, 102_176);
-  assert.equal(cost.insuranceJpy, 3_000);
-  assert.equal(cost.cidSurchargeRate, 0);
-  assert.equal(cost.vehicleEntitlementLevyLkr, 15_000);
-  assert.equal(cost.referenceModel, 'Roomy customs declaration website value 2,118,600 JPY');
-  assert.equal(cost.referenceSource, 'docs/roomy_tax.pdf page 2');
-  assert.equal(cost.calculationBasis, 'Workbook reference CIF fallback');
+  assert.equal(cost.websiteValueJpy, undefined);
+  assert.equal(cost.yellowBookValueJpy, undefined);
+  assert.notEqual(cost.referenceModel, 'Roomy customs declaration website value 2,118,600 JPY');
 });
 
 test('matches the Roomy declaration tax structure from website value to customs duty', () => {
-  const referenced = applyWorkbookReferenceCost({
-    title: '2023 Toyota Roomy Custom G',
-    maker: 'Toyota',
-    model: 'Roomy',
-    modelCode: 'M900A',
-    chassisCode: 'M900A',
-    vehicleGrade: 'Custom G',
-    auctionGrade: '4',
-    features: [],
-    cost: baseCost({
-      auctionPriceJpy: 400_000,
-      exchangeRateLkr: 2.0982,
-      freightJpy: 220_000,
-      insuranceJpy: 50_000,
-      bankChargesLkr: 0,
-      clearingChargesLkr: 0,
-      importerCommissionLkr: 0,
-      localTransportLkr: 0,
-    }),
-  });
-  const result = calculateImportCost(prepareCostForRecalculation(referenced));
+  const result = calculateImportCost(baseCost({
+    auctionPriceJpy: 1_598_000,
+    exchangeRateLkr: 2.0982,
+    freightJpy: 102_176,
+    insuranceJpy: 3_000,
+    websiteValueJpy: 2_118_600,
+    websiteValueTaxIncluded: true,
+    websiteValueTaxRate: 0.1,
+    websiteValueDepreciationRate: 0.85,
+    cidSurchargeRate: 0,
+    vehicleEntitlementLevyLkr: 15_000,
+    bankChargesLkr: 0,
+    clearingChargesLkr: 0,
+    importerCommissionLkr: 0,
+    localTransportLkr: 0,
+  }));
 
-  assert.equal(result.invoiceCifJpy, 1_742_276);
+  assert.equal(result.websiteValueNetJpy, 1_926_000);
+  assert.equal(result.websiteValueAssessedFobJpy, 1_637_100);
+  assert.equal(result.websiteValueCifJpy, 1_742_276);
+  assert.equal(result.websiteValueCifLkr, 3_655_644);
   assert.equal(result.taxableCifLkr, 3_655_644);
-  assert.equal(result.cidBaseLkr, 1_096_693);
+  assert.equal(result.taxableCifSource, 'website-value');
+  assert.equal(result.cidBaseLkr, 1_096_694);
   assert.equal(result.cidSurchargeLkr, 0);
   assert.equal(result.exciseDutyLkr, 2_440_200);
-  assert.equal(result.vatLkr, 1_360_458);
+  assert.equal(result.vatLkr, 1_360_459);
   assert.equal(result.ssclLkr, 188_953);
   assert.equal(result.vehicleEntitlementLevyLkr, 15_000);
   assert.equal(result.comExmSealLkr, 1_750);
-  assert.equal(result.importDutyLkr, 5_103_054);
+  assert.equal(result.importDutyLkr, 5_103_056);
+  assert.equal(
+    result.totalLkr,
+    result.invoiceCifLkr! + result.importDutyLkr + result.totalOtherCostsLkr!,
+  );
 });
 
 test('applies propulsion-specific luxury tax rates above the CIF threshold', () => {
@@ -230,11 +226,11 @@ test('applies propulsion-specific luxury tax rates above the CIF threshold', () 
   assert.equal(petrol.luxuryRate, 1);
   assert.equal(
     petrol.luxuryTaxLkr,
-    Math.round(Math.max(0, petrol.taxableCifLkr! - 5_000_000)),
+    Math.ceil(Math.max(0, petrol.taxableCifLkr! - 5_000_000)),
   );
   assert.equal(hybrid.luxuryRate, 0.8);
   assert.equal(
     hybrid.luxuryTaxLkr,
-    Math.round(Math.max(0, hybrid.taxableCifLkr! - 5_500_000) * 0.8),
+    Math.ceil(Math.max(0, hybrid.taxableCifLkr! - 5_500_000) * 0.8),
   );
 });

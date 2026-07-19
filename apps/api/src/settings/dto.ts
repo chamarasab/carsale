@@ -63,6 +63,10 @@ export class UpdateTaxSettingsDto {
 
   @IsNumber()
   @Min(0)
+  vehicleEntitlementLevyLkr: number;
+
+  @IsNumber()
+  @Min(0)
   comExmSealLkr: number;
 
   @ValidateNested()

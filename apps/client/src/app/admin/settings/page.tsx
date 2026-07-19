@@ -143,6 +143,17 @@ export default function AdminSettingsPage() {
                     </label>
                   ))}
                   <label className="grid gap-2 text-sm font-bold text-muted">
+                    Vehicle entitlement levy
+                    <input
+                      className="h-11 rounded-panel border border-line bg-field px-3 text-foreground focus:border-signal focus:ring-signal/15"
+                      min="0"
+                      step="1"
+                      type="number"
+                      value={settings.vehicleEntitlementLevyLkr}
+                      onChange={(event) => setNumber('vehicleEntitlementLevyLkr', event.target.value)}
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-muted">
                     COM / Exm / Seal fee
                     <input
                       className="h-11 rounded-panel border border-line bg-field px-3 text-foreground focus:border-signal focus:ring-signal/15"

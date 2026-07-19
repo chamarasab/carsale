@@ -9,6 +9,7 @@ import { CarsService, colomboDateKey, normalizeAuctionDate } from '../cars/cars.
 import { CreateCarDto } from '../cars/dto';
 import { MediaService } from '../media/media.service';
 import { SettingsService } from '../settings/settings.service';
+import { WebsiteValuesService } from '../website-values/website-values.service';
 import { ScrapeJobResult, ScrapeRun, ScrapeRunDocument, ScrapeRunTrigger } from './scrape-run.schema';
 
 type JpCenterImportOptions = {
@@ -124,6 +125,7 @@ export class ScraperService implements OnModuleInit {
     private readonly config: ConfigService,
     private readonly mediaService: MediaService,
     private readonly settingsService: SettingsService,
+    private readonly websiteValuesService: WebsiteValuesService,
     @InjectModel(ScrapeRun.name) private readonly scrapeRunModel: Model<ScrapeRun>,
   ) {}
 
@@ -236,6 +238,7 @@ export class ScraperService implements OnModuleInit {
     const jobs: ScrapeJobResult[] = [];
     const errors: string[] = [];
     this.logger.log(`[SCRAPE START] run=${run.id} trigger=${run.trigger}`);
+    await this.refreshManufacturerValues();
     const client = await this.createJpCenterClient();
     const jobDelayMs = Math.max(
       0,
@@ -382,6 +385,8 @@ export class ScraperService implements OnModuleInit {
       throw new BadRequestException('JPCENTER_USERNAME and JPCENTER_PASSWORD are required');
     }
 
+    if (!authenticatedClient) await this.refreshManufacturerValues();
+
     const maker = (options.maker ?? 'Toyota').trim();
     const model = (options.model ?? 'Prius').trim().toUpperCase();
     const vendor = options.vendor ?? JP_CENTER_VENDOR_IDS[maker.toUpperCase()];
@@ -478,6 +483,7 @@ export class ScraperService implements OnModuleInit {
     });
 
     try {
+      await this.refreshManufacturerValues();
       const result = await this.importFromAutomarket(options);
       const finishedAt = new Date();
       const job: ScrapeJobResult = {
@@ -626,6 +632,22 @@ export class ScraperService implements OnModuleInit {
       updated,
       cars,
     };
+  }
+
+  private async refreshManufacturerValues() {
+    try {
+      await this.websiteValuesService.refreshKnownSources();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`[WEBSITE VALUE REFRESH] using cached values: ${message}`);
+    }
+    try {
+      const result = await this.carsService.recalculateAll();
+      this.logger.log(`[WEBSITE VALUE RECALCULATION] cars=${result.recalculated}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`[WEBSITE VALUE RECALCULATION] skipped: ${message}`);
+    }
   }
 
   private async toCarDto(

@@ -15,7 +15,7 @@ export class SettingsService {
   async getTaxSettings() {
     const existing = await this.taxSettingsModel.findOne({ key: DEFAULT_TAX_SETTINGS.key }).lean();
     if (existing) {
-      return existing;
+      return { ...DEFAULT_TAX_SETTINGS, ...existing };
     }
 
     return this.taxSettingsModel.create(DEFAULT_TAX_SETTINGS);

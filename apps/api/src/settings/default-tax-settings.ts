@@ -8,6 +8,7 @@ export const DEFAULT_TAX_SETTINGS = {
   vatRate: 0.18,
   ssclRate: 0.025,
   defaultDepreciationRate: 0.85,
+  vehicleEntitlementLevyLkr: 15_000,
   comExmSealLkr: 1750,
   luxuryThresholds: {
     petrol: 5_000_000,

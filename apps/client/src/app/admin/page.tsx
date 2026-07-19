@@ -1,6 +1,6 @@
 'use client';
 
-import { CarFront, ClipboardCheck, DatabaseZap, Settings, UserPlus, Users } from 'lucide-react';
+import { BadgeJapaneseYen, CarFront, ClipboardCheck, DatabaseZap, Settings, UserPlus, Users } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { Nav } from '@/components/nav';
@@ -35,6 +35,7 @@ export default function AdminPanelPage() {
             {isAdmin ? <PanelLink href="/admin/users" icon={UserPlus} title="Create user" text="Create publisher accounts and assign their login details." /> : null}
             {isAdmin ? <PanelLink href="/admin/users" icon={Users} title="Manage users" text="Activate or deactivate publisher accounts." /> : null}
             {isAdmin ? <PanelLink href="/admin/settings" icon={Settings} title="Tax settings" text="Update tax defaults and recalculate advertisements." /> : null}
+            {isAdmin ? <PanelLink href="/admin/website-values" icon={BadgeJapaneseYen} title="Manufacturer prices" text="Manage official model and grade prices used for customs valuation." /> : null}
           </div>
         )}
       </section>

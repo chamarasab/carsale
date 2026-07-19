@@ -21,6 +21,51 @@ export class CostBreakdown {
   @Prop({ type: String })
   exchangeRateProvider?: string;
 
+  @Prop({ type: String })
+  websiteValueRecordId?: string;
+
+  @Prop({ type: Number })
+  websiteValueNo?: number;
+
+  @Prop({ type: Number })
+  websiteValueJpy?: number;
+
+  @Prop({ type: String })
+  websiteValueVehicleModel?: string;
+
+  @Prop({ type: String })
+  websiteValueGrade?: string;
+
+  @Prop({ enum: ['2WD', '4WD'], type: String })
+  websiteValueDrivetrain?: '2WD' | '4WD';
+
+  @Prop({ type: String })
+  websiteValueSourceUrl?: string;
+
+  @Prop({ type: Boolean })
+  websiteValueTaxIncluded?: boolean;
+
+  @Prop({ type: Number })
+  websiteValueTaxRate?: number;
+
+  @Prop({ type: Number })
+  websiteValueDepreciationRate?: number;
+
+  @Prop({ type: String })
+  websiteValueEffectiveFrom?: string;
+
+  @Prop({ type: Number })
+  websiteValueNetJpy?: number;
+
+  @Prop({ type: Number })
+  websiteValueAssessedFobJpy?: number;
+
+  @Prop({ type: Number })
+  websiteValueCifJpy?: number;
+
+  @Prop({ type: Number })
+  websiteValueCifLkr?: number;
+
   @Prop({ type: Number })
   yellowBookValueJpy?: number;
 

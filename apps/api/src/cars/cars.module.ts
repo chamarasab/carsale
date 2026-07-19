@@ -3,12 +3,19 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from '../auth/auth.module';
 import { MediaModule } from '../media/media.module';
 import { SettingsModule } from '../settings/settings.module';
+import { WebsiteValuesModule } from '../website-values/website-values.module';
 import { Car, CarSchema } from './car.schema';
 import { CarsController } from './cars.controller';
 import { CarsService } from './cars.service';
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: Car.name, schema: CarSchema }]), AuthModule, MediaModule, SettingsModule],
+  imports: [
+    MongooseModule.forFeature([{ name: Car.name, schema: CarSchema }]),
+    AuthModule,
+    MediaModule,
+    SettingsModule,
+    WebsiteValuesModule,
+  ],
   controllers: [CarsController],
   providers: [CarsService],
   exports: [CarsService],

@@ -60,6 +60,9 @@ export class TaxSettings {
   @Prop({ required: true, type: Number })
   defaultDepreciationRate: number;
 
+  @Prop({ default: 15000, required: true, type: Number })
+  vehicleEntitlementLevyLkr: number;
+
   @Prop({ required: true, type: Number })
   comExmSealLkr: number;
 

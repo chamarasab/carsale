@@ -35,6 +35,74 @@ export class CostBreakdownDto {
   exchangeRateProvider?: string;
 
   @IsOptional()
+  @IsString()
+  websiteValueRecordId?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  websiteValueNo?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  websiteValueJpy?: number;
+
+  @IsOptional()
+  @IsString()
+  websiteValueVehicleModel?: string;
+
+  @IsOptional()
+  @IsString()
+  websiteValueGrade?: string;
+
+  @IsOptional()
+  @IsIn(['2WD', '4WD'])
+  websiteValueDrivetrain?: '2WD' | '4WD';
+
+  @IsOptional()
+  @IsString()
+  websiteValueSourceUrl?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  websiteValueTaxIncluded?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  websiteValueTaxRate?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  websiteValueDepreciationRate?: number;
+
+  @IsOptional()
+  @IsString()
+  websiteValueEffectiveFrom?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  websiteValueNetJpy?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  websiteValueAssessedFobJpy?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  websiteValueCifJpy?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  websiteValueCifLkr?: number;
+
+  @IsOptional()
   @IsNumber()
   @Min(0)
   yellowBookValueJpy?: number;

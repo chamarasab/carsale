@@ -33,6 +33,8 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
   const taxableCifLabel =
     car.cost.taxableCifSource === 'workbook-reference'
       ? 'Workbook reference CIF'
+      : car.cost.taxableCifSource === 'website-value'
+        ? 'Manufacturer website CIF'
       : car.cost.taxableCifSource === 'yellow-book'
         ? 'Yellow Book CIF'
         : 'Invoice CIF';
@@ -71,6 +73,29 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
       )}`,
       lkr(invoiceCifLkr),
     ],
+    ...(car.cost.websiteValueJpy
+      ? [
+          [
+            'Manufacturer website value',
+            `${car.cost.websiteValueVehicleModel ?? `${car.maker} ${car.model}`} official tax-inclusive retail price`,
+            jpy(car.cost.websiteValueJpy),
+          ],
+          [
+            'Website-value assessed FOB',
+            `(${jpy(car.cost.websiteValueJpy)} / ${percent(1 + (car.cost.websiteValueTaxRate ?? 0.1))}) x ${percent(
+              car.cost.websiteValueDepreciationRate ?? 0.85,
+            )}`,
+            jpy(car.cost.websiteValueAssessedFobJpy ?? 0),
+          ],
+          [
+            'Manufacturer website CIF',
+            `${jpy(car.cost.websiteValueAssessedFobJpy ?? 0)} + freight ${jpy(car.cost.freightJpy ?? 0)} + insurance ${jpy(
+              car.cost.insuranceJpy ?? 0,
+            )}, then x ${rate(car.cost.exchangeRateLkr)}`,
+            lkr(car.cost.websiteValueCifLkr ?? 0),
+          ],
+        ]
+      : []),
     [
       'Yellow Book CIF',
       car.cost.yellowBookValueJpy
@@ -82,7 +107,7 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
     ],
     [
       'Taxable CIF',
-      `Higher of Invoice CIF and Yellow Book CIF: ${taxableCifLabel}`,
+      `Highest available valuation floor: ${taxableCifLabel}`,
       lkr(car.cost.taxableCifLkr ?? 0),
     ],
     ['CID', `${lkr(taxableCifLkr)} x ${percent(car.cost.cidRate ?? 0)}`, lkr(car.cost.cidBaseLkr ?? 0)],
@@ -170,7 +195,7 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
                 {car.cost.exchangeRateDate ? ` (${car.cost.exchangeRateDate})` : ''}
               </p>
               <p className="mt-1 text-xs text-white/65">
-                Tax base follows the higher of invoiced CIF and grade/variant Yellow Book CIF.
+                Tax base follows the highest available invoice, manufacturer website, Yellow Book, or reference CIF.
               </p>
             </div>
             <div className="rounded-panel border border-line bg-field p-4 text-sm leading-6 text-muted">
@@ -205,8 +230,9 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
         <div className="rounded-panel border border-line bg-surface p-5 shadow-soft">
           <h2 className="text-2xl font-black text-foreground">Transparent landed cost</h2>
           <p className="mt-2 text-sm leading-6 text-muted">
-            Estimate model follows the PiXAMP-style tax structure and the Excel rule where the higher of invoiced CIF
-            and Yellow Book CIF becomes the taxable base.
+            The estimate keeps the customer purchase CIF separate from the customs valuation floor. Manufacturer
+            website values are converted from tax-inclusive retail price to the depreciated assessed FOB before
+            freight and insurance are added.
           </p>
           {liveExchangeRate ? (
             <div className="mt-4 border border-line bg-field p-3 text-xs font-bold text-sub">
@@ -218,6 +244,16 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
                 {car.cost.exchangeRateProvider ? ` from ${car.cost.exchangeRateProvider}` : ''}.
               </p>
             </div>
+          ) : null}
+          {car.cost.websiteValueSourceUrl ? (
+            <a
+              className="mt-3 inline-flex items-center gap-2 text-xs font-black text-signal"
+              href={car.cost.websiteValueSourceUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              Manufacturer price source <ExternalLink size={14} />
+            </a>
           ) : null}
           <div className="mt-5 divide-y divide-line">
             {rows.map(([label, formula, value]) => (
