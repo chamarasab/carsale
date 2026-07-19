@@ -11,7 +11,7 @@ export default function UserVehiclesPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/login');
-    if (session?.user.role === 'ADMIN') router.replace('/admin/vehicles');
+    if (session?.user.role === 'ADMIN') router.replace('/admin');
   }, [router, session?.user.role, status]);
 
   if (status === 'loading' || status === 'unauthenticated' || session?.user.role === 'ADMIN') {
