@@ -1,7 +1,9 @@
 'use client';
 
 import {
+  AlertTriangle,
   ExternalLink,
+  EyeOff,
   Pencil,
   Plus,
   RefreshCcw,
@@ -16,12 +18,15 @@ import { Nav } from '@/components/nav';
 import {
   createWebsiteValue,
   deleteWebsiteValue,
+  getMissingWebsiteValues,
   getWebsiteValues,
+  ignoreMissingWebsiteValue,
   recalculateCars,
   refreshWebsiteValues,
   updateWebsiteValue,
   WebsiteValue,
   WebsiteValueInput,
+  WebsiteValueMiss,
 } from '@/lib/admin-api';
 
 const emptyValue: WebsiteValueInput = {
@@ -48,6 +53,7 @@ const emptyValue: WebsiteValueInput = {
 export default function WebsiteValuesPage() {
   const { data: session, status } = useSession();
   const [values, setValues] = useState<WebsiteValue[]>([]);
+  const [missingValues, setMissingValues] = useState<WebsiteValueMiss[]>([]);
   const [form, setForm] = useState<WebsiteValueInput>(emptyValue);
   const [editingId, setEditingId] = useState<string>();
   const [message, setMessage] = useState('');
@@ -56,7 +62,12 @@ export default function WebsiteValuesPage() {
 
   const load = useCallback(async () => {
     if (!session?.accessToken) return;
-    setValues(await getWebsiteValues(session.accessToken));
+    const [storedValues, missing] = await Promise.all([
+      getWebsiteValues(session.accessToken),
+      getMissingWebsiteValues(session.accessToken),
+    ]);
+    setValues(storedValues);
+    setMissingValues(missing);
   }, [session?.accessToken]);
 
   useEffect(() => {
@@ -339,7 +350,7 @@ export default function WebsiteValuesPage() {
                       );
                       await load();
                       setMessage(
-                        `Synced ${result.updated} official prices and recalculated ${recalculated.recalculated} advertisements.`,
+                        `Synced ${result.updated} official prices from ${result.sources.length - result.failed} sources${result.failed ? `; ${result.failed} source${result.failed === 1 ? '' : 's'} kept cached values` : ''}. Recalculated ${recalculated.recalculated} advertisements.`,
                       );
                     } catch {
                       setMessage(
@@ -358,6 +369,87 @@ export default function WebsiteValuesPage() {
                 <p className="mt-4 border-l-4 border-signal bg-field p-3 text-sm font-bold text-sub">
                   {message}
                 </p>
+              ) : null}
+              {missingValues.length ? (
+                <section className="mt-5 overflow-hidden border border-amber-500/45 bg-surface">
+                  <div className="flex items-start gap-3 border-b border-amber-500/30 bg-amber-500/10 p-4">
+                    <AlertTriangle className="mt-0.5 shrink-0 text-amber-500" size={19} />
+                    <div>
+                      <h3 className="font-black text-foreground">
+                        Website value not found ({missingValues.length})
+                      </h3>
+                      <p className="mt-1 text-xs leading-5 text-muted">
+                        No exact official grade and drivetrain matched these auction identities. Their website-value tax basis remains unset.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[720px] text-left text-sm">
+                      <thead className="border-b border-line bg-field text-xs uppercase text-muted">
+                        <tr>
+                          <th className="px-4 py-3">Vehicle</th>
+                          <th className="px-4 py-3">Identity</th>
+                          <th className="px-4 py-3">Seen</th>
+                          <th className="px-4 py-3 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-line">
+                        {missingValues.map((missing) => (
+                          <tr key={missing._id}>
+                            <td className="px-4 py-3">
+                              <p className="font-black text-foreground">
+                                {missing.maker} {missing.model}
+                              </p>
+                              <p className="mt-1 text-xs text-muted">
+                                {missing.vehicleGrade || 'Grade not provided'}
+                              </p>
+                            </td>
+                            <td className="px-4 py-3">
+                              <p className="font-mono text-xs text-sub">
+                                {[missing.modelCode, missing.chassisCode].filter(Boolean).join(' · ') || 'No model code'}
+                              </p>
+                              {missing.sourceUrl ? (
+                                <a
+                                  className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-signal"
+                                  href={missing.sourceUrl}
+                                  rel="noreferrer"
+                                  target="_blank"
+                                >
+                                  {missing.source || 'Auction source'} <ExternalLink size={12} />
+                                </a>
+                              ) : null}
+                            </td>
+                            <td className="px-4 py-3 text-xs text-muted">
+                              <p>{new Date(missing.lastSeenAt).toLocaleString()}</p>
+                              <p className="mt-1">{missing.occurrences} checks</p>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <button
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-panel border border-line text-muted hover:text-foreground"
+                                onClick={async () => {
+                                  if (!session.accessToken) return;
+                                  setBusy(true);
+                                  try {
+                                    await ignoreMissingWebsiteValue(missing._id, session.accessToken);
+                                    await load();
+                                  } catch {
+                                    setMessage('Could not dismiss this missing value alert.');
+                                  } finally {
+                                    setBusy(false);
+                                  }
+                                }}
+                                title="Dismiss alert"
+                                type="button"
+                              >
+                                <EyeOff size={15} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
               ) : null}
               <div className="mt-5 overflow-x-auto border border-line bg-surface shadow-soft">
                 <table className="w-full min-w-[760px] text-left text-sm">

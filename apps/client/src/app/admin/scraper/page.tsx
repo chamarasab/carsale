@@ -1,6 +1,6 @@
 'use client';
 
-import { DatabaseZap, Play, RefreshCcw, Search } from 'lucide-react';
+import { AlertTriangle, DatabaseZap, Play, RefreshCcw, Search } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
@@ -123,6 +123,23 @@ export default function AdminScraperPage() {
             </div>
           ) : null}
         </div>
+
+        {isAdmin && (scraper?.missingWebsiteValues ?? 0) > 0 ? (
+          <Link
+            className="mt-6 flex items-start gap-3 border border-amber-500/45 bg-amber-500/10 p-4 text-sm"
+            href="/admin/website-values"
+          >
+            <AlertTriangle className="mt-0.5 shrink-0 text-amber-500" size={19} />
+            <span>
+              <strong className="block text-foreground">
+                Website value not found for {scraper?.missingWebsiteValues} auction variant{scraper?.missingWebsiteValues === 1 ? '' : 's'}
+              </strong>
+              <span className="mt-1 block font-bold text-muted">
+                Review unmatched model codes before relying on their estimated tax totals.
+              </span>
+            </span>
+          </Link>
+        ) : null}
 
         {!isAdmin ? (
           <section className="mt-8 rounded-panel border border-line bg-surface p-6 shadow-soft">

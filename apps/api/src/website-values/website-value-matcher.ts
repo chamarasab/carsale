@@ -24,6 +24,11 @@ export type WebsiteValueCarIdentity = {
   vehicleGrade?: string;
   chassisCode?: string;
   features?: string[];
+  transmission?: string;
+  fuelType?: string;
+  engineCapacity?: number;
+  source?: string;
+  sourceUrl?: string;
 };
 
 export function selectWebsiteValueForCar(
@@ -38,6 +43,9 @@ export function selectWebsiteValueForCar(
       car.vehicleGrade,
       car.modelCode,
       car.chassisCode,
+      car.transmission,
+      car.fuelType,
+      car.engineCapacity,
       ...(car.features ?? []),
     ]
       .filter(Boolean)
@@ -48,7 +56,7 @@ export function selectWebsiteValueForCar(
   const ranked = records
     .filter(
       (record) =>
-        normalize(record.maker) === maker && normalize(record.model) === model,
+        normalize(record.maker) === maker && modelsEqual(record.model, model),
     )
     .map((record) => ({
       record,
@@ -107,14 +115,42 @@ function inferDrivetrain(identity: string): '2WD' | '4WD' | undefined {
   if (
     containsPhrase(identity, '4WD') ||
     containsPhrase(identity, 'AWD') ||
-    containsPhrase(identity, 'M910A')
+    containsPhrase(identity, 'E FOUR') ||
+    hasAnyCode(identity, [
+      'M910A', 'M910S', 'LA660S', 'LA360S', 'A210S', 'MXPA15', 'MXPH17',
+      'MXPH15', 'WZXP', 'WZLJ', 'WZLQ', 'ZSGP', 'ZSXP', 'ZTXP',
+    ])
   ) {
     return '4WD';
   }
-  if (containsPhrase(identity, '2WD') || containsPhrase(identity, 'M900A')) {
+  if (
+    containsPhrase(identity, '2WD') ||
+    hasAnyCode(identity, [
+      'M900A', 'M900S', 'LA650S', 'LA350S', 'A201S', 'A202S', 'MXPA10',
+      'MXPH14', 'MXPH10', 'KSP210', 'WZXB', 'WZLD', 'WZLE', 'ZSGB', 'ZSXB',
+      'ZTXB',
+    ])
+  ) {
     return '2WD';
   }
   return undefined;
+}
+
+function hasAnyCode(identity: string, codes: string[]) {
+  return codes.some((code) => containsPhrase(identity, code));
+}
+
+function modelsEqual(recordModel: string, normalizedCarModel: string) {
+  return canonicalModel(recordModel) === canonicalModel(normalizedCarModel);
+}
+
+function canonicalModel(value: string) {
+  const model = normalize(value).replace(/\s+/g, '');
+  if (model === 'MIRA' || model === 'MIRAES') return 'MIRAES';
+  if (model === 'SPACIACUSTOM') return 'SPACIA';
+  if (model === 'TANTOCUSTOM') return 'TANTO';
+  if (model === 'THORCUSTOM') return 'THOR';
+  return model;
 }
 
 function containsPhrase(identity: string, phrase: string) {

@@ -84,6 +84,7 @@ export type ScraperStatus = {
     jpCenter: ScrapeRun | null;
     automarket: ScrapeRun | null;
   };
+  missingWebsiteValues?: number;
   runs: ScrapeRun[];
 };
 
@@ -183,6 +184,23 @@ export type WebsiteValue = {
 };
 
 export type WebsiteValueInput = Omit<WebsiteValue, '_id' | 'lastSyncedAt'>;
+
+export type WebsiteValueMiss = {
+  _id: string;
+  key: string;
+  maker: string;
+  model: string;
+  title?: string;
+  modelCode?: string;
+  chassisCode?: string;
+  vehicleGrade?: string;
+  source?: string;
+  sourceUrl?: string;
+  occurrences: number;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  status: 'missing' | 'resolved' | 'ignored';
+};
 
 export async function signupUser(input: { name: string; email: string; password: string }) {
   const response = await fetch(`${apiUrl}/auth/signup`, {
@@ -395,6 +413,24 @@ export async function getWebsiteValues(accessToken: string) {
   return (await response.json()) as WebsiteValue[];
 }
 
+export async function getMissingWebsiteValues(accessToken: string) {
+  const response = await fetch(`${apiUrl}/website-values/missing`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: 'no-store',
+  });
+  if (!response.ok) throw new Error('Could not load missing website values');
+  return (await response.json()) as WebsiteValueMiss[];
+}
+
+export async function ignoreMissingWebsiteValue(id: string, accessToken: string) {
+  const response = await fetch(`${apiUrl}/website-values/missing/${id}/ignore`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error('Could not dismiss missing website value');
+  return (await response.json()) as WebsiteValueMiss;
+}
+
 export async function createWebsiteValue(input: WebsiteValueInput, accessToken: string) {
   const response = await fetch(`${apiUrl}/website-values`, {
     method: 'POST',
@@ -436,7 +472,21 @@ export async function refreshWebsiteValues(accessToken: string) {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!response.ok) throw new Error('Could not refresh manufacturer website values');
-  return (await response.json()) as { fetched: number; updated: number; syncedAt: string };
+  return (await response.json()) as {
+    fetched: number;
+    updated: number;
+    failed: number;
+    syncedAt: string;
+    sources: Array<{
+      id: string;
+      label: string;
+      sourceUrl: string;
+      fetched: number;
+      updated: number;
+      syncedAt?: string;
+      error?: string;
+    }>;
+  };
 }
 
 export async function uploadCarImages(files: File[], accessToken: string) {

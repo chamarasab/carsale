@@ -151,10 +151,11 @@ export class ScraperService implements OnModuleInit {
   }
 
   async getBotStatus() {
-    const [runs, lastJpCenterRun, lastAutomarketRun] = await Promise.all([
+    const [runs, lastJpCenterRun, lastAutomarketRun, missingWebsiteValues] = await Promise.all([
       this.scrapeRunModel.find().sort({ startedAt: -1 }).limit(10).lean(),
       this.scrapeRunModel.findOne({ source: 'JP Center' }).sort({ startedAt: -1 }).lean(),
       this.scrapeRunModel.findOne({ source: 'A-Automarket' }).sort({ startedAt: -1 }).lean(),
+      this.websiteValuesService.countMissing(),
     ]);
     return {
       source: 'JP Center',
@@ -175,6 +176,7 @@ export class ScraperService implements OnModuleInit {
         jpCenter: lastJpCenterRun,
         automarket: lastAutomarketRun,
       },
+      missingWebsiteValues,
       runs,
     };
   }
@@ -238,7 +240,7 @@ export class ScraperService implements OnModuleInit {
     const jobs: ScrapeJobResult[] = [];
     const errors: string[] = [];
     this.logger.log(`[SCRAPE START] run=${run.id} trigger=${run.trigger}`);
-    await this.refreshManufacturerValues();
+    await this.prepareManufacturerValueCache();
     const client = await this.createJpCenterClient();
     const jobDelayMs = Math.max(
       0,
@@ -385,7 +387,7 @@ export class ScraperService implements OnModuleInit {
       throw new BadRequestException('JPCENTER_USERNAME and JPCENTER_PASSWORD are required');
     }
 
-    if (!authenticatedClient) await this.refreshManufacturerValues();
+    if (!authenticatedClient) await this.prepareManufacturerValueCache();
 
     const maker = (options.maker ?? 'Toyota').trim();
     const model = (options.model ?? 'Prius').trim().toUpperCase();
@@ -483,7 +485,7 @@ export class ScraperService implements OnModuleInit {
     });
 
     try {
-      await this.refreshManufacturerValues();
+      await this.prepareManufacturerValueCache();
       const result = await this.importFromAutomarket(options);
       const finishedAt = new Date();
       const job: ScrapeJobResult = {
@@ -634,12 +636,12 @@ export class ScraperService implements OnModuleInit {
     };
   }
 
-  private async refreshManufacturerValues() {
+  private async prepareManufacturerValueCache() {
     try {
-      await this.websiteValuesService.refreshKnownSources();
+      await this.websiteValuesService.ensureKnownValues();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.logger.warn(`[WEBSITE VALUE REFRESH] using cached values: ${message}`);
+      this.logger.warn(`[WEBSITE VALUE CACHE] could not seed known values: ${message}`);
     }
     try {
       const result = await this.carsService.recalculateAll();

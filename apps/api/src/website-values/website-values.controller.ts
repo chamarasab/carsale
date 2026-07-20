@@ -25,6 +25,11 @@ export class WebsiteValuesController {
     return this.websiteValuesService.findAll();
   }
 
+  @Get('missing')
+  findMissing() {
+    return this.websiteValuesService.findMissing();
+  }
+
   @Post()
   create(@Body() dto: CreateWebsiteValueDto) {
     return this.websiteValuesService.create(dto);
@@ -33,6 +38,11 @@ export class WebsiteValuesController {
   @Post('refresh')
   refresh() {
     return this.websiteValuesService.refreshKnownSources();
+  }
+
+  @Patch('missing/:id/ignore')
+  ignoreMissing(@Param('id') id: string) {
+    return this.websiteValuesService.ignoreMissing(id);
   }
 
   @Patch(':id')
