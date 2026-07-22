@@ -184,7 +184,7 @@ export function CarSearchForm({
         aria-expanded={mobileOpen}
         aria-haspopup="dialog"
         aria-label="Search and filter cars"
-        className="bg-brand-gradient mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-panel border border-white/25 px-5 text-sm font-black text-white shadow-theme transition duration-200 hover:brightness-110 focus:outline-none focus:ring-4 focus:ring-signal/30 sm:hidden"
+        className="bg-brand-gradient mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border border-white/35 px-6 text-sm font-black text-white shadow-theme transition duration-200 hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-signal/30 sm:hidden"
         onClick={() => setMobileOpen(true)}
         title="Search cars"
         type="button"
