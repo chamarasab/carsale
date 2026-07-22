@@ -16,6 +16,8 @@ type SaveImageOptions = {
   imageKind?: 'vehicle-photo' | 'auction-sheet';
 };
 
+const IMAGE_DELETE_BATCH_SIZE = 8;
+
 @Injectable()
 export class MediaService {
   private readonly bucket: mongo.GridFSBucket;
@@ -65,17 +67,23 @@ export class MediaService {
   async deleteImages(urls: string[]) {
     const ids = new Set(
       urls
-        .map((url) => url.match(/\/images\/gridfs\/([a-f\d]{24})(?:\/|$)/i)?.[1])
+        .map(gridFsImageId)
         .filter((id): id is string => Boolean(id)),
     );
 
+    const imageIds = [...ids];
     let deleted = 0;
-    for (const id of ids) {
-      const objectId = new mongo.ObjectId(id);
-      const exists = await this.bucket.find({ _id: objectId }).hasNext();
-      if (!exists) continue;
-      await this.bucket.delete(objectId);
-      deleted += 1;
+    for (let index = 0; index < imageIds.length; index += IMAGE_DELETE_BATCH_SIZE) {
+      const results = await Promise.all(
+        imageIds.slice(index, index + IMAGE_DELETE_BATCH_SIZE).map(async (id) => {
+          const objectId = new mongo.ObjectId(id);
+          const exists = await this.bucket.find({ _id: objectId }).hasNext();
+          if (!exists) return false;
+          await this.bucket.delete(objectId);
+          return true;
+        }),
+      );
+      deleted += results.filter(Boolean).length;
     }
     return deleted;
   }
@@ -105,4 +113,8 @@ export class MediaService {
     if (extension === '.gif') return 'image/gif';
     return 'image/jpeg';
   }
+}
+
+export function gridFsImageId(url: string) {
+  return url.match(/\/images\/gridfs\/([a-f\d]{24})(?:\/|$)/i)?.[1];
 }

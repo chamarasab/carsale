@@ -311,7 +311,7 @@ export default function AdminScraperPage() {
               </div>
               <div className="divide-y divide-line">
                 {scraper?.runs.map((run) => (
-                  <div className="grid gap-3 px-5 py-4 sm:grid-cols-[1fr_repeat(4,90px)] sm:items-center" key={run._id}>
+                  <div className="grid gap-3 px-5 py-4 sm:grid-cols-[1fr_repeat(5,90px)] sm:items-center" key={run._id}>
                     <div>
                       <p className="font-black capitalize text-foreground">
                         {run.source} · {run.status} · {run.trigger}
@@ -321,6 +321,7 @@ export default function AdminScraperPage() {
                     <RunValue label="Fetched" value={run.fetched} />
                     <RunValue label="Inserted" value={run.inserted} />
                     <RunValue label="Updated" value={run.updated} />
+                    <RunValue label="Deduped" value={run.duplicatesDeleted ?? 0} />
                     <RunValue label="Errors" value={run.errors.length} />
                   </div>
                 ))}
@@ -357,13 +358,14 @@ function RunSummary({ icon, run, source }: { icon: ReactNode; run: ScrapeRun | n
           {run ? <p className="mt-1 text-xs font-bold text-muted">{new Date(run.startedAt).toLocaleString()}</p> : null}
         </div>
       </div>
-      <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-panel bg-line sm:grid-cols-3 xl:grid-cols-6">
+      <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-panel bg-line sm:grid-cols-4">
         {[
           ['Fetched', run?.fetched ?? 0],
           ['Eligible', run?.eligible ?? 0],
           ['Imported', run?.imported ?? 0],
           ['Inserted', run?.inserted ?? 0],
           ['Updated', run?.updated ?? 0],
+          ['Duplicates removed', run?.duplicatesDeleted ?? 0],
           ['Skipped / failed', run?.failedJobs ?? 0],
         ].map(([label, value]) => (
           <div className="bg-field p-4" key={label}>

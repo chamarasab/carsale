@@ -4,13 +4,29 @@ import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
 import { SettingsService } from '../settings/settings.service';
 import { AuthUser } from '../auth/auth.types';
-import { MediaService } from '../media/media.service';
+import { gridFsImageId, MediaService } from '../media/media.service';
 import { WebsiteValuesService } from '../website-values/website-values.service';
 import { AUCTION_GRADES, normalizeAuctionGrade } from './auction-grades';
 import { Car } from './car.schema';
 import { applyWorkbookReferenceCost } from './cost-reference';
 import { CreateCarDto, UpdateCarDto } from './dto';
 import { calculateImportCost, prepareCostForRecalculation } from './tax-calculator';
+
+const SCRAPED_AUCTION_SOURCES = ['JP Center', 'A-Automarket'] as const;
+
+type ScrapedAuctionCandidate = {
+  _id: unknown;
+  source: string;
+  title: string;
+  year: number;
+  mileageKm: number;
+  location: string;
+  auctionDate?: string;
+  images: string[];
+  cost?: { auctionPriceJpy?: number };
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+};
 
 @Injectable()
 export class CarsService {
@@ -155,6 +171,51 @@ export class CarsService {
       await this.carModel.deleteMany({ _id: { $in: expired.map((car) => car._id) } });
     }
     return { deletedCars: expired.length, deletedImages, cutoffDate: today };
+  }
+
+  async removeDuplicateScrapedAuctions() {
+    const cars = (await this.carModel
+      .find({ source: { $in: SCRAPED_AUCTION_SOURCES } })
+      .select(
+        '_id source title year mileageKm location auctionDate images cost.auctionPriceJpy createdAt updatedAt',
+      )
+      .lean()) as unknown as ScrapedAuctionCandidate[];
+    const groups = findDuplicateScrapedAuctions(cars);
+    const duplicates = groups.flatMap((group) => group.duplicates);
+
+    if (!duplicates.length) {
+      return { duplicateGroups: 0, deletedCars: 0, deletedImages: 0 };
+    }
+
+    const duplicateImages = [...new Set(duplicates.flatMap((car) => car.images ?? []))];
+    const duplicateIds = duplicates.map((car) => car._id);
+    const deletion = await this.carModel.deleteMany({
+      _id: { $in: duplicateIds },
+    } as FilterQuery<Car>);
+
+    // Compare GridFS ids after deleting the duplicate records so an image that is
+    // still referenced by any surviving advertisement is never removed.
+    const remainingCars = await this.carModel
+      .find({ 'images.0': { $exists: true } })
+      .select('images')
+      .lean();
+    const referencedImageIds = new Set(
+      remainingCars
+        .flatMap((car) => car.images ?? [])
+        .map(gridFsImageId)
+        .filter((id): id is string => Boolean(id)),
+    );
+    const unreferencedImages = duplicateImages.filter((image) => {
+      const id = gridFsImageId(image);
+      return id !== undefined && !referencedImageIds.has(id);
+    });
+    const deletedImages = await this.mediaService.deleteImages(unreferencedImages);
+
+    return {
+      duplicateGroups: groups.length,
+      deletedCars: deletion.deletedCount,
+      deletedImages,
+    };
   }
 
   async sanitizeAuctionGrades() {
@@ -333,4 +394,73 @@ export function colomboDateKey() {
     month: '2-digit',
     day: '2-digit',
   }).format(new Date());
+}
+
+export function auctionDuplicateFingerprint(car: ScrapedAuctionCandidate) {
+  const source = normalizeDuplicateText(car.source);
+  const title = normalizeDuplicateText(car.title);
+  const location = normalizeDuplicateText(car.location);
+  const year = Number(car.year);
+  const mileageKm = Number(car.mileageKm);
+  const auctionPriceJpy = Number(car.cost?.auctionPriceJpy);
+
+  if (
+    !SCRAPED_AUCTION_SOURCES.some((candidate) => normalizeDuplicateText(candidate) === source) ||
+    !title ||
+    !location ||
+    !Number.isInteger(year) ||
+    year <= 0 ||
+    !Number.isFinite(mileageKm) ||
+    mileageKm <= 0 ||
+    !Number.isFinite(auctionPriceJpy) ||
+    auctionPriceJpy <= 0
+  ) {
+    return undefined;
+  }
+
+  return [source, title, year, mileageKm, location, auctionPriceJpy].join('\u001f');
+}
+
+export function findDuplicateScrapedAuctions<T extends ScrapedAuctionCandidate>(cars: T[]) {
+  const candidates = new Map<string, T[]>();
+
+  for (const car of cars) {
+    const fingerprint = auctionDuplicateFingerprint(car);
+    if (!fingerprint) continue;
+    const group = candidates.get(fingerprint) ?? [];
+    group.push(car);
+    candidates.set(fingerprint, group);
+  }
+
+  return [...candidates.entries()]
+    .filter(([, group]) => group.length > 1)
+    .map(([fingerprint, group]) => {
+      const [keeper, ...duplicates] = [...group].sort(compareDuplicateCandidates);
+      return { fingerprint, keeper, duplicates };
+    });
+}
+
+function compareDuplicateCandidates(a: ScrapedAuctionCandidate, b: ScrapedAuctionCandidate) {
+  const auctionDateComparison = (normalizeAuctionDate(b.auctionDate) ?? '').localeCompare(
+    normalizeAuctionDate(a.auctionDate) ?? '',
+  );
+  if (auctionDateComparison !== 0) return auctionDateComparison;
+
+  const createdAtComparison = timestamp(b.createdAt) - timestamp(a.createdAt);
+  if (createdAtComparison !== 0) return createdAtComparison;
+
+  const updatedAtComparison = timestamp(b.updatedAt) - timestamp(a.updatedAt);
+  if (updatedAtComparison !== 0) return updatedAtComparison;
+
+  return String(b._id).localeCompare(String(a._id));
+}
+
+function normalizeDuplicateText(value?: string) {
+  return (value ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function timestamp(value?: Date | string) {
+  if (!value) return 0;
+  const result = new Date(value).getTime();
+  return Number.isFinite(result) ? result : 0;
 }

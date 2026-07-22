@@ -167,6 +167,14 @@ export class ScraperService implements OnModuleInit {
     this.logger.log(
       `[AUCTION GRADE CLEANUP] normalizedCars=${gradeCleanup.normalizedCars} deletedCars=${gradeCleanup.deletedCars} unpublishedCars=${gradeCleanup.unpublishedCars} deletedImages=${gradeCleanup.deletedImages}`,
     );
+    try {
+      const duplicateCleanup = await this.carsService.removeDuplicateScrapedAuctions();
+      this.logger.log(
+        `[AUCTION DUPLICATE CLEANUP] groups=${duplicateCleanup.duplicateGroups} deletedCars=${duplicateCleanup.deletedCars} deletedImages=${duplicateCleanup.deletedImages}`,
+      );
+    } catch (error) {
+      this.logger.error(`[AUCTION DUPLICATE CLEANUP FAILED] ${errorDetail(error)}`);
+    }
   }
 
   async getBotStatus() {
@@ -314,20 +322,35 @@ export class ScraperService implements OnModuleInit {
       }
     }
 
+    await this.scrapeRunModel.findByIdAndUpdate(run._id, { $set: { phase: 'checking duplicates' } });
+    const cleanup = await this.carsService.removeExpiredScrapedAuctions();
+    let duplicateCleanup = { duplicateGroups: 0, deletedCars: 0, deletedImages: 0 };
+    try {
+      duplicateCleanup = await this.carsService.removeDuplicateScrapedAuctions();
+    } catch (error) {
+      const message = `Duplicate cleanup: ${errorDetail(error)}`;
+      errors.push(message);
+      totals.failedJobs += 1;
+      this.logger.error(`[AUCTION DUPLICATE CLEANUP FAILED] run=${run.id}: ${message}`);
+    }
+
     const finishedAt = new Date();
     const status = errors.length === 0 ? 'success' : totals.imported > 0 ? 'partial' : 'failed';
     await this.scrapeRunModel.findByIdAndUpdate(run._id, {
       $set: {
         ...totals,
         status,
+        phase: status === 'partial' ? 'completed with errors' : status === 'failed' ? 'failed' : 'complete',
         errors,
+        duplicateGroups: duplicateCleanup.duplicateGroups,
+        duplicatesDeleted: duplicateCleanup.deletedCars,
+        duplicateImagesDeleted: duplicateCleanup.deletedImages,
         finishedAt,
         durationMs: finishedAt.getTime() - run.startedAt.getTime(),
       },
     });
-    const cleanup = await this.carsService.removeExpiredScrapedAuctions();
     this.logger.log(
-      `[SCRAPE COMPLETE] run=${run.id} status=${status} fetched=${totals.fetched} inserted=${totals.inserted} updated=${totals.updated} errors=${errors.length} expiredDeleted=${cleanup.deletedCars}`,
+      `[SCRAPE COMPLETE] run=${run.id} status=${status} fetched=${totals.fetched} inserted=${totals.inserted} updated=${totals.updated} errors=${errors.length} expiredDeleted=${cleanup.deletedCars} duplicatesDeleted=${duplicateCleanup.deletedCars} duplicateImagesDeleted=${duplicateCleanup.deletedImages}`,
     );
   }
 
@@ -537,8 +560,21 @@ export class ScraperService implements OnModuleInit {
       if (error) update.$push = { errors: error };
       await this.scrapeRunModel.findByIdAndUpdate(run._id, update);
     });
+    await this.scrapeRunModel.findByIdAndUpdate(run._id, { $set: { phase: 'checking duplicates' } });
+    const errors = [...result.errors];
+    let failedJobs = result.failedJobs;
+    let duplicateCleanup = { duplicateGroups: 0, deletedCars: 0, deletedImages: 0 };
+    try {
+      duplicateCleanup = await this.carsService.removeDuplicateScrapedAuctions();
+    } catch (error) {
+      const message = `Duplicate cleanup: ${errorDetail(error)}`;
+      errors.push(message);
+      failedJobs += 1;
+      this.logger.error(`[AUCTION DUPLICATE CLEANUP FAILED] run=${run.id}: ${message}`);
+    }
+
     const finishedAt = new Date();
-    const status = result.errors.length === 0 ? 'success' : result.imported > 0 ? 'partial' : 'failed';
+    const status = errors.length === 0 ? 'success' : result.imported > 0 ? 'partial' : 'failed';
     const job: ScrapeJobResult = {
       maker: options.maker,
       model: options.model,
@@ -551,7 +587,7 @@ export class ScraperService implements OnModuleInit {
     await this.scrapeRunModel.findByIdAndUpdate(run._id, {
       $set: {
         status,
-        phase: status === 'partial' ? 'completed with skips' : 'complete',
+        phase: status === 'partial' ? 'completed with skips' : status === 'failed' ? 'failed' : 'complete',
         finishedAt,
         durationMs: finishedAt.getTime() - run.startedAt.getTime(),
         fetched: result.fetched,
@@ -559,13 +595,16 @@ export class ScraperService implements OnModuleInit {
         imported: result.imported,
         inserted: result.created,
         updated: result.updated,
-        failedJobs: result.failedJobs,
-        errors: result.errors,
+        failedJobs,
+        errors,
+        duplicateGroups: duplicateCleanup.duplicateGroups,
+        duplicatesDeleted: duplicateCleanup.deletedCars,
+        duplicateImagesDeleted: duplicateCleanup.deletedImages,
         jobs: [job],
       },
     });
     this.logger.log(
-      `[AUTOMARKET COMPLETE] run=${run.id} status=${status} fetched=${result.fetched} eligible=${result.eligible} inserted=${result.created} updated=${result.updated} skipped=${result.failedJobs}`,
+      `[AUTOMARKET COMPLETE] run=${run.id} status=${status} fetched=${result.fetched} eligible=${result.eligible} inserted=${result.created} updated=${result.updated} skipped=${result.failedJobs} duplicatesDeleted=${duplicateCleanup.deletedCars} duplicateImagesDeleted=${duplicateCleanup.deletedImages}`,
     );
   }
 

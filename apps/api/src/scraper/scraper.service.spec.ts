@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { normalizeAuctionGrade } from '../cars/auction-grades';
-import { normalizeAuctionDate } from '../cars/cars.service';
+import { findDuplicateScrapedAuctions, normalizeAuctionDate } from '../cars/cars.service';
 import {
   cleanDisplayText,
   extractAutomarketImageUrls,
@@ -28,6 +28,59 @@ test('normalizes supported auction dates for expiry cleanup', () => {
   assert.equal(normalizeAuctionDate('15.07.2026'), '2026-07-15');
   assert.equal(normalizeAuctionDate('15/07/2026'), '2026-07-15');
   assert.equal(normalizeAuctionDate('31.02.2026'), undefined);
+});
+
+test('identifies relisted auction cars and keeps the latest auction date', () => {
+  const base = {
+    source: 'A-Automarket',
+    title: '2025 Subaru Chiffon CUSTOM R',
+    year: 2025,
+    mileageKm: 7000,
+    location: 'GAO Stock',
+    images: [] as string[],
+    cost: { auctionPriceJpy: 1675000 },
+  };
+  const cars = [
+    { ...base, _id: 'older', auctionDate: '2026-08-02' },
+    { ...base, _id: 'newest', auctionDate: '2026-08-05' },
+    {
+      ...base,
+      _id: 'middle',
+      title: '  2025   SUBARU Chiffon CUSTOM R ',
+      location: 'gao   stock',
+      auctionDate: '04.08.2026',
+    },
+  ];
+
+  const groups = findDuplicateScrapedAuctions(cars);
+
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].keeper._id, 'newest');
+  assert.deepEqual(groups[0].duplicates.map((car) => car._id), ['middle', 'older']);
+});
+
+test('does not merge cars when a fingerprint field or auction source differs', () => {
+  const base = {
+    source: 'A-Automarket',
+    title: '2024 Subaru Chiffon G',
+    year: 2024,
+    mileageKm: 17000,
+    location: 'LAP Kyoyuzaiko',
+    auctionDate: '2026-08-04',
+    images: [] as string[],
+    cost: { auctionPriceJpy: 1359000 },
+  };
+  const cars = [
+    { ...base, _id: 'base' },
+    { ...base, _id: 'price', cost: { auctionPriceJpy: 1360000 } },
+    { ...base, _id: 'mileage', mileageKm: 18000 },
+    { ...base, _id: 'location', location: 'USS Tokyo' },
+    { ...base, _id: 'source', source: 'JP Center' },
+    { ...base, _id: 'unknown-mileage-1', mileageKm: 0 },
+    { ...base, _id: 'unknown-mileage-2', mileageKm: 0 },
+  ];
+
+  assert.deepEqual(findDuplicateScrapedAuctions(cars), []);
 });
 
 test('accepts only supported auction condition grades', () => {

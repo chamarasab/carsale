@@ -62,6 +62,9 @@ export type ScrapeRun = {
   inserted: number;
   updated: number;
   failedJobs: number;
+  duplicateGroups?: number;
+  duplicatesDeleted?: number;
+  duplicateImagesDeleted?: number;
   jobs: ScrapeJobResult[];
   errors: string[];
   phase?: string;

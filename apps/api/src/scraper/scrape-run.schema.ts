@@ -74,6 +74,15 @@ export class ScrapeRun {
   @Prop({ default: 0, type: Number })
   failedJobs: number;
 
+  @Prop({ default: 0, type: Number })
+  duplicateGroups: number;
+
+  @Prop({ default: 0, type: Number })
+  duplicatesDeleted: number;
+
+  @Prop({ default: 0, type: Number })
+  duplicateImagesDeleted: number;
+
   @Prop({ default: [], type: [ScrapeJobResultSchema] })
   jobs: ScrapeJobResult[];
 
