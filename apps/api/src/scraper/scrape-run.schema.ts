@@ -60,6 +60,9 @@ export class ScrapeRun {
   fetched: number;
 
   @Prop({ default: 0, type: Number })
+  eligible: number;
+
+  @Prop({ default: 0, type: Number })
   imported: number;
 
   @Prop({ default: 0, type: Number })
@@ -76,6 +79,9 @@ export class ScrapeRun {
 
   @Prop({ default: [], type: [String] })
   errors: string[];
+
+  @Prop({ type: String })
+  phase?: string;
 }
 
 export const ScrapeRunSchema = SchemaFactory.createForClass(ScrapeRun);

@@ -57,12 +57,14 @@ export type ScrapeRun = {
   finishedAt?: string;
   durationMs: number;
   fetched: number;
+  eligible?: number;
   imported: number;
   inserted: number;
   updated: number;
   failedJobs: number;
   jobs: ScrapeJobResult[];
   errors: string[];
+  phase?: string;
 };
 
 export type ScraperStatus = {
@@ -373,12 +375,9 @@ export async function runAutomarketScraper(
   const result = await response.json();
   if (!response.ok) throw new Error(result.message || 'Could not run Automarket scraper');
   return result as {
-    fetched: number;
-    eligible: number;
-    imported: number;
-    created: number;
-    updated: number;
-    runId: string;
+    started: boolean;
+    reason?: string;
+    runId?: string;
   };
 }
 

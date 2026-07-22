@@ -84,9 +84,9 @@ export default function AdminScraperPage() {
         listSize: typeof selectedLimit === 'number' ? selectedLimit : undefined,
         allUpcoming,
       }, session.accessToken);
-      setMessage(
-        `Automarket finished: ${result.fetched} fetched, ${result.eligible} eligible, ${result.created} inserted, ${result.updated} updated.`,
-      );
+      setMessage(result.started
+        ? 'Automarket import started. Live progress is shown below.'
+        : result.reason || 'A scrape is already running.');
       await refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not run the Automarket scraper.');
@@ -101,6 +101,7 @@ export default function AdminScraperPage() {
   const lastAutomarketRun = scraper?.lastRuns?.automarket
     ?? scraper?.runs.find((run) => run.source === 'A-Automarket')
     ?? null;
+  const automarketActive = lastAutomarketRun?.status === 'running';
 
   return (
     <main className="min-h-screen">
@@ -259,12 +260,12 @@ export default function AdminScraperPage() {
               </div>
               <button
                 className="bg-brand-gradient mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-panel px-5 text-sm font-black text-white disabled:opacity-50"
-                disabled={automarketRunning || !automarketForm.model.trim()}
+                disabled={automarketRunning || automarketActive || scraper?.running || !automarketForm.model.trim()}
                 onClick={runAutomarket}
                 type="button"
               >
                 <Play size={17} />
-                {automarketRunning ? 'Importing...' : 'Run Automarket import'}
+                {automarketRunning ? 'Starting...' : automarketActive ? 'Importing...' : 'Run Automarket import'}
               </button>
             </section>
 
@@ -351,17 +352,19 @@ function RunSummary({ icon, run, source }: { icon: ReactNode; run: ScrapeRun | n
         <div>
           <p className="text-xs font-black uppercase tracking-wide text-muted">Latest {source} run</p>
           <h2 className="text-xl font-black capitalize text-foreground">
-            {run ? `${run.status} · ${run.trigger}` : 'No runs recorded'}
+            {run ? [run.status, run.trigger, run.phase].filter(Boolean).join(' · ') : 'No runs recorded'}
           </h2>
           {run ? <p className="mt-1 text-xs font-bold text-muted">{new Date(run.startedAt).toLocaleString()}</p> : null}
         </div>
       </div>
-      <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-panel bg-line sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-panel bg-line sm:grid-cols-3 xl:grid-cols-6">
         {[
           ['Fetched', run?.fetched ?? 0],
+          ['Eligible', run?.eligible ?? 0],
+          ['Imported', run?.imported ?? 0],
           ['Inserted', run?.inserted ?? 0],
           ['Updated', run?.updated ?? 0],
-          ['Failed jobs', run?.failedJobs ?? 0],
+          ['Skipped / failed', run?.failedJobs ?? 0],
         ].map(([label, value]) => (
           <div className="bg-field p-4" key={label}>
             <p className="text-xs font-black uppercase text-muted">{label}</p>

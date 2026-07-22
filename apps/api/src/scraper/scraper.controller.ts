@@ -111,7 +111,7 @@ export class ScraperController {
 
   @Post('automarket')
   importAutomarket(@Body() dto: AutomarketImportDto) {
-    return this.scraperService.runAutomarketImport(dto);
+    return this.scraperService.startAutomarketImport(dto);
   }
 
   @Get('status')
@@ -142,6 +142,15 @@ export class ScraperInternalController {
   run(@Headers('x-scraper-service-key') key?: string) {
     this.assertServiceKey(key);
     return this.scraperService.startJpCenterBatch('scheduled');
+  }
+
+  @Post('automarket')
+  importAutomarket(
+    @Body() dto: AutomarketImportDto,
+    @Headers('x-scraper-service-key') key?: string,
+  ) {
+    this.assertServiceKey(key);
+    return this.scraperService.startAutomarketImport(dto);
   }
 
   private assertServiceKey(key?: string) {

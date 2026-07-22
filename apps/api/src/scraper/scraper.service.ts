@@ -69,6 +69,18 @@ type AutomarketRow = {
   previewImageUrl?: string;
 };
 
+type AutomarketProgress = {
+  phase: 'searching' | 'importing';
+  fetched: number;
+  eligible: number;
+  imported: number;
+  inserted: number;
+  updated: number;
+  failedJobs: number;
+};
+
+type AutomarketProgressCallback = (progress: AutomarketProgress, error?: string) => Promise<void>;
+
 const JP_CENTER_BASE_URL = 'https://jpcenter.ru';
 const AUTOMARKET_BASE_URL = 'https://auctions.a-automarket.com';
 const MIN_IMAGE_WIDTH = 320;
@@ -82,6 +94,8 @@ const DEFAULT_LOGIN_RETRY_DELAY_MS = 15_000;
 const DEFAULT_LOGIN_ATTEMPTS = 3;
 const AUTOMARKET_PAGE_SIZE = 20;
 const MAX_AUTOMARKET_PAGES = 100;
+const AUTOMARKET_REQUEST_ATTEMPTS = 4;
+const AUTOMARKET_PAGE_DELAY_MS = 250;
 const JP_CENTER_VENDOR_IDS: Record<string, string> = {
   TOYOTA: '1',
   NISSAN: '2',
@@ -123,6 +137,7 @@ const DEFAULT_JP_CENTER_JOBS: JpCenterBatchJob[] = [
 export class ScraperService implements OnModuleInit {
   private readonly logger = new Logger(ScraperService.name);
   private isBatchRunning = false;
+  private isAutomarketRunning = false;
 
   constructor(
     private readonly carsService: CarsService,
@@ -165,7 +180,7 @@ export class ScraperService implements OnModuleInit {
       source: 'JP Center',
       sourceUrl: JP_CENTER_BASE_URL,
       enabled: this.config.get<string>('SCRAPER_BOT_ENABLED', 'true') !== 'false',
-      running: this.isBatchRunning,
+      running: this.isBatchRunning || this.isAutomarketRunning,
       schedule: this.config.get<string>('SCRAPER_SCHEDULE_LABEL', 'Every 6 hours'),
       configuredJobs: this.batchJobs().map(({ maker, model, pages, listSize, yearFrom, yearTo }) => ({
         maker,
@@ -186,7 +201,7 @@ export class ScraperService implements OnModuleInit {
   }
 
   async startJpCenterBatch(trigger: ScrapeRunTrigger) {
-    if (this.isBatchRunning) {
+    if (this.isBatchRunning || this.isAutomarketRunning) {
       const current = await this.scrapeRunModel.findOne({ status: 'running' }).sort({ startedAt: -1 }).lean();
       return { started: false, reason: 'A scrape run is already active', runId: current?._id };
     }
@@ -214,16 +229,18 @@ export class ScraperService implements OnModuleInit {
   }
 
   private async recordUnexpectedFailure(run: ScrapeRunDocument, error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorDetail(error);
     const finishedAt = new Date();
     this.logger.error(`[SCRAPE FAILED] run=${run.id}: ${message}`);
     try {
       await this.scrapeRunModel.findByIdAndUpdate(run._id, {
         $set: {
           status: 'failed',
+          phase: 'failed',
           finishedAt,
           durationMs: finishedAt.getTime() - run.startedAt.getTime(),
         },
+        $inc: { failedJobs: 1 },
         $push: { errors: message },
       });
     } catch (persistenceError) {
@@ -479,57 +496,83 @@ export class ScraperService implements OnModuleInit {
     throw lastError;
   }
 
-  async runAutomarketImport(options: AutomarketImportOptions) {
-    const startedAt = new Date();
-    const run = await this.scrapeRunModel.create({
-      source: 'A-Automarket',
-      trigger: 'manual',
-      status: 'running',
-      startedAt,
-    });
+  async startAutomarketImport(options: AutomarketImportOptions) {
+    if (this.isBatchRunning || this.isAutomarketRunning) {
+      const current = await this.scrapeRunModel.findOne({ status: 'running' }).sort({ startedAt: -1 }).lean();
+      return { started: false, reason: 'A scrape run is already active', runId: current?._id };
+    }
 
+    this.isAutomarketRunning = true;
+    const startedAt = new Date();
+    let run: ScrapeRunDocument;
     try {
-      await this.prepareManufacturerValueCache();
-      const result = await this.importFromAutomarket(options);
-      const finishedAt = new Date();
-      const job: ScrapeJobResult = {
-        maker: options.maker,
-        model: options.model,
+      run = await this.scrapeRunModel.create({
+        source: 'A-Automarket',
+        trigger: 'manual',
+        status: 'running',
+        phase: 'preparing',
+        startedAt,
+      });
+    } catch (error) {
+      this.isAutomarketRunning = false;
+      throw error;
+    }
+
+    void this.executeAutomarketImport(run, options)
+      .catch((error) => this.recordUnexpectedFailure(run, error))
+      .finally(() => {
+        this.isAutomarketRunning = false;
+      });
+
+    return { started: true, runId: run._id };
+  }
+
+  private async executeAutomarketImport(run: ScrapeRunDocument, options: AutomarketImportOptions) {
+    this.logger.log(
+      `[AUTOMARKET START] run=${run.id} maker=${options.maker} model=${options.model} allUpcoming=${options.allUpcoming === true}`,
+    );
+    await this.prepareManufacturerValueCache();
+    const result = await this.importFromAutomarket(options, async (progress, error) => {
+      const update: Record<string, unknown> = { $set: progress };
+      if (error) update.$push = { errors: error };
+      await this.scrapeRunModel.findByIdAndUpdate(run._id, update);
+    });
+    const finishedAt = new Date();
+    const status = result.errors.length === 0 ? 'success' : result.imported > 0 ? 'partial' : 'failed';
+    const job: ScrapeJobResult = {
+      maker: options.maker,
+      model: options.model,
+      fetched: result.fetched,
+      imported: result.imported,
+      inserted: result.created,
+      updated: result.updated,
+      error: result.errors.length ? `${result.errors.length} listing(s) skipped` : undefined,
+    };
+    await this.scrapeRunModel.findByIdAndUpdate(run._id, {
+      $set: {
+        status,
+        phase: status === 'partial' ? 'completed with skips' : 'complete',
+        finishedAt,
+        durationMs: finishedAt.getTime() - run.startedAt.getTime(),
         fetched: result.fetched,
+        eligible: result.eligible,
         imported: result.imported,
         inserted: result.created,
         updated: result.updated,
-      };
-      await this.scrapeRunModel.findByIdAndUpdate(run._id, {
-        $set: {
-          status: 'success',
-          finishedAt,
-          durationMs: finishedAt.getTime() - startedAt.getTime(),
-          fetched: result.fetched,
-          imported: result.imported,
-          inserted: result.created,
-          updated: result.updated,
-          jobs: [job],
-        },
-      });
-      return { ...result, runId: run.id };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const finishedAt = new Date();
-      await this.scrapeRunModel.findByIdAndUpdate(run._id, {
-        $set: {
-          status: 'failed',
-          finishedAt,
-          durationMs: finishedAt.getTime() - startedAt.getTime(),
-          failedJobs: 1,
-          errors: [message],
-        },
-      });
-      throw error;
-    }
+        failedJobs: result.failedJobs,
+        errors: result.errors,
+        jobs: [job],
+      },
+    });
+    this.logger.log(
+      `[AUTOMARKET COMPLETE] run=${run.id} status=${status} fetched=${result.fetched} eligible=${result.eligible} inserted=${result.created} updated=${result.updated} skipped=${result.failedJobs}`,
+    );
   }
 
-  private async importFromAutomarket(options: AutomarketImportOptions) {
+  private async importFromAutomarket(
+    options: AutomarketImportOptions,
+    onProgress?: AutomarketProgressCallback,
+  ) {
     const username = this.config.get<string>('AUTOMARKET_USERNAME')?.trim();
     const password = this.config.get<string>('AUTOMARKET_PASSWORD')?.trim();
     if (!username || !password) {
@@ -556,15 +599,40 @@ export class ScraperService implements OnModuleInit {
     const seenLotIds = new Set<string>();
     const today = colomboDateKey();
     let completeRows: AutomarketRow[] = [];
+    let created = 0;
+    let updated = 0;
+    let failedJobs = 0;
+    const cars = [];
+    const errors: string[] = [];
+    const reportProgress = (phase: AutomarketProgress['phase'], error?: string) => onProgress?.({
+      phase,
+      fetched: rows.length,
+      eligible: completeRows.length,
+      imported: cars.length,
+      inserted: created,
+      updated,
+      failedJobs,
+    }, error);
 
     for (let page = 1; page <= MAX_AUTOMARKET_PAGES; page += 1) {
-      const pageRows = await client.fetchAuctionRows({
-        makerId,
-        model,
-        page,
-        yearFrom: options.yearFrom,
-        yearTo: options.yearTo,
-      });
+      let pageRows: AutomarketRow[];
+      try {
+        pageRows = await client.fetchAuctionRows({
+          makerId,
+          model,
+          page,
+          yearFrom: options.yearFrom,
+          yearTo: options.yearTo,
+        });
+      } catch (error) {
+        const message = `Search page ${page}: ${errorDetail(error)}`;
+        if (!rows.length) throw new BadRequestException(message);
+        errors.push(message);
+        failedJobs += 1;
+        this.logger.error(`[AUTOMARKET PAGE FAILED] ${message}`);
+        await reportProgress('searching', message);
+        break;
+      }
       let addedRows = 0;
       for (const row of pageRows) {
         if (seenLotIds.has(row.id)) continue;
@@ -574,88 +642,103 @@ export class ScraperService implements OnModuleInit {
       }
 
       completeRows = selectEligibleAutomarketRows(rows, listSize, preferredAuctionGrade, today);
+      this.logger.log(
+        `[AUTOMARKET PAGE] page=${page} fetched=${rows.length} eligible=${completeRows.length}`,
+      );
+      await reportProgress('searching');
       if (!allUpcoming && completeRows.length >= (listSize ?? 0)) break;
       if (pageRows.length < AUTOMARKET_PAGE_SIZE || addedRows === 0) break;
       if (page === MAX_AUTOMARKET_PAGES) {
-        this.logger.warn(
-          `[AUTOMARKET] stopped after ${MAX_AUTOMARKET_PAGES} pages for ${maker} ${model}`,
-        );
+        const message = `Search stopped at the ${MAX_AUTOMARKET_PAGES}-page safety limit`;
+        errors.push(message);
+        failedJobs += 1;
+        this.logger.warn(`[AUTOMARKET] ${message} for ${maker} ${model}`);
+        await reportProgress('searching', message);
+      } else {
+        await delay(AUTOMARKET_PAGE_DELAY_MS);
       }
     }
 
-    let created = 0;
-    let updated = 0;
-    const cars = [];
     const exchangeRate = await this.settingsService.getJpyToLkrRate();
+    await reportProgress('importing');
 
-    for (const row of completeRows) {
-      const details = await client.fetchLotImages(row.detailPath);
+    for (const [index, row] of completeRows.entries()) {
       const sourceUrl = new URL(row.detailPath, AUTOMARKET_BASE_URL).toString();
-      const images = await selectHighQualityImages(
-        details.length ? details : row.previewImageUrl ? [row.previewImageUrl] : [],
-        imageFilePrefix(row.model, row.lotNumber || row.id),
-        this.config.get<string>('API_PUBLIC_URL') ?? 'http://localhost:4000',
-        this.mediaService,
-        '/images/automarket',
-      );
-      if (!images.length) {
-        this.logger.warn(`[AUTOMARKET SKIP] ${sourceUrl} has no usable auction images`);
-        continue;
-      }
+      let rowError: string | undefined;
+      try {
+        const details = await client.fetchLotImages(row.detailPath);
+        const images = await selectHighQualityImages(
+          details.length ? details : row.previewImageUrl ? [row.previewImageUrl] : [],
+          imageFilePrefix(row.model, row.lotNumber || row.id),
+          this.config.get<string>('API_PUBLIC_URL') ?? 'http://localhost:4000',
+          this.mediaService,
+          '/images/automarket',
+        );
+        if (!images.length) throw new Error('no usable auction images');
 
-      const engineCapacity = normalizeEngineCapacity(row.engineCapacity, row.modelCode);
-      const identity = `${row.model} ${row.modelCode} ${row.vehicleGrade}`;
-      const fuelType = inferFuelType(identity);
-      const dto: CreateCarDto = {
-        title: cleanDisplayText(
-          [row.year, titleCase(row.maker), titleCase(row.model), row.vehicleGrade].filter(Boolean).join(' '),
-        ),
-        maker: titleCase(row.maker),
-        model: titleCase(row.model),
-        modelCode: row.modelCode,
-        vehicleGrade: row.vehicleGrade || undefined,
-        year: row.year,
-        mileageKm: row.mileageKm,
-        fuelType,
-        transmission: row.transmission || 'Automatic',
-        auctionGrade: row.auctionGrade!,
-        chassisCode: row.modelCode || row.lotNumber,
-        location: row.auctionName || 'Japan auction',
-        auctionDate: row.auctionDate || undefined,
-        source: 'A-Automarket',
-        sourceUrl,
-        images,
-        features: [
-          row.lotNumber ? `Lot ${row.lotNumber}` : '',
-          row.color ? `${titleCase(row.color)} exterior` : '',
-          engineCapacity ? `${engineCapacity}cc engine` : '',
-          row.vehicleGrade ? `Vehicle grade ${row.vehicleGrade}` : '',
-          row.equipment ? `Equipment ${row.equipment}` : '',
-        ].filter(Boolean),
-        cost: {
-          auctionPriceJpy: row.auctionPriceJpy,
-          exchangeRateLkr: exchangeRate.rate,
-          exchangeRateDate: exchangeRate.date,
-          exchangeRateSource: exchangeRate.source,
-          exchangeRateProvider: exchangeRate.provider,
-          freightJpy: this.config.get<number>('DEFAULT_FREIGHT_JPY') ?? 220000,
-          insuranceJpy: this.config.get<number>('DEFAULT_INSURANCE_JPY') ?? 50000,
-          vehicleType: 'Car',
+        const engineCapacity = normalizeEngineCapacity(row.engineCapacity, row.modelCode);
+        const identity = `${row.model} ${row.modelCode} ${row.vehicleGrade}`;
+        const fuelType = inferFuelType(identity);
+        const dto: CreateCarDto = {
+          title: cleanDisplayText(
+            [row.year, titleCase(row.maker), titleCase(row.model), row.vehicleGrade].filter(Boolean).join(' '),
+          ),
+          maker: titleCase(row.maker),
+          model: titleCase(row.model),
+          modelCode: row.modelCode,
+          vehicleGrade: row.vehicleGrade || undefined,
+          year: row.year,
+          mileageKm: row.mileageKm,
           fuelType,
-          engineCapacity,
-          manufactureYear: row.year,
-          bankChargesLkr: this.config.get<number>('DEFAULT_BANK_CHARGES_LKR') ?? 45000,
-          clearingChargesLkr: this.config.get<number>('DEFAULT_CLEARING_CHARGES_LKR') ?? 220000,
-          importerCommissionLkr: this.config.get<number>('DEFAULT_IMPORTER_COMMISSION_LKR') ?? 220000,
-          localTransportLkr: this.config.get<number>('DEFAULT_LOCAL_TRANSPORT_LKR') ?? 95000,
-        },
-        status: 'available',
-        published: true,
-      };
-      const result = await this.carsService.upsertBySourceUrl(dto);
-      cars.push(result.car);
-      if (result.created) created += 1;
-      else updated += 1;
+          transmission: row.transmission || 'Automatic',
+          auctionGrade: row.auctionGrade!,
+          chassisCode: row.modelCode || row.lotNumber,
+          location: row.auctionName || 'Japan auction',
+          auctionDate: row.auctionDate || undefined,
+          source: 'A-Automarket',
+          sourceUrl,
+          images,
+          features: [
+            row.lotNumber ? `Lot ${row.lotNumber}` : '',
+            row.color ? `${titleCase(row.color)} exterior` : '',
+            engineCapacity ? `${engineCapacity}cc engine` : '',
+            row.vehicleGrade ? `Vehicle grade ${row.vehicleGrade}` : '',
+            row.equipment ? `Equipment ${row.equipment}` : '',
+          ].filter(Boolean),
+          cost: {
+            auctionPriceJpy: row.auctionPriceJpy,
+            exchangeRateLkr: exchangeRate.rate,
+            exchangeRateDate: exchangeRate.date,
+            exchangeRateSource: exchangeRate.source,
+            exchangeRateProvider: exchangeRate.provider,
+            freightJpy: this.config.get<number>('DEFAULT_FREIGHT_JPY') ?? 220000,
+            insuranceJpy: this.config.get<number>('DEFAULT_INSURANCE_JPY') ?? 50000,
+            vehicleType: 'Car',
+            fuelType,
+            engineCapacity,
+            manufactureYear: row.year,
+            bankChargesLkr: this.config.get<number>('DEFAULT_BANK_CHARGES_LKR') ?? 45000,
+            clearingChargesLkr: this.config.get<number>('DEFAULT_CLEARING_CHARGES_LKR') ?? 220000,
+            importerCommissionLkr: this.config.get<number>('DEFAULT_IMPORTER_COMMISSION_LKR') ?? 220000,
+            localTransportLkr: this.config.get<number>('DEFAULT_LOCAL_TRANSPORT_LKR') ?? 95000,
+          },
+          status: 'available',
+          published: true,
+        };
+        const result = await this.carsService.upsertBySourceUrl(dto);
+        cars.push(result.car);
+        if (result.created) created += 1;
+        else updated += 1;
+        this.logger.log(
+          `[AUTOMARKET LOT] ${index + 1}/${completeRows.length} lot=${row.lotNumber || row.id} ${result.created ? 'inserted' : 'updated'}`,
+        );
+      } catch (error) {
+        rowError = `Lot ${row.lotNumber || row.id}: ${errorDetail(error)}`;
+        errors.push(rowError);
+        failedJobs += 1;
+        this.logger.error(`[AUTOMARKET LOT FAILED] ${sourceUrl}: ${rowError}`);
+      }
+      await reportProgress('importing', rowError);
     }
 
     return {
@@ -664,6 +747,8 @@ export class ScraperService implements OnModuleInit {
       imported: cars.length,
       created,
       updated,
+      failedJobs,
+      errors,
       cars,
     };
   }
@@ -941,6 +1026,26 @@ class AutomarketClient {
   }
 
   private async request(path: string, init: RequestInit = {}) {
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= AUTOMARKET_REQUEST_ATTEMPTS; attempt += 1) {
+      try {
+        return await this.requestOnce(path, init);
+      } catch (error) {
+        if (error instanceof BadRequestException) throw error;
+        lastError = error;
+        if (attempt < AUTOMARKET_REQUEST_ATTEMPTS) {
+          await delay(attempt * 1_000);
+        }
+      }
+    }
+
+    throw new BadRequestException(
+      `Automarket request failed after ${AUTOMARKET_REQUEST_ATTEMPTS} attempts: ${errorDetail(lastError)}`,
+    );
+  }
+
+  private async requestOnce(path: string, init: RequestInit = {}) {
     let url = new URL(path, AUTOMARKET_BASE_URL);
     let requestInit = { ...init };
 
@@ -956,8 +1061,11 @@ class AutomarketClient {
       });
       this.storeCookies(response.headers);
       if (![301, 302, 303, 307, 308].includes(response.status)) {
-        if (!response.ok) throw new BadRequestException(`Automarket request failed: ${response.status}`);
-        return response;
+        if (response.ok) return response;
+        if (response.status < 500 && response.status !== 429) {
+          throw new BadRequestException(`Automarket request failed: ${response.status}`);
+        }
+        throw new Error(`HTTP ${response.status}`);
       }
 
       const location = response.headers.get('location');
@@ -1224,6 +1332,18 @@ export function extractJpCenterMileage(html: string) {
 
 function delay(milliseconds: number) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function errorDetail(error: unknown) {
+  if (!(error instanceof Error)) return String(error);
+  const cause = (error as Error & { cause?: unknown }).cause;
+  if (cause && typeof cause === 'object') {
+    const code = 'code' in cause ? String(cause.code) : '';
+    const message = 'message' in cause ? String(cause.message) : '';
+    const detail = [code, message].filter(Boolean).join(': ');
+    if (detail) return `${error.message} (${detail})`;
+  }
+  return error.message;
 }
 
 async function fetchImage(url: string) {
