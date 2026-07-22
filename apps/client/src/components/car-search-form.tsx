@@ -181,7 +181,7 @@ export function CarSearchForm({
 
       <button
         aria-label="Search and filter cars"
-        className="fixed bottom-5 left-5 z-50 grid h-[52px] w-[52px] place-items-center rounded-full border border-line bg-surface text-signal shadow-theme focus:outline-none focus:ring-4 focus:ring-signal/20 sm:hidden"
+        className="bg-brand-gradient fixed bottom-[148px] right-5 z-50 grid h-[52px] w-[52px] place-items-center rounded-full border border-white/35 text-white shadow-theme transition duration-200 hover:-translate-y-1 hover:brightness-110 focus:outline-none focus:ring-4 focus:ring-signal/30 sm:hidden"
         onClick={() => setMobileOpen(true)}
         title="Search cars"
         type="button"
