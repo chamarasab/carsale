@@ -180,13 +180,17 @@ export function CarSearchForm({
       </form>
 
       <button
+        aria-controls="mobile-car-search-dialog"
+        aria-expanded={mobileOpen}
+        aria-haspopup="dialog"
         aria-label="Search and filter cars"
-        className="bg-brand-gradient fixed bottom-[148px] right-5 z-50 grid h-[52px] w-[52px] place-items-center rounded-full border border-white/35 text-white shadow-theme transition duration-200 hover:-translate-y-1 hover:brightness-110 focus:outline-none focus:ring-4 focus:ring-signal/30 sm:hidden"
+        className="bg-brand-gradient mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-panel border border-white/25 px-5 text-sm font-black text-white shadow-theme transition duration-200 hover:brightness-110 focus:outline-none focus:ring-4 focus:ring-signal/30 sm:hidden"
         onClick={() => setMobileOpen(true)}
         title="Search cars"
         type="button"
       >
         <Search size={21} strokeWidth={2.4} />
+        Search cars
       </button>
 
       {mobileOpen
@@ -202,6 +206,7 @@ export function CarSearchForm({
                 aria-labelledby="mobile-car-search-title"
                 aria-modal="true"
                 className="absolute inset-x-0 bottom-0 max-h-[88dvh] overflow-y-auto rounded-t-panel border-t border-line bg-surface shadow-theme"
+                id="mobile-car-search-dialog"
                 role="dialog"
               >
                 <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-surface px-4 py-3">

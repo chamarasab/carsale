@@ -98,7 +98,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           <div className="mt-2 sm:mt-3">
             <div>
               <h1 className="text-2xl font-black leading-tight text-foreground sm:text-4xl">{marketCopy.heading}</h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted sm:mt-3">{marketCopy.description}</p>
+              <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-muted sm:mt-3 sm:block">
+                {marketCopy.description}
+              </p>
               {exchangeRate ? (
                 <p className="mt-3 hidden rounded-panel border border-line bg-field px-3 py-2 text-xs font-black uppercase text-sub sm:inline-flex">
                   Daily JPY rate: 1 JPY = LKR {exchangeRate.rate.toFixed(4)} ({exchangeRate.date})
