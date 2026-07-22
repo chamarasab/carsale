@@ -61,7 +61,7 @@ export default function SignupPage() {
             <Link className="text-sm font-black text-sub hover:text-foreground" href="/login">
               Already have an account?
             </Link>
-            <Link className="text-sm font-black text-sub hover:text-foreground" href="/">
+            <Link className="text-sm font-black text-sub hover:text-foreground" href="/home">
               Back to public site
             </Link>
           </div>

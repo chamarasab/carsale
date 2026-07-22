@@ -54,7 +54,7 @@ export default function LoginPage() {
             Administrators manage accounts and settings. Active publishers can create and manage their own vehicle
             advertisements.
           </p>
-          <Link className="mt-8 inline-flex text-sm font-black text-sub hover:text-foreground" href="/">
+          <Link className="mt-8 inline-flex text-sm font-black text-sub hover:text-foreground" href="/home">
             Back to public site
           </Link>
         </div>

@@ -69,7 +69,7 @@ export const authOptions: NextAuthOptions = {
         user?: { id: string; email: string; name: string; role: 'ADMIN' | 'USER' };
       };
       if (result.status === 'PENDING') {
-        return new URL('/?signup=pending', siteUrl).toString();
+        return new URL('/home?signup=pending', siteUrl).toString();
       }
       if (!result.user || !result.accessToken) return false;
 

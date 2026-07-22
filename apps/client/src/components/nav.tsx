@@ -7,7 +7,7 @@ type NavSection = 'home' | 'japan' | 'local';
 
 const inventoryLinks = [
   {
-    href: '/',
+    href: '/home',
     label: 'Home',
     mobileLabel: 'Home',
     section: 'home' as const,
@@ -33,7 +33,7 @@ export function Nav({ active }: { active?: NavSection }) {
   return (
     <header className="sticky top-0 z-30 border-b border-white/10 bg-jdm-panel text-white shadow-sm">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-3">
+        <Link href="/home" className="flex items-center gap-3">
           <img
             alt="Genuine Automobiles"
             className="h-9 w-auto max-w-[150px] object-contain sm:h-11 sm:max-w-[220px]"
