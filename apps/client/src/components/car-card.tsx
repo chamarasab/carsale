@@ -1,12 +1,14 @@
-import { Gauge, JapaneseYen, MapPin, ShieldCheck } from 'lucide-react';
+import { CalendarDays, Gauge, JapaneseYen, MapPin, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { CarPhoto, firstVehiclePhoto } from '@/components/car-photo';
 import { auctionGradeDescription } from '@/lib/auction-grades';
-import { compactNumber, jpy } from '@/lib/format';
+import { compactNumber, formatAuctionDate, jpy } from '@/lib/format';
 import { Car } from '@/lib/types';
 
 export function CarCard({ car }: { car: Car }) {
   const thumbnail = firstVehiclePhoto(car.images);
+  const showAuctionDate = car.status === 'available';
+  const cardBadge = showAuctionDate ? formatAuctionDate(car.auctionDate) : car.status;
 
   return (
     <Link
@@ -27,8 +29,12 @@ export function CarCard({ car }: { car: Car }) {
         >
           Grade {car.auctionGrade}
         </div>
-        <div className="bg-brand-gradient absolute bottom-2 right-2 rounded-panel px-2 py-1 text-[9px] font-black uppercase text-white shadow sm:bottom-3 sm:right-3 sm:px-3 sm:text-xs">
-          {car.status}
+        <div
+          className="bg-brand-gradient absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-panel px-2 py-1 text-[9px] font-black uppercase text-white shadow sm:bottom-3 sm:right-3 sm:px-3 sm:text-xs"
+          title={showAuctionDate ? `Auction date: ${cardBadge}` : cardBadge}
+        >
+          {showAuctionDate ? <CalendarDays aria-hidden size={12} /> : null}
+          {cardBadge}
         </div>
       </div>
       <div className="min-w-0 p-3 sm:space-y-4 sm:p-5">

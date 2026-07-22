@@ -1,12 +1,14 @@
-import { ArrowRight, Gauge, JapaneseYen, MapPin, ShieldCheck } from 'lucide-react';
+import { ArrowRight, CalendarDays, Gauge, JapaneseYen, MapPin, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { CarPhoto, firstVehiclePhoto } from '@/components/car-photo';
 import { auctionGradeDescription } from '@/lib/auction-grades';
-import { compactNumber, jpy } from '@/lib/format';
+import { compactNumber, formatAuctionDate, jpy } from '@/lib/format';
 import { Car } from '@/lib/types';
 
 export function CarListItem({ car }: { car: Car }) {
   const thumbnail = firstVehiclePhoto(car.images);
+  const showAuctionDate = car.status === 'available';
+  const cardBadge = showAuctionDate ? formatAuctionDate(car.auctionDate) : car.status;
 
   return (
     <Link
@@ -26,8 +28,12 @@ export function CarListItem({ car }: { car: Car }) {
         >
           Grade {car.auctionGrade}
         </div>
-        <div className="absolute bottom-2 right-2 rounded-panel bg-black/65 px-2 py-1 text-[9px] font-black uppercase text-white md:hidden">
-          {car.status}
+        <div
+          className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-panel bg-black/65 px-2 py-1 text-[9px] font-black uppercase text-white md:hidden"
+          title={showAuctionDate ? `Auction date: ${cardBadge}` : cardBadge}
+        >
+          {showAuctionDate ? <CalendarDays aria-hidden size={11} /> : null}
+          {cardBadge}
         </div>
       </div>
       <div className="min-w-0 p-3 md:p-5">
@@ -35,8 +41,12 @@ export function CarListItem({ car }: { car: Car }) {
           <span className="truncate text-[10px] font-bold uppercase text-signal md:text-xs md:tracking-wide">
             {car.source}
           </span>
-          <span className="hidden rounded-panel border border-line bg-field px-2 py-1 text-[11px] font-black uppercase text-sub md:inline-flex">
-            {car.status}
+          <span
+            className="hidden items-center gap-1.5 rounded-panel border border-line bg-field px-2 py-1 text-[11px] font-black uppercase text-sub md:inline-flex"
+            title={showAuctionDate ? `Auction date: ${cardBadge}` : cardBadge}
+          >
+            {showAuctionDate ? <CalendarDays aria-hidden size={13} /> : null}
+            {cardBadge}
           </span>
         </div>
         <h2 className="mt-1 text-base font-black leading-tight text-foreground line-clamp-2 md:mt-2 md:text-2xl">
