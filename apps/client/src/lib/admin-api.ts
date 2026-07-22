@@ -357,7 +357,8 @@ export async function runAutomarketScraper(
     auctionGrade?: string;
     yearFrom?: number;
     yearTo?: number;
-    listSize: number;
+    listSize?: number;
+    allUpcoming?: boolean;
   },
   accessToken: string,
 ) {

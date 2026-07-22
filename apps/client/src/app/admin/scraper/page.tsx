@@ -17,13 +17,22 @@ import { AUCTION_GRADES } from '@/lib/auction-grades';
 const inputClass =
   'mt-2 h-11 w-full rounded-panel border border-line bg-field px-3 text-sm font-bold text-foreground outline-none focus:border-signal';
 
+type AutomarketForm = {
+  maker: string;
+  model: string;
+  auctionGrade: string;
+  yearFrom: number;
+  yearTo: number;
+  listSize: number | 'all';
+};
+
 export default function AdminScraperPage() {
   const { data: session, status: sessionStatus } = useSession();
   const [scraper, setScraper] = useState<ScraperStatus | null>(null);
   const [message, setMessage] = useState('');
   const [starting, setStarting] = useState(false);
   const [automarketRunning, setAutomarketRunning] = useState(false);
-  const [automarketForm, setAutomarketForm] = useState({
+  const [automarketForm, setAutomarketForm] = useState<AutomarketForm>({
     maker: 'Toyota',
     model: 'Roomy',
     auctionGrade: '',
@@ -68,7 +77,13 @@ export default function AdminScraperPage() {
     setAutomarketRunning(true);
     setMessage('');
     try {
-      const result = await runAutomarketScraper(automarketForm, session.accessToken);
+      const selectedLimit = automarketForm.listSize;
+      const allUpcoming = selectedLimit === 'all';
+      const result = await runAutomarketScraper({
+        ...automarketForm,
+        listSize: typeof selectedLimit === 'number' ? selectedLimit : undefined,
+        allUpcoming,
+      }, session.accessToken);
       setMessage(
         `Automarket finished: ${result.fetched} fetched, ${result.eligible} eligible, ${result.created} inserted, ${result.updated} updated.`,
       );
@@ -231,12 +246,14 @@ export default function AdminScraperPage() {
                   Import limit
                   <select
                     className={inputClass}
-                    onChange={(event) =>
-                      setAutomarketForm((current) => ({ ...current, listSize: Number(event.target.value) }))
-                    }
+                    onChange={(event) => setAutomarketForm((current) => ({
+                      ...current,
+                      listSize: event.target.value === 'all' ? 'all' : Number(event.target.value),
+                    }))}
                     value={automarketForm.listSize}
                   >
-                    {[1, 3, 5, 10].map((limit) => <option key={limit}>{limit}</option>)}
+                    {[1, 3, 5, 10].map((limit) => <option key={limit} value={limit}>{limit}</option>)}
+                    <option value="all">All upcoming</option>
                   </select>
                 </label>
               </div>

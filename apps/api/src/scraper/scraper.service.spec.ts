@@ -134,8 +134,40 @@ test('filters Automarket imports by preferred auction grade before applying the 
   ];
 
   assert.deepEqual(
-    selectEligibleAutomarketRows(rows, 1, '4.5').map((row) => row.id),
+    selectEligibleAutomarketRows(rows, 1, '4.5', '2026-07-22').map((row) => row.id),
     ['2'],
+  );
+});
+
+test('selects all eligible upcoming Automarket rows when no limit is supplied', () => {
+  const base = {
+    lotNumber: '100',
+    auctionName: 'USS Tokyo',
+    maker: 'TOYOTA',
+    model: 'ROOMY',
+    vehicleGrade: 'G',
+    year: 2026,
+    mileageKm: 8000,
+    engineCapacity: 1000,
+    transmission: 'IAT',
+    color: 'BLACK',
+    modelCode: 'M900A',
+    equipment: 'AC',
+    auctionPriceJpy: 800000,
+    detailPath: '/auctions/?p=project/lot',
+    auctionGrade: '4.5',
+  };
+  const rows = [
+    { ...base, id: 'past', auctionDate: '2026-07-21' },
+    { ...base, id: 'today', auctionDate: '2026-07-22' },
+    { ...base, id: 'future', auctionDate: '23.07.2026' },
+    { ...base, id: 'unknown', auctionDate: '' },
+    { ...base, id: 'no-price', auctionDate: '2026-07-24', auctionPriceJpy: 0 },
+  ];
+
+  assert.deepEqual(
+    selectEligibleAutomarketRows(rows, undefined, undefined, '2026-07-22').map((row) => row.id),
+    ['today', 'future'],
   );
 });
 

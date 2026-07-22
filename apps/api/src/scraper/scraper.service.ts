@@ -45,6 +45,7 @@ type AutomarketImportOptions = {
   yearFrom?: number;
   yearTo?: number;
   listSize?: number;
+  allUpcoming?: boolean;
 };
 
 type AutomarketRow = {
@@ -79,6 +80,8 @@ const DEFAULT_BATCH_JOB_DELAY_MS = 2_000;
 const DEFAULT_BATCH_JOB_RETRY_DELAY_MS = 5_000;
 const DEFAULT_LOGIN_RETRY_DELAY_MS = 15_000;
 const DEFAULT_LOGIN_ATTEMPTS = 3;
+const AUTOMARKET_PAGE_SIZE = 20;
+const MAX_AUTOMARKET_PAGES = 100;
 const JP_CENTER_VENDOR_IDS: Record<string, string> = {
   TOYOTA: '1',
   NISSAN: '2',
@@ -539,7 +542,8 @@ export class ScraperService implements OnModuleInit {
     if (!makerId) throw new BadRequestException(`Unsupported Automarket maker: ${maker}`);
     if (!model) throw new BadRequestException('Automarket model is required');
 
-    const listSize = Math.min(Math.max(options.listSize ?? 5, 1), 10);
+    const allUpcoming = options.allUpcoming === true;
+    const listSize = allUpcoming ? undefined : Math.min(Math.max(options.listSize ?? 5, 1), 10);
     const preferredAuctionGrade = options.auctionGrade
       ? normalizeAuctionGrade(options.auctionGrade)
       : undefined;
@@ -548,14 +552,37 @@ export class ScraperService implements OnModuleInit {
     }
     const client = new AutomarketClient(username, password);
     await client.login();
-    const rows = await client.fetchAuctionRows({
-      makerId,
-      model,
-      yearFrom: options.yearFrom,
-      yearTo: options.yearTo,
-    });
+    const rows: AutomarketRow[] = [];
+    const seenLotIds = new Set<string>();
+    const today = colomboDateKey();
+    let completeRows: AutomarketRow[] = [];
 
-    const completeRows = selectEligibleAutomarketRows(rows, listSize, preferredAuctionGrade);
+    for (let page = 1; page <= MAX_AUTOMARKET_PAGES; page += 1) {
+      const pageRows = await client.fetchAuctionRows({
+        makerId,
+        model,
+        page,
+        yearFrom: options.yearFrom,
+        yearTo: options.yearTo,
+      });
+      let addedRows = 0;
+      for (const row of pageRows) {
+        if (seenLotIds.has(row.id)) continue;
+        seenLotIds.add(row.id);
+        rows.push(row);
+        addedRows += 1;
+      }
+
+      completeRows = selectEligibleAutomarketRows(rows, listSize, preferredAuctionGrade, today);
+      if (!allUpcoming && completeRows.length >= (listSize ?? 0)) break;
+      if (pageRows.length < AUTOMARKET_PAGE_SIZE || addedRows === 0) break;
+      if (page === MAX_AUTOMARKET_PAGES) {
+        this.logger.warn(
+          `[AUTOMARKET] stopped after ${MAX_AUTOMARKET_PAGES} pages for ${maker} ${model}`,
+        );
+      }
+    }
+
     let created = 0;
     let updated = 0;
     const cars = [];
@@ -889,6 +916,7 @@ class AutomarketClient {
   async fetchAuctionRows(options: {
     makerId: string;
     model: string;
+    page: number;
     yearFrom?: number;
     yearTo?: number;
   }) {
@@ -900,8 +928,8 @@ class AutomarketClient {
       word: options.model.toUpperCase(),
       year1: options.yearFrom ? String(options.yearFrom) : '',
       year2: options.yearTo ? String(options.yearTo) : '',
-      vs: '20',
-      pg: '1',
+      vs: String(AUTOMARKET_PAGE_SIZE),
+      pg: String(options.page),
     });
     const response = await this.request(`/auctions?${query}`);
     return parseAutomarketRows(await response.text());
@@ -1076,18 +1104,21 @@ export function parseAutomarketRows(html: string): AutomarketRow[] {
 
 export function selectEligibleAutomarketRows(
   rows: AutomarketRow[],
-  listSize: number,
+  listSize: number | undefined,
   preferredAuctionGrade?: string,
+  today = colomboDateKey(),
 ) {
-  return rows
-    .filter(
-      (row) =>
-        row.mileageKm > 0
-        && row.auctionPriceJpy > 0
-        && row.auctionGrade
-        && (!preferredAuctionGrade || normalizeAuctionGrade(row.auctionGrade) === preferredAuctionGrade),
-    )
-    .slice(0, listSize);
+  const eligibleRows = rows.filter((row) => {
+    const auctionDate = normalizeAuctionDate(row.auctionDate);
+    return row.mileageKm > 0
+      && row.auctionPriceJpy > 0
+      && row.auctionGrade
+      && auctionDate !== undefined
+      && auctionDate >= today
+      && (!preferredAuctionGrade || normalizeAuctionGrade(row.auctionGrade) === preferredAuctionGrade);
+  });
+
+  return listSize === undefined ? eligibleRows : eligibleRows.slice(0, listSize);
 }
 
 export function extractAutomarketImageUrls(html: string) {

@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Headers, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, IsUrl, Max, Min } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUrl, Max, Min } from 'class-validator';
 import { AUCTION_GRADES } from '../cars/auction-grades';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -82,6 +82,10 @@ class AutomarketImportDto {
   @Min(1)
   @Max(10)
   listSize?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  allUpcoming?: boolean;
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
