@@ -2,31 +2,26 @@
 
 import { Mail, MessageCircle, Phone, Send } from 'lucide-react';
 import { FormEvent, useState } from 'react';
+import {
+  buildVehicleInquiryMessage,
+  openWhatsAppMessage,
+  type VehicleInquiryDetails,
+  vendorWhatsAppNumber,
+} from '@/components/whatsapp-fab';
 import { createInquiry } from '@/lib/api';
 
-const vendorWhatsAppNumber = (process.env.NEXT_PUBLIC_VENDOR_WHATSAPP_NUMBER ?? '').replace(/\D/g, '');
 const vendorEmail = process.env.NEXT_PUBLIC_VENDOR_EMAIL ?? '';
 
-export function InquiryForm({ carId, carTitle }: { carId: string; carTitle: string }) {
+export function InquiryForm({ carId, vehicle }: { carId: string; vehicle: VehicleInquiryDetails }) {
   const [state, setState] = useState<'idle' | 'submitting' | 'sent' | 'error'>('idle');
 
   function openWhatsApp() {
-    const message = [
-      `Hello, I am interested in the ${carTitle} listed on Genuine Automobiles.`,
-      `Listing: ${window.location.href}`,
-      'Could you please confirm its availability and share the next steps?',
-    ].join('\n\n');
-
-    window.open(`https://wa.me/${vendorWhatsAppNumber}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+    openWhatsAppMessage(buildVehicleInquiryMessage(vehicle, window.location.href));
   }
 
   function openEmail() {
-    const subject = `Vehicle inquiry: ${carTitle}`;
-    const body = [
-      `Hello, I am interested in the ${carTitle} listed on Genuine Automobiles.`,
-      `Listing: ${window.location.href}`,
-      'Could you please confirm its availability and share the next steps?',
-    ].join('\n\n');
+    const subject = `Vehicle inquiry: ${vehicle.title}`;
+    const body = buildVehicleInquiryMessage(vehicle, window.location.href);
 
     window.location.href = `mailto:${vendorEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }

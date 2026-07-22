@@ -1,7 +1,8 @@
 import { Body, Controller, Get, Headers, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, IsUrl, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, IsUrl, Max, Min } from 'class-validator';
+import { AUCTION_GRADES } from '../cars/auction-grades';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -58,6 +59,10 @@ class AutomarketImportDto {
 
   @IsString()
   model: string;
+
+  @IsOptional()
+  @IsIn(AUCTION_GRADES)
+  auctionGrade?: string;
 
   @IsOptional()
   @Type(() => Number)

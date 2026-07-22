@@ -5,7 +5,7 @@ import { HeroSlider } from '@/components/hero-slider';
 import { Nav } from '@/components/nav';
 import { SignupPendingToast } from '@/components/signup-pending-toast';
 import { getCars } from '@/lib/api';
-import { lkr } from '@/lib/format';
+import { jpy } from '@/lib/format';
 
 export default async function Home({
   searchParams,
@@ -18,7 +18,7 @@ export default async function Home({
 
   return (
     <main>
-      <Nav />
+      <Nav active="home" />
       {signup === 'pending' ? <SignupPendingToast /> : null}
       <section className="bg-owl-gradient relative min-h-[82vh] overflow-hidden">
         <HeroSlider />
@@ -63,7 +63,7 @@ export default async function Home({
                   className="inline-flex h-12 items-center rounded-panel border border-white/18 bg-white px-5 text-sm font-black text-[#1d1d1f] shadow-soft hover:bg-[#f5f5f5]"
                   href={`/cars/${featured[0]._id}`}
                 >
-                  From {lkr(featured[0].cost.totalLkr)}
+                  From {jpy(featured[0].cost.auctionPriceJpy)}
                 </Link>
               ) : null}
               <Link

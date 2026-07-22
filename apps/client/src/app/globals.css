@@ -184,3 +184,9 @@ select {
   content-visibility: auto;
   contain-intrinsic-size: 560px;
 }
+
+@media (max-width: 639px) {
+  .car-card {
+    contain-intrinsic-size: 132px;
+  }
+}

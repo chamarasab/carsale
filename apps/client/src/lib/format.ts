@@ -6,6 +6,10 @@ export function lkr(value: number) {
   }).format(value);
 }
 
+export function jpy(value: number) {
+  return `¥${Math.round(value).toLocaleString('en-US')}`;
+}
+
 export function compactNumber(value: number) {
   return new Intl.NumberFormat('en-LK', {
     notation: 'compact',

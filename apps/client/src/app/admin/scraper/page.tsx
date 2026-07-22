@@ -12,6 +12,7 @@ import {
   ScrapeRun,
   ScraperStatus,
 } from '@/lib/admin-api';
+import { AUCTION_GRADES } from '@/lib/auction-grades';
 
 const inputClass =
   'mt-2 h-11 w-full rounded-panel border border-line bg-field px-3 text-sm font-bold text-foreground outline-none focus:border-signal';
@@ -25,6 +26,7 @@ export default function AdminScraperPage() {
   const [automarketForm, setAutomarketForm] = useState({
     maker: 'Toyota',
     model: 'Roomy',
+    auctionGrade: '',
     yearFrom: 2023,
     yearTo: new Date().getFullYear(),
     listSize: 5,
@@ -162,7 +164,7 @@ export default function AdminScraperPage() {
                   <h2 className="text-xl font-black text-foreground">A-Automarket import</h2>
                 </div>
               </div>
-              <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 <label className="text-xs font-black uppercase text-muted">
                   Maker
                   <select
@@ -183,6 +185,21 @@ export default function AdminScraperPage() {
                     placeholder="Roomy"
                     value={automarketForm.model}
                   />
+                </label>
+                <label className="text-xs font-black uppercase text-muted">
+                  Auction grade
+                  <select
+                    className={inputClass}
+                    onChange={(event) =>
+                      setAutomarketForm((current) => ({ ...current, auctionGrade: event.target.value }))
+                    }
+                    value={automarketForm.auctionGrade}
+                  >
+                    <option value="">Any valid grade</option>
+                    {AUCTION_GRADES.map((grade) => (
+                      <option key={grade} value={grade}>Grade {grade}</option>
+                    ))}
+                  </select>
                 </label>
                 <label className="text-xs font-black uppercase text-muted">
                   From year

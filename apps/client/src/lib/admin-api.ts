@@ -351,7 +351,14 @@ export async function runScraper(accessToken: string) {
 }
 
 export async function runAutomarketScraper(
-  input: { maker: string; model: string; yearFrom?: number; yearTo?: number; listSize: number },
+  input: {
+    maker: string;
+    model: string;
+    auctionGrade?: string;
+    yearFrom?: number;
+    yearTo?: number;
+    listSize: number;
+  },
   accessToken: string,
 ) {
   const response = await fetch(`${apiUrl}/scraper/automarket`, {
@@ -360,7 +367,7 @@ export async function runAutomarketScraper(
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(input),
+    body: JSON.stringify({ ...input, auctionGrade: input.auctionGrade || undefined }),
   });
   const result = await response.json();
   if (!response.ok) throw new Error(result.message || 'Could not run Automarket scraper');

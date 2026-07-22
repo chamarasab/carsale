@@ -9,6 +9,7 @@ import {
   isAutomarketAuctionSheetUrl,
   normalizeEngineCapacity,
   parseAutomarketRows,
+  selectEligibleAutomarketRows,
   selectRowsWithMileage,
   selectCurrentAuctionRows,
 } from './scraper.service';
@@ -105,6 +106,37 @@ test('parses Automarket vehicle trim and auction score separately', () => {
     detailPath: '/auctions/?p=project/lot&id=976641290&s',
     previewImageUrl: 'https://i.aleado.ru/image/auto/example/1.jpg',
   }]);
+});
+
+test('filters Automarket imports by preferred auction grade before applying the limit', () => {
+  const base = {
+    id: '1',
+    lotNumber: '100',
+    auctionDate: '2026-07-23',
+    auctionName: 'USS Tokyo',
+    maker: 'TOYOTA',
+    model: 'ROOMY',
+    vehicleGrade: 'G',
+    year: 2026,
+    mileageKm: 8000,
+    engineCapacity: 1000,
+    transmission: 'IAT',
+    color: 'BLACK',
+    modelCode: 'M900A',
+    equipment: 'AC',
+    auctionPriceJpy: 800000,
+    detailPath: '/auctions/?p=project/lot&id=1',
+  };
+  const rows = [
+    { ...base, auctionGrade: '4', id: '1' },
+    { ...base, auctionGrade: '4.5', id: '2' },
+    { ...base, auctionGrade: '4.5', id: '3' },
+  ];
+
+  assert.deepEqual(
+    selectEligibleAutomarketRows(rows, 1, '4.5').map((row) => row.id),
+    ['2'],
+  );
 });
 
 test('extracts Automarket detail images and normalizes known rounded capacities', () => {

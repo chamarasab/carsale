@@ -3,9 +3,11 @@ import Link from 'next/link';
 import { CarImageGallery } from '@/components/car-image-gallery';
 import { InquiryForm } from '@/components/inquiry-form';
 import { Nav } from '@/components/nav';
+import { VehicleWhatsAppFab } from '@/components/whatsapp-fab';
 import { getCar, getExchangeRate } from '@/lib/api';
 import { auctionGradeDescription } from '@/lib/auction-grades';
-import { lkr } from '@/lib/format';
+import { jpy, lkr } from '@/lib/format';
+import { inventoryMarket } from '@/lib/inventory-market';
 
 export default async function CarDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -27,6 +29,20 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
 
   const auctionExpired = isPastAuctionDate(car.auctionDate);
   const gradeDescription = auctionGradeDescription(car.auctionGrade);
+  const carMarket = inventoryMarket(car);
+  const vehicleInquiry = {
+    title: car.title,
+    maker: car.maker,
+    model: car.model,
+    vehicleGrade: car.vehicleGrade,
+    modelCode: car.modelCode,
+    year: car.year,
+    auctionGrade: car.auctionGrade,
+    mileageKm: car.mileageKm,
+    auctionDate: car.auctionDate,
+    location: car.location,
+    auctionPriceJpy: car.cost.auctionPriceJpy,
+  };
 
   const invoiceCifLkr = car.cost.invoiceCifLkr ?? car.cost.auctionPriceLkr + car.cost.shippingLkr + car.cost.insuranceLkr;
   const taxableCifLkr = car.cost.taxableCifLkr ?? invoiceCifLkr;
@@ -140,9 +156,10 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
 
   return (
     <main>
-      <Nav />
+      <Nav active={carMarket === 'japan' ? 'japan' : 'local'} />
+      <VehicleWhatsAppFab vehicle={vehicleInquiry} />
       <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <Link className="mb-5 inline-flex items-center gap-2 text-sm font-black text-muted hover:text-foreground" href="/dashboard">
+        <Link className="mb-5 inline-flex items-center gap-2 text-sm font-black text-muted hover:text-foreground" href={`/dashboard?market=${carMarket}`}>
           <ArrowLeft size={16} /> Back to dashboard
         </Link>
         <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
@@ -188,24 +205,18 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
               ) : null}
             </div>
             <div className="rounded-panel border-l-4 border-brass bg-jdm-panel p-5 text-white">
-              <p className="text-xs font-black uppercase tracking-wide text-white/70">Estimated delivered cost to Sri Lanka</p>
-              <p className="mt-2 text-4xl font-black">{lkr(car.cost.totalLkr)}</p>
-              <p className="mt-2 text-xs text-white/65">
-                Exchange rate used: 1 JPY = LKR {car.cost.exchangeRateLkr}
-                {car.cost.exchangeRateDate ? ` (${car.cost.exchangeRateDate})` : ''}
-              </p>
-              <p className="mt-1 text-xs text-white/65">
-                Tax base follows the highest available invoice, manufacturer website, Yellow Book, or reference CIF.
-              </p>
+              <p className="text-xs font-black uppercase tracking-wide text-white/70">Japan auction price</p>
+              <p className="mt-2 text-4xl font-black">{jpy(car.cost.auctionPriceJpy)}</p>
+              <p className="mt-2 text-xs text-white/65">Average auction value for this listing; the winning bid can be higher or lower.</p>
             </div>
             <div className="rounded-panel border border-line bg-field p-4 text-sm leading-6 text-muted">
               <p>
-                The price shown is an estimate. The final buying cost can be higher or lower when exchange rates,
-                taxes, duties, freight, or local charges change at the time of purchase.
+                The Japan auction price shown is an estimate. The actual winning bid can be higher or lower when the
+                vehicle is purchased.
               </p>
               <p className="mt-2">
-                For upcoming auctions, the auction price shown here is the average price usually seen for similar
-                auction lots. The actual winning bid can be higher or lower.
+                Landed-cost calculations below can also change with exchange rates, taxes, duties, freight, and local
+                charges at the time of import.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -290,7 +301,7 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
               ))}
             </div>
           </div>
-          <InquiryForm carId={car._id} carTitle={car.title} />
+          <InquiryForm carId={car._id} vehicle={vehicleInquiry} />
         </div>
       </section>
     </main>
@@ -307,10 +318,6 @@ function isPastAuctionDate(value?: string) {
     timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit',
   }).format(new Date());
   return dateKey < today;
-}
-
-function jpy(value: number) {
-  return `${Math.round(value).toLocaleString()} JPY`;
 }
 
 function rate(value: number) {

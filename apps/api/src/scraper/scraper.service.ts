@@ -41,6 +41,7 @@ type JpCenterBatchJob = JpCenterImportOptions & {
 type AutomarketImportOptions = {
   maker: string;
   model: string;
+  auctionGrade?: string;
   yearFrom?: number;
   yearTo?: number;
   listSize?: number;
@@ -539,6 +540,12 @@ export class ScraperService implements OnModuleInit {
     if (!model) throw new BadRequestException('Automarket model is required');
 
     const listSize = Math.min(Math.max(options.listSize ?? 5, 1), 10);
+    const preferredAuctionGrade = options.auctionGrade
+      ? normalizeAuctionGrade(options.auctionGrade)
+      : undefined;
+    if (options.auctionGrade && !preferredAuctionGrade) {
+      throw new BadRequestException(`Unsupported auction grade: ${options.auctionGrade}`);
+    }
     const client = new AutomarketClient(username, password);
     await client.login();
     const rows = await client.fetchAuctionRows({
@@ -548,9 +555,7 @@ export class ScraperService implements OnModuleInit {
       yearTo: options.yearTo,
     });
 
-    const completeRows = rows
-      .filter((row) => row.mileageKm > 0 && row.auctionPriceJpy > 0 && row.auctionGrade)
-      .slice(0, listSize);
+    const completeRows = selectEligibleAutomarketRows(rows, listSize, preferredAuctionGrade);
     let created = 0;
     let updated = 0;
     const cars = [];
@@ -1067,6 +1072,22 @@ export function parseAutomarketRows(html: string): AutomarketRow[] {
   });
 
   return rows;
+}
+
+export function selectEligibleAutomarketRows(
+  rows: AutomarketRow[],
+  listSize: number,
+  preferredAuctionGrade?: string,
+) {
+  return rows
+    .filter(
+      (row) =>
+        row.mileageKm > 0
+        && row.auctionPriceJpy > 0
+        && row.auctionGrade
+        && (!preferredAuctionGrade || normalizeAuctionGrade(row.auctionGrade) === preferredAuctionGrade),
+    )
+    .slice(0, listSize);
 }
 
 export function extractAutomarketImageUrls(html: string) {

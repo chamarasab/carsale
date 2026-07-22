@@ -5,7 +5,7 @@ import { CarSearchForm } from '@/components/car-search-form';
 import { Nav } from '@/components/nav';
 import { AUCTION_GRADES } from '@/lib/auction-grades';
 import { getCars, getExchangeRate } from '@/lib/api';
-import type { Car } from '@/lib/types';
+import { inventoryMarket } from '@/lib/inventory-market';
 
 type SearchParams = {
   maker?: string;
@@ -15,11 +15,6 @@ type SearchParams = {
   grade?: string;
   view?: string;
 };
-
-function inventoryMarket(car: Car) {
-  const location = `${car.location} ${car.source}`.toLowerCase();
-  return location.includes('sri lanka') || location.includes('colombo') ? 'sri-lanka' : 'japan';
-}
 
 function gradeRank(grade: string) {
   if (grade.toUpperCase() === 'S') return 100;
@@ -66,6 +61,23 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       (!selectedGrade || car.auctionGrade.toLowerCase() === selectedGrade.toLowerCase()),
   );
   const hasFilters = Boolean(selectedMaker || selectedModel || selectedYear || selectedMarket || selectedGrade);
+  const marketCopy = selectedMarket === 'japan'
+    ? {
+        eyebrow: 'JDM auctions',
+        heading: 'Cars currently in Japan',
+        description: 'Compare auction grade, mileage, auction location, and the current average auction price in yen.',
+      }
+    : selectedMarket === 'sri-lanka'
+      ? {
+          eyebrow: 'Local stock',
+          heading: 'Unregistered cars in Sri Lanka',
+          description: 'Browse vehicles that have already been imported and are available locally.',
+        }
+      : {
+          eyebrow: 'Vehicle inventory',
+          heading: 'Japan auctions and local cars',
+          description: 'Browse current Japan auction listings and unregistered vehicles already available in Sri Lanka.',
+        };
   const viewHref = (view: 'tile' | 'list') => {
     const params = new URLSearchParams();
     if (selectedMaker) params.set('maker', selectedMaker);
@@ -79,18 +91,16 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
   return (
     <main>
-      <Nav />
+      <Nav active={selectedMarket === 'japan' ? 'japan' : selectedMarket === 'sri-lanka' ? 'local' : undefined} />
       <section className="border-b border-line bg-surface">
-        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <p className="text-xs font-black uppercase tracking-wide text-signal">Dashboard</p>
-          <div className="mt-3">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
+          <p className="text-xs font-black uppercase tracking-wide text-signal">{marketCopy.eyebrow}</p>
+          <div className="mt-2 sm:mt-3">
             <div>
-              <h1 className="text-4xl font-black text-foreground">Available Japan auction cars</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
-                Compare total landed cost, auction grade, mileage, and auction location before sending an inquiry.
-              </p>
+              <h1 className="text-2xl font-black leading-tight text-foreground sm:text-4xl">{marketCopy.heading}</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted sm:mt-3">{marketCopy.description}</p>
               {exchangeRate ? (
-                <p className="mt-3 inline-flex rounded-panel border border-line bg-field px-3 py-2 text-xs font-black uppercase text-sub">
+                <p className="mt-3 hidden rounded-panel border border-line bg-field px-3 py-2 text-xs font-black uppercase text-sub sm:inline-flex">
                   Daily JPY rate: 1 JPY = LKR {exchangeRate.rate.toFixed(4)} ({exchangeRate.date})
                 </p>
               ) : null}
@@ -112,19 +122,19 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           </div>
         </div>
       </section>
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <section className="mx-auto max-w-7xl px-4 pb-24 pt-5 sm:px-6 sm:py-10 lg:px-8">
+        <div className="mb-4 flex items-end justify-between gap-3 sm:mb-6">
           <div>
             <p className="text-xs font-black uppercase text-signal">{hasFilters ? 'Search results' : 'Current stock'}</p>
-            <h2 className="mt-1 text-2xl font-black text-foreground">
+            <h2 className="mt-1 text-xl font-black text-foreground sm:text-2xl">
               {visibleCars.length} {visibleCars.length === 1 ? 'vehicle' : 'vehicles'} available
             </h2>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex shrink-0 flex-wrap items-center gap-3">
             <div className="inline-flex rounded-panel border border-line bg-field p-1">
               <a
                 aria-current={selectedView === 'tile' ? 'page' : undefined}
-                className={`inline-flex h-10 items-center gap-2 rounded-panel px-3 text-sm font-black transition ${
+                className={`inline-flex h-9 items-center gap-1.5 rounded-panel px-2 text-xs font-black transition sm:h-10 sm:gap-2 sm:px-3 sm:text-sm ${
                   selectedView === 'tile' ? 'bg-surface text-foreground shadow-sm' : 'text-muted hover:text-foreground'
                 }`}
                 href={viewHref('tile')}
@@ -134,7 +144,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               </a>
               <a
                 aria-current={selectedView === 'list' ? 'page' : undefined}
-                className={`inline-flex h-10 items-center gap-2 rounded-panel px-3 text-sm font-black transition ${
+                className={`inline-flex h-9 items-center gap-1.5 rounded-panel px-2 text-xs font-black transition sm:h-10 sm:gap-2 sm:px-3 sm:text-sm ${
                   selectedView === 'list' ? 'bg-surface text-foreground shadow-sm' : 'text-muted hover:text-foreground'
                 }`}
                 href={viewHref('list')}
@@ -144,20 +154,20 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               </a>
             </div>
             {hasFilters ? (
-              <a className="text-sm font-black text-signal hover:text-brass" href="/dashboard">
+              <a className="hidden text-sm font-black text-signal hover:text-brass sm:inline" href="/dashboard">
                 View all cars
               </a>
             ) : null}
           </div>
         </div>
         {selectedView === 'list' ? (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {visibleCars.map((car) => (
               <CarListItem car={car} key={car._id} />
             ))}
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
             {visibleCars.map((car) => (
               <CarCard car={car} key={car._id} />
             ))}
