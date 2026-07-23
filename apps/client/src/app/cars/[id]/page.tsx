@@ -245,7 +245,7 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
         className={
           showLandedCostCards
             ? 'mx-auto grid max-w-7xl scroll-mt-24 gap-8 px-4 pb-14 sm:px-6 lg:grid-cols-[1fr_380px] lg:px-8'
-            : 'mx-auto max-w-xl px-4 pb-14 sm:px-6'
+            : 'mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8'
         }
         id="landed-cost"
       >
@@ -298,7 +298,7 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
             ) : null}
           </div>
         ) : null}
-        <div className="space-y-5">
+        <div className={showLandedCostCards ? 'space-y-5' : 'w-full max-w-xl space-y-5'}>
           {showLandedCostCards ? (
             <div className="rounded-panel border border-line bg-surface p-5 shadow-soft">
               <p className="text-xs font-black uppercase tracking-wide text-signal">Tax summary</p>
