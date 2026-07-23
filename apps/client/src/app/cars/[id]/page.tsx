@@ -9,9 +9,14 @@ import { auctionGradeDescription } from '@/lib/auction-grades';
 import { jpy, lkr } from '@/lib/format';
 import { inventoryMarket } from '@/lib/inventory-market';
 
+const showLandedCostCards = process.env.SHOW_LANDED_COST_CARDS === 'true';
+
 export default async function CarDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [car, liveExchangeRate] = await Promise.all([getCar(id), getExchangeRate()]);
+  const [car, liveExchangeRate] = await Promise.all([
+    getCar(id),
+    showLandedCostCards ? getExchangeRate() : Promise.resolve(null),
+  ]);
 
   if (!car) {
     return (
@@ -214,10 +219,12 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
                 The Japan auction price shown is an estimate. The actual winning bid can be higher or lower when the
                 vehicle is purchased.
               </p>
-              <p className="mt-2">
-                Landed-cost calculations below can also change with exchange rates, taxes, duties, freight, and local
-                charges at the time of import.
-              </p>
+              {showLandedCostCards ? (
+                <p className="mt-2">
+                  Landed-cost calculations below can also change with exchange rates, taxes, duties, freight, and local
+                  charges at the time of import.
+                </p>
+              ) : null}
             </div>
             <div className="grid grid-cols-2 gap-2">
               {car.features.map((feature) => (
@@ -235,72 +242,80 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
         </div>
       </section>
       <section
-        className="mx-auto grid max-w-7xl scroll-mt-24 gap-8 px-4 pb-14 sm:px-6 lg:grid-cols-[1fr_380px] lg:px-8"
+        className={
+          showLandedCostCards
+            ? 'mx-auto grid max-w-7xl scroll-mt-24 gap-8 px-4 pb-14 sm:px-6 lg:grid-cols-[1fr_380px] lg:px-8'
+            : 'mx-auto max-w-xl px-4 pb-14 sm:px-6'
+        }
         id="landed-cost"
       >
-        <div className="rounded-panel border border-line bg-surface p-5 shadow-soft">
-          <h2 className="text-2xl font-black text-foreground">Transparent landed cost</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            The estimate keeps the customer purchase CIF separate from the customs valuation floor. Manufacturer
-            website values are converted from tax-inclusive retail price to the depreciated assessed FOB before
-            freight and insurance are added.
-          </p>
-          {liveExchangeRate ? (
-            <div className="mt-4 border border-line bg-field p-3 text-xs font-bold text-sub">
-              <p>
-                Daily converter: 1 JPY = LKR {liveExchangeRate.rate.toFixed(4)} on {liveExchangeRate.date}.
-              </p>
-              <p className="mt-1 text-muted">
-                This listing used {rate(car.cost.exchangeRateLkr)}
-                {car.cost.exchangeRateProvider ? ` from ${car.cost.exchangeRateProvider}` : ''}.
-              </p>
-            </div>
-          ) : null}
-          {car.cost.websiteValueSourceUrl ? (
-            <a
-              className="mt-3 inline-flex items-center gap-2 text-xs font-black text-signal"
-              href={car.cost.websiteValueSourceUrl}
-              rel="noreferrer"
-              target="_blank"
-            >
-              Manufacturer price source <ExternalLink size={14} />
-            </a>
-          ) : null}
-          <div className="mt-5 divide-y divide-line">
-            {rows.map(([label, formula, value]) => (
-              <div className="grid gap-2 py-3 text-sm sm:grid-cols-[170px_1fr_140px] sm:items-center" key={label}>
-                <span className="font-bold text-muted">{label}</span>
-                <span className="text-xs font-semibold leading-5 text-sub">{formula}</span>
-                <span className="text-right font-black text-foreground">{value}</span>
-              </div>
-            ))}
-            <div className="flex items-center justify-between gap-4 py-4 text-lg">
-              <span className="font-black text-foreground">Total handover estimate</span>
-              <span className="text-right font-black text-signal">{lkr(car.cost.totalLkr)}</span>
-            </div>
-          </div>
-          {car.cost.taxPolicyEffectiveFrom ? (
-            <p className="mt-4 text-xs font-bold text-muted">
-              Tax policy: {car.cost.taxPolicyName ?? 'Active tax policy'} effective {car.cost.taxPolicyEffectiveFrom}
-            </p>
-          ) : null}
-        </div>
-        <div className="space-y-5">
+        {showLandedCostCards ? (
           <div className="rounded-panel border border-line bg-surface p-5 shadow-soft">
-            <p className="text-xs font-black uppercase tracking-wide text-signal">Tax summary</p>
-            <h2 className="mt-2 text-2xl font-black text-foreground">{lkr(car.cost.importDutyLkr)}</h2>
+            <h2 className="text-2xl font-black text-foreground">Transparent landed cost</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
-              Total calculated taxes, duties, and levies included in the landed estimate.
+              The estimate keeps the customer purchase CIF separate from the customs valuation floor. Manufacturer
+              website values are converted from tax-inclusive retail price to the depreciated assessed FOB before
+              freight and insurance are added.
             </p>
-            <div className="mt-4 divide-y divide-line">
-              {taxRows.map(([label, value]) => (
-                <div className="flex items-center justify-between gap-4 py-2 text-sm" key={label}>
+            {liveExchangeRate ? (
+              <div className="mt-4 border border-line bg-field p-3 text-xs font-bold text-sub">
+                <p>
+                  Daily converter: 1 JPY = LKR {liveExchangeRate.rate.toFixed(4)} on {liveExchangeRate.date}.
+                </p>
+                <p className="mt-1 text-muted">
+                  This listing used {rate(car.cost.exchangeRateLkr)}
+                  {car.cost.exchangeRateProvider ? ` from ${car.cost.exchangeRateProvider}` : ''}.
+                </p>
+              </div>
+            ) : null}
+            {car.cost.websiteValueSourceUrl ? (
+              <a
+                className="mt-3 inline-flex items-center gap-2 text-xs font-black text-signal"
+                href={car.cost.websiteValueSourceUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Manufacturer price source <ExternalLink size={14} />
+              </a>
+            ) : null}
+            <div className="mt-5 divide-y divide-line">
+              {rows.map(([label, formula, value]) => (
+                <div className="grid gap-2 py-3 text-sm sm:grid-cols-[170px_1fr_140px] sm:items-center" key={label}>
                   <span className="font-bold text-muted">{label}</span>
-                  <span className="text-right font-black text-foreground">{lkr(value)}</span>
+                  <span className="text-xs font-semibold leading-5 text-sub">{formula}</span>
+                  <span className="text-right font-black text-foreground">{value}</span>
                 </div>
               ))}
+              <div className="flex items-center justify-between gap-4 py-4 text-lg">
+                <span className="font-black text-foreground">Total handover estimate</span>
+                <span className="text-right font-black text-signal">{lkr(car.cost.totalLkr)}</span>
+              </div>
             </div>
+            {car.cost.taxPolicyEffectiveFrom ? (
+              <p className="mt-4 text-xs font-bold text-muted">
+                Tax policy: {car.cost.taxPolicyName ?? 'Active tax policy'} effective {car.cost.taxPolicyEffectiveFrom}
+              </p>
+            ) : null}
           </div>
+        ) : null}
+        <div className="space-y-5">
+          {showLandedCostCards ? (
+            <div className="rounded-panel border border-line bg-surface p-5 shadow-soft">
+              <p className="text-xs font-black uppercase tracking-wide text-signal">Tax summary</p>
+              <h2 className="mt-2 text-2xl font-black text-foreground">{lkr(car.cost.importDutyLkr)}</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Total calculated taxes, duties, and levies included in the landed estimate.
+              </p>
+              <div className="mt-4 divide-y divide-line">
+                {taxRows.map(([label, value]) => (
+                  <div className="flex items-center justify-between gap-4 py-2 text-sm" key={label}>
+                    <span className="font-bold text-muted">{label}</span>
+                    <span className="text-right font-black text-foreground">{lkr(value)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <InquiryForm carId={car._id} vehicle={vehicleInquiry} />
         </div>
       </section>
