@@ -168,8 +168,17 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
           <ArrowLeft size={16} /> Back to dashboard
         </Link>
         <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-          <CarImageGallery car={car} />
-          <div className="space-y-5">
+          <div className={showLandedCostCards ? undefined : 'contents lg:block'}>
+            <div className={showLandedCostCards ? undefined : 'order-1'}>
+              <CarImageGallery car={car} />
+            </div>
+            {!showLandedCostCards ? (
+              <div className="order-3 lg:mt-5">
+                <InquiryForm carId={car._id} vehicle={vehicleInquiry} />
+              </div>
+            ) : null}
+          </div>
+          <div className={showLandedCostCards ? 'space-y-5' : 'order-2 space-y-5 lg:order-none'}>
             <div>
               <p className="text-xs font-black uppercase tracking-wide text-signal">{car.location}</p>
               <h1 className="mt-2 text-4xl font-black leading-tight text-foreground">{car.title}</h1>
@@ -241,15 +250,11 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
           </div>
         </div>
       </section>
-      <section
-        className={
-          showLandedCostCards
-            ? 'mx-auto grid max-w-7xl scroll-mt-24 gap-8 px-4 pb-14 sm:px-6 lg:grid-cols-[1fr_380px] lg:px-8'
-            : 'mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8'
-        }
-        id="landed-cost"
-      >
-        {showLandedCostCards ? (
+      {showLandedCostCards ? (
+        <section
+          className="mx-auto grid max-w-7xl scroll-mt-24 gap-8 px-4 pb-14 sm:px-6 lg:grid-cols-[1fr_380px] lg:px-8"
+          id="landed-cost"
+        >
           <div className="rounded-panel border border-line bg-surface p-5 shadow-soft">
             <h2 className="text-2xl font-black text-foreground">Transparent landed cost</h2>
             <p className="mt-2 text-sm leading-6 text-muted">
@@ -297,9 +302,7 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
               </p>
             ) : null}
           </div>
-        ) : null}
-        <div className={showLandedCostCards ? 'space-y-5' : 'w-full max-w-xl space-y-5'}>
-          {showLandedCostCards ? (
+          <div className="space-y-5">
             <div className="rounded-panel border border-line bg-surface p-5 shadow-soft">
               <p className="text-xs font-black uppercase tracking-wide text-signal">Tax summary</p>
               <h2 className="mt-2 text-2xl font-black text-foreground">{lkr(car.cost.importDutyLkr)}</h2>
@@ -315,10 +318,10 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
                 ))}
               </div>
             </div>
-          ) : null}
-          <InquiryForm carId={car._id} vehicle={vehicleInquiry} />
-        </div>
-      </section>
+            <InquiryForm carId={car._id} vehicle={vehicleInquiry} />
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }
