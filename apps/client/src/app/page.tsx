@@ -1,6 +1,7 @@
 import { ArrowRight, Calculator, FileCheck2, Ship } from 'lucide-react';
 import Link from 'next/link';
 import { CarCard } from '@/components/car-card';
+import { CustomerHandoverCarousel } from '@/components/customer-handover-carousel';
 import { HeroSlider } from '@/components/hero-slider';
 import { Nav } from '@/components/nav';
 import { SignupPendingToast } from '@/components/signup-pending-toast';
@@ -111,6 +112,8 @@ export default async function Home({
           ))}
         </div>
       </section>
+
+      <CustomerHandoverCarousel />
     </main>
   );
 }

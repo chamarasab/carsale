@@ -109,6 +109,14 @@ select {
   z-index: 5;
 }
 
+.customer-handover-scroller {
+  scrollbar-width: none;
+}
+
+.customer-handover-scroller::-webkit-scrollbar {
+  display: none;
+}
+
 .owlester-auth-background {
   background:
     linear-gradient(rgb(247 248 252 / 0.68), rgb(247 248 252 / 0.68)),
