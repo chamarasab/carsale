@@ -17,11 +17,27 @@
     "start": "npm run start --workspace apps/api",
     "build": "npm run build --workspace apps/api && npm run build --workspace apps/client",
     "lint": "npm run lint --workspace apps/api && npm run lint --workspace apps/client",
+    "test": "npm run test --workspace apps/api",
+    "security:secrets": "node scripts/check-tracked-secrets.cjs",
+    "security:audit": "npm audit --omit=dev --audit-level=high",
+    "verify": "npm run security:secrets && npm run lint && npm test && npm run build && npm run security:audit",
     "seed": "npm run seed --workspace apps/api",
     "verify:production-auth": "node scripts/verify-production-auth.cjs"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.2.4"
+  },
+  "overrides": {
+    "cheerio": {
+      "undici": "7.28.0"
+    },
+    "express": {
+      "body-parser": "2.3.0"
+    },
+    "next": {
+      "postcss": "8.5.25",
+      "sharp": "0.35.3"
+    }
   },
   "engines": {
     "node": "22.x"

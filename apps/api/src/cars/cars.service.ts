@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, Model } from 'mongoose';
+import { FilterQuery, isValidObjectId, Model } from 'mongoose';
 import { SettingsService } from '../settings/settings.service';
 import { AuthUser } from '../auth/auth.types';
 import { gridFsImageId, MediaService } from '../media/media.service';
@@ -9,7 +9,7 @@ import { WebsiteValuesService } from '../website-values/website-values.service';
 import { AUCTION_GRADES, normalizeAuctionGrade } from './auction-grades';
 import { Car } from './car.schema';
 import { applyWorkbookReferenceCost } from './cost-reference';
-import { CreateCarDto, UpdateCarDto } from './dto';
+import { CreateCarDto, FindCarsQueryDto, UpdateCarDto } from './dto';
 import { calculateImportCost, prepareCostForRecalculation } from './tax-calculator';
 
 const SCRAPED_AUCTION_SOURCES = ['JP Center', 'A-Automarket'] as const;
@@ -38,7 +38,7 @@ export class CarsService {
     private readonly websiteValuesService: WebsiteValuesService,
   ) {}
 
-  async findAll(query: { q?: string; maker?: string; model?: string; status?: string }) {
+  async findAll(query: FindCarsQueryDto) {
     const filter: FilterQuery<Car> = { published: true, auctionGrade: { $in: AUCTION_GRADES } };
 
     if (query.q) {
@@ -46,18 +46,25 @@ export class CarsService {
     }
 
     if (query.maker) {
-      filter.maker = new RegExp(`^${query.maker}$`, 'i');
+      filter.maker = new RegExp(`^${escapeRegExp(query.maker)}$`, 'i');
     }
 
     if (query.model) {
-      filter.model = new RegExp(`^${query.model}$`, 'i');
+      filter.model = new RegExp(`^${escapeRegExp(query.model)}$`, 'i');
     }
 
     if (query.status) {
       filter.status = query.status;
     }
 
-    const cars = await this.carModel.find(filter).sort({ createdAt: -1 }).lean();
+    const cars = await this.carModel
+      .find(filter)
+      .select(
+        'title maker model vehicleGrade year mileageKm fuelType transmission auctionGrade location auctionDate source images cost.auctionPriceJpy status createdBy createdAt',
+      )
+      .slice('images', 3)
+      .sort({ createdAt: -1 })
+      .lean();
     return cars.map((car) => this.withPublicImageUrls(car));
   }
 
@@ -73,6 +80,7 @@ export class CarsService {
   }
 
   async findOne(id: string) {
+    this.assertValidId(id);
     const car = await this.carModel
       .findOne({ _id: id, published: true, auctionGrade: { $in: AUCTION_GRADES } })
       .lean();
@@ -80,6 +88,17 @@ export class CarsService {
       throw new NotFoundException('Car not found');
     }
     return this.withPublicImageUrls(car);
+  }
+
+  async isPublished(id: string) {
+    if (!isValidObjectId(id)) return false;
+    return Boolean(
+      await this.carModel.exists({
+        _id: id,
+        published: true,
+        auctionGrade: { $in: AUCTION_GRADES },
+      }),
+    );
   }
 
   async create(dto: CreateCarDto, user?: AuthUser) {
@@ -112,6 +131,7 @@ export class CarsService {
   }
 
   async update(id: string, dto: UpdateCarDto, user?: AuthUser) {
+    this.assertValidId(id);
     await this.assertCanManage(id, user);
     const existing = await this.carModel.findById(id).lean();
     if (!existing) {
@@ -136,6 +156,7 @@ export class CarsService {
   }
 
   async setPublished(id: string, published: boolean) {
+    this.assertValidId(id);
     const car = await this.carModel.findByIdAndUpdate(id, { published }, { new: true }).lean();
     if (!car) {
       throw new NotFoundException('Car not found');
@@ -144,6 +165,7 @@ export class CarsService {
   }
 
   async remove(id: string, user?: AuthUser) {
+    this.assertValidId(id);
     await this.assertCanManage(id, user);
     const car = await this.carModel.findByIdAndDelete(id).lean();
     if (!car) {
@@ -256,6 +278,10 @@ export class CarsService {
     const car = await this.carModel.findById(id).select('createdBy').lean();
     if (!car) throw new NotFoundException('Car not found');
     if (car.createdBy !== user.id) throw new ForbiddenException('You can only manage your own advertisements');
+  }
+
+  private assertValidId(id: string) {
+    if (!isValidObjectId(id)) throw new NotFoundException('Car not found');
   }
 
   async recalculateAll() {
@@ -463,4 +489,8 @@ function timestamp(value?: Date | string) {
   if (!value) return 0;
   const result = new Date(value).getTime();
   return Number.isFinite(result) ? result : 0;
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

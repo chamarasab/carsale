@@ -104,3 +104,26 @@ export type Car = {
   createdAt?: string;
   updatedAt?: string;
 };
+
+export type CarSummary = Pick<
+  Car,
+  | '_id'
+  | 'title'
+  | 'maker'
+  | 'model'
+  | 'vehicleGrade'
+  | 'year'
+  | 'mileageKm'
+  | 'fuelType'
+  | 'transmission'
+  | 'auctionGrade'
+  | 'location'
+  | 'auctionDate'
+  | 'source'
+  | 'images'
+  | 'status'
+  | 'createdBy'
+  | 'createdAt'
+> & {
+  cost: Pick<CostBreakdown, 'auctionPriceJpy'>;
+};

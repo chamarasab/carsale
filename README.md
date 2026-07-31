@@ -47,7 +47,21 @@ Create an OAuth client in Google Cloud Console.
 
 The API includes a protected scraper module:
 
-- `POST /api/scraper/json-feed` imports a normalized JSON array of cars.
-- `POST /api/scraper/preview-html` previews page title and links for building source-specific adapters.
+- `POST /api/scraper/automarket` starts an approved A-Automarket maker/model import. The optional
+  `lotId` field restricts an import to one exact auction lot.
+- `POST /api/scraper/run` starts the configured A-Automarket batch.
 
-Many Japan auction sites require accounts and have terms that limit automated scraping. Add one adapter per approved source and keep source parsing inside `apps/api/src/scraper`.
+Each imported lot is opened individually. Its authenticated red **Average price** value is fetched
+and stored as `cost.auctionPriceJpy`; the list-page start price is retained only for diagnostics.
+The admin importer supports Japanese, European, American, and other passenger-car makers available
+in A-Automarket. Leave the model blank to search all models for the selected maker.
+
+Many Japan auction sites require accounts and have terms that limit automated scraping. Add one fixed adapter per approved source and keep source parsing inside `apps/api/src/scraper`; do not expose generic server-side URL fetch endpoints.
+
+To perform an explicitly authorized clean inventory reset, run:
+
+```text
+RESET_CARS_CONFIRM=DELETE_ALL_ADVERTISEMENTS node --env-file=apps/api/.env apps/api/scripts/reset-cars.cjs
+```
+
+This deletes every car advertisement and the complete MongoDB `images` GridFS bucket.

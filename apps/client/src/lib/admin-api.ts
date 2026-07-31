@@ -359,7 +359,8 @@ export async function runScraper(accessToken: string) {
 export async function runAutomarketScraper(
   input: {
     maker: string;
-    model: string;
+    model?: string;
+    lotId?: string;
     auctionGrade?: string;
     yearFrom?: number;
     yearTo?: number;

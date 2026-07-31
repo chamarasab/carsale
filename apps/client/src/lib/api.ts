@@ -1,32 +1,25 @@
-import { Car } from './types';
-import jpCenterCars from '../../public/jpcenter-cars.json';
+import { Car, CarSummary } from './types';
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'https://carsale-1.onrender.com/api';
 const apiPublicUrl = apiUrl.replace(/\/api\/?$/, '');
-const fallbackCars = normalizeCars(jpCenterCars as Car[]);
 
-export async function getCars() {
+export async function getCars(): Promise<CarSummary[]> {
   try {
     const response = await fetch(`${apiUrl}/cars`, { cache: 'no-store' });
-    if (!response.ok) {
-      return fallbackCars;
-    }
-    const cars = normalizeCars((await response.json()) as Car[]);
-    return cars.length > 0 ? cars : fallbackCars;
+    if (!response.ok) return [];
+    return normalizeCars((await response.json()) as CarSummary[]);
   } catch {
-    return fallbackCars;
+    return [];
   }
 }
 
-export async function getCar(id: string) {
+export async function getCar(id: string): Promise<Car | null> {
   try {
     const response = await fetch(`${apiUrl}/cars/${id}`, { cache: 'no-store' });
-    if (!response.ok) {
-      return fallbackCars.find((car) => car._id === id) ?? null;
-    }
+    if (!response.ok) return null;
     return normalizeCar((await response.json()) as Car);
   } catch {
-    return fallbackCars.find((car) => car._id === id) ?? null;
+    return null;
   }
 }
 
@@ -68,15 +61,15 @@ export async function createInquiry(payload: {
   return response.json();
 }
 
-function normalizeCars(cars: Car[]) {
+function normalizeCars<T extends CarSummary>(cars: T[]) {
   return cars.map(normalizeCar);
 }
 
-function normalizeCar(car: Car) {
+function normalizeCar<T extends CarSummary>(car: T): T {
   return {
     ...car,
     images: car.images.map((image) =>
       image.replace(/^https?:\/\/(?:localhost|127\.0\.0\.1):4000/i, apiPublicUrl),
     ),
-  };
+  } as T;
 }

@@ -1,10 +1,10 @@
-import type { Car } from '@/lib/types';
+import type { CarSummary } from '@/lib/types';
 
 export type InventoryMarket = 'japan' | 'sri-lanka';
 
 const scrapedSources = new Set(['jp center', 'a-automarket']);
 
-export function inventoryMarket(car: Car): InventoryMarket {
+export function inventoryMarket(car: CarSummary): InventoryMarket {
   const source = car.source.trim().toLowerCase();
 
   if (scrapedSources.has(source)) return 'japan';

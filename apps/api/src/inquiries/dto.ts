@@ -1,4 +1,4 @@
-import { IsEmail, IsMongoId, IsOptional, IsString, Length } from 'class-validator';
+import { IsEmail, IsMongoId, IsOptional, IsString, Length, MaxLength } from 'class-validator';
 
 export class CreateInquiryDto {
   @IsMongoId()
@@ -9,6 +9,7 @@ export class CreateInquiryDto {
   name: string;
 
   @IsEmail()
+  @MaxLength(254)
   email: string;
 
   @IsString()

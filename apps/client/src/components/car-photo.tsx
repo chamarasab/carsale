@@ -6,7 +6,7 @@ const defaultCarImage = '/blank-car-logo.svg';
 const fallbackImages = new Set(['/jdm-hero.png', '/jdm-hero.webp', defaultCarImage]);
 
 type CarPhotoProps = {
-  car: Car;
+  car: Pick<Car, 'images' | 'maker' | 'model' | 'source' | 'title'>;
   className?: string;
   image?: string;
   priority?: boolean;
@@ -44,7 +44,13 @@ export function CarPhoto({ car, className = '', image = car.images[0], priority 
 
   return (
     <div className={`absolute inset-0 bg-field ${className}`}>
-      <img alt={`${car.title} default car image`} className="absolute inset-0 h-full w-full object-contain p-8" src={defaultCarImage} />
+      <Image
+        alt={`${car.title} default car image`}
+        className="object-contain p-8"
+        fill
+        sizes={sizes}
+        src={defaultCarImage}
+      />
       <div className="absolute inset-4 flex flex-col justify-between border border-line p-4 text-foreground">
         <div className="flex items-center justify-between gap-3">
           <span className="grid h-10 w-10 place-items-center bg-surface text-muted shadow-sm">

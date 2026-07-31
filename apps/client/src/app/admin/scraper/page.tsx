@@ -20,11 +20,76 @@ const inputClass =
 type AutomarketForm = {
   maker: string;
   model: string;
+  lotId: string;
   auctionGrade: string;
   yearFrom: number;
   yearTo: number;
   listSize: number | 'all';
 };
+
+const AUTOMARKET_MAKERS = [
+  'All makers',
+  'Toyota',
+  'Daihatsu',
+  'Honda',
+  'Suzuki',
+  'Nissan',
+  'Mazda',
+  'Mitsubishi',
+  'Subaru',
+  'Lexus',
+  'Hino',
+  'Isuzu',
+  'Mitsuoka',
+  'Nissan Diesel (UD)',
+  'Mercedes Benz',
+  'BMW',
+  'BMW Alpina',
+  'Audi',
+  'Volkswagen',
+  'Porsche',
+  'Opel',
+  'Smart',
+  'Land Rover',
+  'Jaguar',
+  'Mini',
+  'Volvo',
+  'Aston Martin',
+  'Bentley',
+  'Daimler',
+  'Lotus',
+  'McLaren',
+  'MG',
+  'Rolls Royce',
+  'Rover',
+  'TVR',
+  'Buick',
+  'Cadillac',
+  'Chevrolet',
+  'Chrysler',
+  'Dodge',
+  'Ford',
+  'GMC',
+  'Hummer',
+  'Infiniti',
+  'Jeep',
+  'Lincoln',
+  'Mercury',
+  'Pontiac',
+  'Tesla',
+  'Alfa Romeo',
+  'Ferrari',
+  'Fiat',
+  'Lamborghini',
+  'Lancia',
+  'Maserati',
+  'Citroen',
+  'Peugeot',
+  'Renault',
+  'Saab',
+  'Hyundai',
+  'BYD',
+] as const;
 
 export default function AdminScraperPage() {
   const { data: session, status: sessionStatus } = useSession();
@@ -35,6 +100,7 @@ export default function AdminScraperPage() {
   const [automarketForm, setAutomarketForm] = useState<AutomarketForm>({
     maker: 'Toyota',
     model: 'Roomy',
+    lotId: '',
     auctionGrade: '',
     yearFrom: 2023,
     yearTo: new Date().getFullYear(),
@@ -81,6 +147,8 @@ export default function AdminScraperPage() {
       const allUpcoming = selectedLimit === 'all';
       const result = await runAutomarketScraper({
         ...automarketForm,
+        model: automarketForm.model.trim() || undefined,
+        lotId: automarketForm.lotId.trim() || undefined,
         listSize: typeof selectedLimit === 'number' ? selectedLimit : undefined,
         allUpcoming,
       }, session.accessToken);
@@ -176,7 +244,7 @@ export default function AdminScraperPage() {
                   <h2 className="text-xl font-black text-foreground">A-Automarket import</h2>
                 </div>
               </div>
-              <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 <label className="text-xs font-black uppercase text-muted">
                   Maker
                   <select
@@ -184,18 +252,32 @@ export default function AdminScraperPage() {
                     onChange={(event) => setAutomarketForm((current) => ({ ...current, maker: event.target.value }))}
                     value={automarketForm.maker}
                   >
-                    {['Toyota', 'Daihatsu', 'Honda', 'Suzuki', 'Nissan', 'Mazda', 'Mitsubishi', 'Subaru', 'Lexus'].map(
-                      (maker) => <option key={maker}>{maker}</option>,
-                    )}
+                    {AUTOMARKET_MAKERS.map((maker) => <option key={maker}>{maker}</option>)}
                   </select>
                 </label>
                 <label className="text-xs font-black uppercase text-muted">
-                  Model
+                  Model (optional)
                   <input
                     className={inputClass}
                     onChange={(event) => setAutomarketForm((current) => ({ ...current, model: event.target.value }))}
-                    placeholder="Roomy"
+                    placeholder="All models"
                     value={automarketForm.model}
+                  />
+                </label>
+                <label className="text-xs font-black uppercase text-muted">
+                  Specific lot ID (optional)
+                  <input
+                    className={inputClass}
+                    inputMode="numeric"
+                    maxLength={20}
+                    onChange={(event) =>
+                      setAutomarketForm((current) => ({
+                        ...current,
+                        lotId: event.target.value.replace(/\D/g, ''),
+                      }))
+                    }
+                    placeholder="977949952"
+                    value={automarketForm.lotId}
                   />
                 </label>
                 <label className="text-xs font-black uppercase text-muted">
@@ -256,7 +338,7 @@ export default function AdminScraperPage() {
               </div>
               <button
                 className="bg-brand-gradient mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-panel px-5 text-sm font-black text-white disabled:opacity-50"
-                disabled={automarketRunning || automarketActive || scraper?.running || !automarketForm.model.trim()}
+                disabled={automarketRunning || automarketActive || scraper?.running}
                 onClick={runAutomarket}
                 type="button"
               >
@@ -287,7 +369,7 @@ export default function AdminScraperPage() {
                     {scraper?.configuredJobs.map((job) => (
                       <tr key={`${job.maker}-${job.model}`}>
                         <td className="px-5 py-3 font-black text-foreground">{job.maker}</td>
-                        <td className="px-5 py-3 font-bold text-sub">{job.model}</td>
+                        <td className="px-5 py-3 font-bold text-sub">{job.model || 'All models'}</td>
                         <td className="px-5 py-3 text-muted">{job.yearFrom ?? 'Any'}–{job.yearTo ?? 'Now'}</td>
                         <td className="px-5 py-3 text-muted">{job.auctionGrade ? `Grade ${job.auctionGrade}` : 'Any valid grade'}</td>
                         <td className="px-5 py-3 text-muted">{job.allUpcoming ? 'All upcoming' : job.listSize ?? 5}</td>

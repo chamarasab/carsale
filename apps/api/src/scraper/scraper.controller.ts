@@ -1,29 +1,28 @@
 import { Body, Controller, Get, Headers, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUrl, Max, Min } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
+import { timingSafeEqual } from 'node:crypto';
 import { AUCTION_GRADES } from '../cars/auction-grades';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { ScraperService } from './scraper.service';
 
-class SourceUrlDto {
-  @IsUrl()
-  url: string;
-}
-
 class JpCenterImportDto {
   @IsOptional()
   @IsString()
+  @MaxLength(60)
   maker?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(80)
   model?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(80)
   vendor?: string;
 
   @IsOptional()
@@ -55,10 +54,18 @@ class JpCenterImportDto {
 
 class AutomarketImportDto {
   @IsString()
+  @MaxLength(60)
   maker: string;
 
+  @IsOptional()
   @IsString()
-  model: string;
+  @MaxLength(80)
+  model?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{1,20}$/)
+  lotId?: string;
 
   @IsOptional()
   @IsIn(AUCTION_GRADES)
@@ -93,16 +100,6 @@ class AutomarketImportDto {
 @Controller('scraper')
 export class ScraperController {
   constructor(private readonly scraperService: ScraperService) {}
-
-  @Post('json-feed')
-  importJsonFeed(@Body() dto: SourceUrlDto) {
-    return this.scraperService.importFromJsonFeed(dto.url);
-  }
-
-  @Post('preview-html')
-  previewHtml(@Body() dto: SourceUrlDto) {
-    return this.scraperService.previewHtmlSource(dto.url);
-  }
 
   @Post('jpcenter')
   importJpCenter(@Body() dto: JpCenterImportDto) {
@@ -155,7 +152,13 @@ export class ScraperInternalController {
 
   private assertServiceKey(key?: string) {
     const expected = this.config.get<string>('SCRAPER_SERVICE_KEY');
-    if (!expected || !key || key !== expected) {
+    const suppliedBuffer = Buffer.from(key ?? '');
+    const expectedBuffer = Buffer.from(expected ?? '');
+    const matches =
+      suppliedBuffer.length === expectedBuffer.length &&
+      suppliedBuffer.length > 0 &&
+      timingSafeEqual(suppliedBuffer, expectedBuffer);
+    if (!matches) {
       throw new UnauthorizedException('Invalid scraper service key');
     }
   }

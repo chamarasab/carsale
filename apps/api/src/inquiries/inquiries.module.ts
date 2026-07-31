@@ -1,12 +1,17 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from '../auth/auth.module';
+import { CarsModule } from '../cars/cars.module';
 import { Inquiry, InquirySchema } from './inquiry.schema';
 import { InquiriesController } from './inquiries.controller';
 import { InquiriesService } from './inquiries.service';
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: Inquiry.name, schema: InquirySchema }]), AuthModule],
+  imports: [
+    MongooseModule.forFeature([{ name: Inquiry.name, schema: InquirySchema }]),
+    AuthModule,
+    CarsModule,
+  ],
   controllers: [InquiriesController],
   providers: [InquiriesService],
 })

@@ -1,0 +1,35 @@
+name: Quality gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AUTH_JWT_SECRET: ci-auth-jwt-secret-with-at-least-32-characters
+      CLIENT_ORIGIN: http://127.0.0.1:3000
+      GOOGLE_CLIENT_ID: 1234567890-ci-quality-gate.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: ci-google-client-secret-with-24-characters
+      MONGODB_URI: mongodb://127.0.0.1:27017/carsale_ci
+      NEXTAUTH_SECRET: ci-nextauth-secret-with-at-least-24-characters
+      NEXTAUTH_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:4000/api
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
+      SCRAPER_BOT_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run verify

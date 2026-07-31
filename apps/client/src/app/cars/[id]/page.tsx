@@ -163,7 +163,7 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
     <main>
       <Nav active={carMarket === 'japan' ? 'japan' : 'local'} />
       <VehicleWhatsAppFab vehicle={vehicleInquiry} />
-      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-7xl px-4 pb-36 pt-8 sm:px-6 sm:pb-12 lg:px-8">
         <Link className="mb-5 inline-flex items-center gap-2 text-sm font-black text-muted hover:text-foreground" href={`/dashboard?market=${carMarket}`}>
           <ArrowLeft size={16} /> Back to dashboard
         </Link>

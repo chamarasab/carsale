@@ -5,8 +5,12 @@ import { findDuplicateScrapedAuctions, normalizeAuctionDate } from '../cars/cars
 import {
   cleanDisplayText,
   DEFAULT_AUTOMARKET_JOBS,
+  extractAutomarketAveragePriceArgs,
+  extractAutomarketAveragePriceJpy,
   extractAutomarketImageUrls,
   extractJpCenterMileage,
+  isApprovedAuctionImageUrl,
+  isApprovedAutomarketUrl,
   isAutomarketAuctionSheetUrl,
   normalizeEngineCapacity,
   parseAutomarketBatchJobs,
@@ -17,9 +21,11 @@ import {
 } from './scraper.service';
 
 test('uses A-Automarket searches for the scheduled batch', () => {
-  assert.equal(DEFAULT_AUTOMARKET_JOBS.length, 9);
+  assert.equal(DEFAULT_AUTOMARKET_JOBS.length, 17);
   assert.ok(DEFAULT_AUTOMARKET_JOBS.every((job) => job.yearFrom === 2023));
   assert.ok(DEFAULT_AUTOMARKET_JOBS.every((job) => (job.listSize ?? 0) >= 1 && (job.listSize ?? 0) <= 10));
+  assert.ok(DEFAULT_AUTOMARKET_JOBS.some((job) => job.maker === 'Mercedes Benz' && job.model === ''));
+  assert.ok(DEFAULT_AUTOMARKET_JOBS.some((job) => job.maker === 'Land Rover' && job.model === ''));
 });
 
 test('normalizes configured A-Automarket batch searches', () => {
@@ -37,6 +43,11 @@ test('normalizes configured A-Automarket batch searches', () => {
       model: 'Thor',
       allUpcoming: true,
     },
+    {
+      maker: 'All makers',
+      model: '',
+      allUpcoming: true,
+    },
   ]));
 
   assert.deepEqual(jobs, [
@@ -52,6 +63,15 @@ test('normalizes configured A-Automarket batch searches', () => {
     {
       maker: 'Daihatsu',
       model: 'Thor',
+      auctionGrade: undefined,
+      yearFrom: undefined,
+      yearTo: undefined,
+      listSize: undefined,
+      allUpcoming: true,
+    },
+    {
+      maker: 'All makers',
+      model: '',
       auctionGrade: undefined,
       yearFrom: undefined,
       yearTo: undefined,
@@ -243,7 +263,7 @@ test('filters Automarket imports by preferred auction grade before applying the 
   );
 });
 
-test('selects all eligible upcoming Automarket rows when no limit is supplied', () => {
+test('selects upcoming Automarket rows before the authoritative detail price is loaded', () => {
   const base = {
     lotNumber: '100',
     auctionName: 'USS Tokyo',
@@ -271,8 +291,31 @@ test('selects all eligible upcoming Automarket rows when no limit is supplied', 
 
   assert.deepEqual(
     selectEligibleAutomarketRows(rows, undefined, undefined, '2026-07-22').map((row) => row.id),
-    ['today', 'future'],
+    ['today', 'future', 'no-price'],
   );
+});
+
+test('extracts the authenticated Automarket detail-page average price request and result', () => {
+  const detailHtml = `
+    <div id="average_price"></div>
+    <script>
+      function getAveragePrice(company_ref, model_ref, model_year, displacement, model_type, grade, scores) {}
+      getAveragePrice('9', '3174', '2024', '1000', 'M900A', 'CUSTOM G-T', '5');
+    </script>
+  `;
+  const ajaxResponse = String.raw`+:var res = '<td>Average price:</td><td><h2><font id=\"average-price-sum\" color=\"red\">1683000 JPY</font></h2></td>'; res;`;
+
+  assert.deepEqual(extractAutomarketAveragePriceArgs(detailHtml), [
+    '9',
+    '3174',
+    '2024',
+    '1000',
+    'M900A',
+    'CUSTOM G-T',
+    '5',
+  ]);
+  assert.equal(extractAutomarketAveragePriceJpy(ajaxResponse), 1_683_000);
+  assert.equal(extractAutomarketAveragePriceJpy('<div>Average price unavailable</div>'), 0);
 });
 
 test('extracts Automarket detail images and normalizes known rounded capacities', () => {
@@ -302,4 +345,15 @@ test('recognizes Automarket image zero as the auction sheet', () => {
     ),
     false,
   );
+});
+
+test('allows scraper requests only to approved auction and image hosts', () => {
+  assert.equal(isApprovedAutomarketUrl('https://auctions.a-automarket.com/auctions?p=project/findlots'), true);
+  assert.equal(isApprovedAutomarketUrl('https://auctions.a-automarket.com.evil.example/'), false);
+  assert.equal(isApprovedAutomarketUrl('https://example.com/'), false);
+
+  assert.equal(isApprovedAuctionImageUrl('https://i.aleado.ru/pic/?system=auto&number=1'), true);
+  assert.equal(isApprovedAuctionImageUrl('https://8.ajes.com/imgs/example.jpg'), true);
+  assert.equal(isApprovedAuctionImageUrl('http://8.ajes.com/imgs/example.jpg'), false);
+  assert.equal(isApprovedAuctionImageUrl('https://i.aleado.ru.evil.example/example.jpg'), false);
 });

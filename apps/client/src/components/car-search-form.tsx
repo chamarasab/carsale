@@ -1,6 +1,6 @@
 'use client';
 
-import { MapPin, RotateCcw, Search, SlidersHorizontal, X } from 'lucide-react';
+import { RotateCcw, Search, SlidersHorizontal, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -112,9 +112,8 @@ export function CarSearchForm({
 
       <label className="text-xs font-black uppercase text-sub">
         Vehicle location
-        <span className="relative mt-2 block">
-          <MapPin className="pointer-events-none absolute left-3 top-3.5 text-muted" size={17} />
-          <select className={`${fieldClass} pl-10 normal-case`} defaultValue={selectedMarket} name="market">
+        <span className="mt-2 block">
+          <select className={`${fieldClass} normal-case`} defaultValue={selectedMarket} name="market">
             <option value="">Japan &amp; Sri Lanka</option>
             <option value="japan">Japan auctions</option>
             <option value="sri-lanka">Local stock</option>

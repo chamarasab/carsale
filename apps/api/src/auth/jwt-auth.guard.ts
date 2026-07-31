@@ -18,7 +18,7 @@ export class JwtAuthGuard implements CanActivate {
 
     try {
       const payload = await this.jwtService.verifyAsync<{ sub: string; tokenType?: string }>(token);
-      if (payload.tokenType === 'refresh') throw new UnauthorizedException('Refresh tokens cannot access the API');
+      if (payload.tokenType !== 'access') throw new UnauthorizedException('Only access tokens can access the API');
       const user = await this.usersService.findActiveById(payload.sub);
       if (!user) throw new UnauthorizedException('Account is inactive or unavailable');
       request.user = { id: String(user._id), email: user.email, name: user.name, role: user.role };

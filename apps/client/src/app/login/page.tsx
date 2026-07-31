@@ -46,8 +46,8 @@ export default function LoginPage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden text-foreground">
-      <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:px-8">
-        <div>
+      <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-4 py-20 sm:px-6 sm:py-16 lg:grid-cols-2 lg:px-8">
+        <div className="hidden lg:block">
           <p className="text-xs font-black uppercase tracking-wide text-brass">Secure access</p>
           <h1 className="mt-3 text-5xl font-black leading-tight">Manage and publish Genuine Automobiles listings</h1>
           <p className="mt-5 text-base leading-7 text-sub">
@@ -58,7 +58,8 @@ export default function LoginPage() {
             Back to public site
           </Link>
         </div>
-        <form className="rounded-panel border border-white/10 bg-surface/95 p-6 text-foreground shadow-theme" onSubmit={onSubmit}>
+        <form className="mx-auto w-full max-w-lg rounded-panel border border-white/10 bg-surface/95 p-6 text-foreground shadow-theme" onSubmit={onSubmit}>
+          <p className="mb-2 text-xs font-black uppercase tracking-wide text-brass lg:hidden">Secure access</p>
           <h2 className="text-2xl font-black">Account login</h2>
           <p className="mt-2 text-sm leading-6 text-muted">Use the email and password assigned by the administrator.</p>
           <label className="mt-6 grid gap-2 text-sm font-bold text-sub">
@@ -94,6 +95,11 @@ export default function LoginPage() {
             New publisher?{' '}
             <Link className="text-signal hover:text-foreground" href="/signup">
               Create an account
+            </Link>
+          </p>
+          <p className="mt-3 text-center text-sm font-bold text-muted lg:hidden">
+            <Link className="hover:text-foreground" href="/home">
+              Back to public site
             </Link>
           </p>
         </form>

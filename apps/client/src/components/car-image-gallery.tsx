@@ -1,22 +1,31 @@
 'use client';
 
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import Image from 'next/image';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Car } from '@/lib/types';
 import { CarPhoto, hasAuctionPhoto, isLikelyAuctionSheet } from './car-photo';
 
 export function CarImageGallery({ car }: { car: Car }) {
-  const images = car.images
-    .filter(hasAuctionPhoto)
-    .sort((left, right) => Number(isLikelyAuctionSheet(left)) - Number(isLikelyAuctionSheet(right)));
+  const images = useMemo(
+    () =>
+      car.images
+        .filter(hasAuctionPhoto)
+        .sort((left, right) => Number(isLikelyAuctionSheet(left)) - Number(isLikelyAuctionSheet(right))),
+    [car.images],
+  );
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const isOpen = activeIndex !== null;
 
-  const close = () => setActiveIndex(null);
-  const previous = () =>
-    setActiveIndex((current) => (current === null ? null : (current - 1 + images.length) % images.length));
-  const next = () =>
-    setActiveIndex((current) => (current === null ? null : (current + 1) % images.length));
+  const close = useCallback(() => setActiveIndex(null), []);
+  const previous = useCallback(
+    () => setActiveIndex((current) => (current === null ? null : (current - 1 + images.length) % images.length)),
+    [images.length],
+  );
+  const next = useCallback(
+    () => setActiveIndex((current) => (current === null ? null : (current + 1) % images.length)),
+    [images.length],
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -34,7 +43,7 @@ export function CarImageGallery({ car }: { car: Car }) {
       document.body.style.overflow = originalOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, images.length]);
+  }, [close, images.length, isOpen, next, previous]);
 
   const previewImages = images.slice(0, 3);
 
@@ -97,10 +106,13 @@ export function CarImageGallery({ car }: { car: Car }) {
           </div>
 
           <div className="relative min-h-0 flex-1" onClick={(event) => event.stopPropagation()}>
-            <img
+            <Image
               alt={`${car.title} image ${activeIndex + 1}`}
-              className="h-full w-full object-contain px-4 pb-4 sm:px-16"
+              className="object-contain px-4 pb-4 sm:px-16"
+              fill
+              sizes="100vw"
               src={images[activeIndex]}
+              unoptimized
             />
             {images.length > 1 ? (
               <>
@@ -140,7 +152,7 @@ export function CarImageGallery({ car }: { car: Car }) {
                   onClick={() => setActiveIndex(index)}
                   type="button"
                 >
-                  <img alt="" className="h-full w-full object-cover" src={image} />
+                  <Image alt="" className="object-cover" fill sizes="100px" src={image} unoptimized />
                 </button>
               ))}
             </div>

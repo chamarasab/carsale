@@ -1,15 +1,18 @@
-import { IsBoolean, IsEmail, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class CreateUserDto {
   @IsString()
   @MinLength(2)
+  @MaxLength(80)
   name: string;
 
   @IsEmail()
+  @MaxLength(254)
   email: string;
 
   @IsString()
   @MinLength(8)
+  @MaxLength(128)
   password: string;
 }
 

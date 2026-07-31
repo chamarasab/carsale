@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import * as express from 'express';
 import helmet from 'helmet';
 import { existsSync } from 'node:fs';
@@ -10,10 +11,11 @@ import { AppModule } from './app.module';
 import { MediaService } from './media/media.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get(ConfigService);
   const clientOrigin = config.get<string>('CLIENT_ORIGIN') ?? 'http://localhost:3000';
 
+  app.set('trust proxy', 1);
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.use('/health', (_req: express.Request, res: express.Response) => res.json({ ok: true }));
   const imagesDir = resolveApiPath('public/images');

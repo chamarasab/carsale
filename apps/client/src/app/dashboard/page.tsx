@@ -1,4 +1,4 @@
-import { Grid2X2, List, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Grid2X2, List, RotateCcw } from 'lucide-react';
 import { CarCard } from '@/components/car-card';
 import { CarListItem } from '@/components/car-list-item';
 import { CarSearchForm } from '@/components/car-search-form';
@@ -14,7 +14,10 @@ type SearchParams = {
   market?: string;
   grade?: string;
   view?: string;
+  page?: string;
 };
+
+const PAGE_SIZE = 24;
 
 function gradeRank(grade: string) {
   if (grade.toUpperCase() === 'S') return 100;
@@ -60,6 +63,14 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       (!selectedMarket || inventoryMarket(car) === selectedMarket) &&
       (!selectedGrade || car.auctionGrade.toLowerCase() === selectedGrade.toLowerCase()),
   );
+  const requestedPage = Number.parseInt(filters.page ?? '1', 10);
+  const totalPages = Math.max(1, Math.ceil(visibleCars.length / PAGE_SIZE));
+  const currentPage = Math.min(
+    Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1,
+    totalPages,
+  );
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const pageCars = visibleCars.slice(pageStart, pageStart + PAGE_SIZE);
   const hasFilters = Boolean(selectedMaker || selectedModel || selectedYear || selectedMarket || selectedGrade);
   const marketCopy = selectedMarket === 'japan'
     ? {
@@ -78,7 +89,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           heading: 'Japan auctions and local cars',
           description: 'Browse current Japan auction listings and unregistered vehicles already available in Sri Lanka.',
         };
-  const viewHref = (view: 'tile' | 'list') => {
+  const dashboardHref = (view: 'tile' | 'list', page = currentPage) => {
     const params = new URLSearchParams();
     if (selectedMaker) params.set('maker', selectedMaker);
     if (selectedModel) params.set('model', selectedModel);
@@ -86,6 +97,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     if (selectedMarket) params.set('market', selectedMarket);
     if (selectedGrade) params.set('grade', selectedGrade);
     params.set('view', view);
+    if (page > 1) params.set('page', String(page));
     return `/dashboard?${params.toString()}`;
   };
 
@@ -139,7 +151,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                 className={`inline-flex h-9 items-center gap-1.5 rounded-panel px-2 text-xs font-black transition sm:h-10 sm:gap-2 sm:px-3 sm:text-sm ${
                   selectedView === 'tile' ? 'bg-surface text-foreground shadow-sm' : 'text-muted hover:text-foreground'
                 }`}
-                href={viewHref('tile')}
+                href={dashboardHref('tile')}
               >
                 <Grid2X2 size={17} />
                 Tile
@@ -149,7 +161,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                 className={`inline-flex h-9 items-center gap-1.5 rounded-panel px-2 text-xs font-black transition sm:h-10 sm:gap-2 sm:px-3 sm:text-sm ${
                   selectedView === 'list' ? 'bg-surface text-foreground shadow-sm' : 'text-muted hover:text-foreground'
                 }`}
-                href={viewHref('list')}
+                href={dashboardHref('list')}
               >
                 <List size={17} />
                 List
@@ -164,13 +176,13 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         </div>
         {selectedView === 'list' ? (
           <div className="space-y-3 sm:space-y-4">
-            {visibleCars.map((car) => (
+            {pageCars.map((car) => (
               <CarListItem car={car} key={car._id} />
             ))}
           </div>
         ) : (
           <div className="grid gap-3 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {visibleCars.map((car) => (
+            {pageCars.map((car) => (
               <CarCard car={car} key={car._id} />
             ))}
           </div>
@@ -187,6 +199,43 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               Clear search
             </a>
           </div>
+        ) : null}
+        {totalPages > 1 ? (
+          <nav
+            aria-label="Vehicle listing pages"
+            className="mt-8 flex items-center justify-between gap-3 border-t border-line pt-5"
+          >
+            {currentPage > 1 ? (
+              <a
+                className="inline-flex h-11 items-center gap-2 rounded-panel border border-line bg-surface px-4 text-sm font-black text-foreground shadow-sm hover:border-signal"
+                href={dashboardHref(selectedView, currentPage - 1)}
+              >
+                <ChevronLeft size={17} />
+                Previous
+              </a>
+            ) : (
+              <span className="h-11 w-[110px]" />
+            )}
+            <div className="text-center">
+              <p className="text-sm font-black text-foreground">
+                Page {currentPage} of {totalPages}
+              </p>
+              <p className="mt-1 hidden text-xs font-bold text-muted sm:block">
+                Showing {pageStart + 1}-{Math.min(pageStart + PAGE_SIZE, visibleCars.length)} of {visibleCars.length}
+              </p>
+            </div>
+            {currentPage < totalPages ? (
+              <a
+                className="inline-flex h-11 items-center gap-2 rounded-panel border border-line bg-surface px-4 text-sm font-black text-foreground shadow-sm hover:border-signal"
+                href={dashboardHref(selectedView, currentPage + 1)}
+              >
+                Next
+                <ChevronRight size={17} />
+              </a>
+            ) : (
+              <span className="h-11 w-[110px]" />
+            )}
+          </nav>
         ) : null}
       </section>
     </main>

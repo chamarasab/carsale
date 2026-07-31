@@ -1,4 +1,5 @@
 import { ArrowRight, Calculator, FileCheck2, Ship } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { CarCard } from '@/components/car-card';
 import { CustomerHandoverCarousel } from '@/components/customer-handover-carousel';
@@ -21,57 +22,67 @@ export default async function Home({
     <main>
       <Nav active="home" />
       {signup === 'pending' ? <SignupPendingToast /> : null}
-      <section className="bg-owl-gradient relative min-h-[82vh] overflow-hidden">
+      <section className="bg-owl-gradient relative min-h-[64svh] overflow-hidden">
         <HeroSlider />
-        <div className="relative z-10 mx-auto flex min-h-[82vh] max-w-7xl items-center px-4 py-16 sm:px-6 lg:px-8">
-          <div className="max-w-3xl text-white">
-            <img
+        <div className="relative z-10 mx-auto flex min-h-[64svh] max-w-7xl items-center px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          <div className="max-w-4xl text-white">
+            <Image
               alt="Genuine Automobiles"
-              className="mb-6 h-auto w-72 max-w-full object-contain sm:w-96"
+              className="mb-3 h-auto w-44 max-w-full object-contain sm:mb-4 sm:w-60 lg:w-64"
+              height={259}
+              priority
+              sizes="(min-width: 640px) 288px, 208px"
               src="/genuine-automobiles-logo-transparent.png"
+              width={605}
             />
-            <p className="mb-5 inline-flex border border-white/15 bg-white/10 px-3 py-2 text-xs font-black uppercase tracking-wide text-white/84 backdrop-blur">
+            <p className="mb-3 inline-flex border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-wide text-white/84 backdrop-blur sm:py-2 sm:text-xs">
               Genuine quality, real wins
             </p>
-            <h1 className="max-w-4xl text-5xl font-black leading-none sm:text-6xl lg:text-7xl">
+            <h1 className="max-w-4xl text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
               Japanese cars sourced with confidence for Sri Lanka.
             </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-white/78">
-              A car is one of life&apos;s biggest dreams. Explore practical 2023+ models from Japan with the auction
-              price, shipping, taxes, clearance, and local delivery brought together before you decide.
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/78 sm:mt-4 sm:text-base sm:leading-7">
+              <span className="sm:hidden">
+                Explore current 2023+ Japan auction cars with their grade, mileage, and auction price.
+              </span>
+              <span className="hidden sm:inline">
+                A car is one of life&apos;s biggest dreams. Explore practical 2023+ models from Japan with the auction
+                price, shipping, taxes, clearance, and local delivery brought together before you decide.
+              </span>
             </p>
-            <div className="mt-8 grid max-w-2xl grid-cols-3 gap-3 border-y border-white/14 py-5 text-white sm:flex">
+            <div className="mt-4 grid max-w-2xl grid-cols-3 gap-3 border-y border-white/14 py-3 text-white sm:mt-5 sm:flex sm:py-4">
               {[
                 [String(cars.length), 'live listings'],
                 ['2023+', 'newer models'],
                 ['JP to LK', 'one clear path'],
               ].map(([value, label]) => (
                 <div className="sm:min-w-36" key={label}>
-                  <p className="text-2xl font-black">{value}</p>
-                  <p className="mt-1 text-xs font-bold uppercase tracking-wide text-white/58">{label}</p>
+                  <p className="text-lg font-black sm:text-2xl">{value}</p>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-white/58 sm:text-xs">{label}</p>
                 </div>
               ))}
             </div>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-4 flex flex-wrap gap-2 sm:mt-5 sm:gap-3">
               <Link
-                className="bg-brand-gradient inline-flex h-12 items-center gap-2 rounded-panel px-5 text-sm font-black text-white shadow-theme hover:opacity-90"
+                className="bg-brand-gradient inline-flex h-11 items-center gap-2 rounded-panel px-4 text-sm font-black text-white shadow-theme hover:opacity-90 sm:h-12 sm:px-5"
                 href="/dashboard"
               >
                 Find your car <ArrowRight size={18} />
               </Link>
               {featured[0] ? (
                 <Link
-                  className="inline-flex h-12 items-center rounded-panel border border-white/18 bg-white px-5 text-sm font-black text-[#1d1d1f] shadow-soft hover:bg-[#f5f5f5]"
+                  className="hidden h-12 items-center rounded-panel border border-white/18 bg-white px-5 text-sm font-black text-[#1d1d1f] shadow-soft hover:bg-[#f5f5f5] sm:inline-flex"
                   href={`/cars/${featured[0]._id}`}
                 >
                   From {jpy(featured[0].cost.auctionPriceJpy)}
                 </Link>
               ) : null}
               <Link
-                className="inline-flex h-12 items-center rounded-panel border border-white/20 px-5 text-sm font-black text-white hover:border-brass"
+                className="inline-flex h-11 items-center rounded-panel border border-white/20 px-4 text-sm font-black text-white hover:border-brass sm:h-12 sm:px-5"
                 href="/login"
               >
-                Admin / publisher login
+                <span className="sm:hidden">Publisher login</span>
+                <span className="hidden sm:inline">Admin / publisher login</span>
               </Link>
             </div>
           </div>

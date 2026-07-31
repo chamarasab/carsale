@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { CarPhoto, firstVehiclePhoto } from '@/components/car-photo';
 import { auctionGradeDescription } from '@/lib/auction-grades';
 import { compactNumber, formatAuctionDate, jpy } from '@/lib/format';
-import { Car } from '@/lib/types';
+import { CarSummary } from '@/lib/types';
 
-export function CarListItem({ car }: { car: Car }) {
+export function CarListItem({ car }: { car: CarSummary }) {
   const thumbnail = firstVehiclePhoto(car.images);
   const showAuctionDate = car.status === 'available';
   const cardBadge = showAuctionDate ? formatAuctionDate(car.auctionDate) : car.status;

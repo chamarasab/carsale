@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -10,6 +11,7 @@ export class InquiriesController {
   constructor(private readonly inquiriesService: InquiriesService) {}
 
   @Post()
+  @Throttle({ default: { limit: 5, ttl: 10 * 60_000 } })
   create(@Body() dto: CreateInquiryDto) {
     return this.inquiriesService.create(dto);
   }

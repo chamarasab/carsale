@@ -1,17 +1,47 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsDateString,
   IsIn,
   IsInt,
   IsNumber,
   IsOptional,
   IsString,
+  IsUrl,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
 import { AUCTION_GRADES } from './auction-grades';
+
+export class FindCarsQueryDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  q?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  maker?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  model?: string;
+
+  @IsOptional()
+  @IsIn(['available', 'reserved', 'sold'])
+  status?: 'available' | 'reserved' | 'sold';
+}
+
+export class SetPublishedDto {
+  @IsBoolean()
+  published: boolean;
+}
 
 export class CostBreakdownDto {
   @IsNumber()
@@ -324,28 +354,35 @@ export class CostBreakdownDto {
 
 export class CreateCarDto {
   @IsString()
+  @MaxLength(180)
   title: string;
 
   @IsString()
+  @MaxLength(60)
   maker: string;
 
   @IsString()
+  @MaxLength(80)
   model: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(60)
   modelCode?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(120)
   vehicleGrade?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(64)
   categoryId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(180)
   categoryMeaning?: string;
 
   @IsInt()
@@ -357,38 +394,48 @@ export class CreateCarDto {
   mileageKm: number;
 
   @IsString()
+  @MaxLength(80)
   fuelType: string;
 
   @IsString()
+  @MaxLength(80)
   transmission: string;
 
   @IsIn(AUCTION_GRADES)
   auctionGrade: string;
 
   @IsString()
+  @MaxLength(80)
   chassisCode: string;
 
   @IsString()
+  @MaxLength(120)
   location: string;
 
   @IsOptional()
-  @IsString()
+  @IsDateString()
   auctionDate?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(80)
   source?: string;
 
   @IsOptional()
-  @IsString()
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
+  @MaxLength(2048)
   sourceUrl?: string;
 
   @IsArray()
+  @ArrayMaxSize(20)
   @IsString({ each: true })
+  @MaxLength(2048, { each: true })
   images: string[];
 
   @IsArray()
+  @ArrayMaxSize(100)
   @IsString({ each: true })
+  @MaxLength(160, { each: true })
   features: string[];
 
   @ValidateNested()

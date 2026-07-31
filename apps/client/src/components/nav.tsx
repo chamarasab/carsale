@@ -1,4 +1,5 @@
 import { CarFront, Gavel, House } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { AdminLink } from './admin-link';
 import { LoginButton } from './login-button';
@@ -31,13 +32,16 @@ const inventoryLinks = [
 
 export function Nav({ active }: { active?: NavSection }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-white/10 bg-jdm-panel text-white shadow-sm">
+    <header className="relative z-30 border-b border-white/10 bg-jdm-panel text-white shadow-sm md:sticky md:top-0">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
         <Link href="/home" className="flex items-center gap-3">
-          <img
+          <Image
             alt="Genuine Automobiles"
             className="h-9 w-auto max-w-[150px] object-contain sm:h-11 sm:max-w-[220px]"
+            height={259}
+            sizes="(min-width: 640px) 220px, 150px"
             src="/genuine-automobiles-logo-transparent.png"
+            width={605}
           />
           <span className="hidden text-xs font-semibold text-white/55 xl:block">
             日本車 · Your Japan-to-Sri Lanka car journey

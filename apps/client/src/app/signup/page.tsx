@@ -49,8 +49,8 @@ export default function SignupPage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden text-foreground">
-      <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:px-8">
-        <div>
+      <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-4 py-20 sm:px-6 sm:py-16 lg:grid-cols-2 lg:px-8">
+        <div className="hidden lg:block">
           <p className="text-xs font-black uppercase tracking-wide text-brass">Publisher access</p>
           <h1 className="mt-3 text-5xl font-black leading-tight">Create an account to submit vehicle advertisements</h1>
           <p className="mt-5 text-base leading-7 text-sub">
@@ -66,7 +66,8 @@ export default function SignupPage() {
             </Link>
           </div>
         </div>
-        <form className="rounded-panel border border-white/10 bg-surface/95 p-6 text-foreground shadow-theme" onSubmit={onSubmit}>
+        <form className="mx-auto w-full max-w-lg rounded-panel border border-white/10 bg-surface/95 p-6 text-foreground shadow-theme" onSubmit={onSubmit}>
+          <p className="mb-2 text-xs font-black uppercase tracking-wide text-brass lg:hidden">Publisher access</p>
           <h2 className="text-2xl font-black">Create publisher account</h2>
           <p className="mt-2 text-sm leading-6 text-muted">Use this account to add vehicle advertisements for approval.</p>
           <Field label="Name" name="name" />
@@ -81,6 +82,14 @@ export default function SignupPage() {
             {submitting ? 'Creating account...' : 'Sign up'}
           </button>
           {error ? <p className="mt-4 text-sm font-bold text-red-500">{error}</p> : null}
+          <div className="mt-5 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm font-bold text-muted lg:hidden">
+            <Link className="text-signal hover:text-foreground" href="/login">
+              Sign in instead
+            </Link>
+            <Link className="hover:text-foreground" href="/home">
+              Back to public site
+            </Link>
+          </div>
         </form>
       </div>
     </main>

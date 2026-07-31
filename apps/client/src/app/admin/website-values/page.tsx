@@ -83,9 +83,14 @@ export default function WebsiteValuesPage() {
     setBusy(true);
     setMessage('');
     try {
+      const input = {
+        ...form,
+        sourceDataUrl: form.sourceDataUrl?.trim() || undefined,
+        effectiveFrom: form.effectiveFrom?.trim() || undefined,
+      };
       if (editingId)
-        await updateWebsiteValue(editingId, form, session.accessToken);
-      else await createWebsiteValue(form, session.accessToken);
+        await updateWebsiteValue(editingId, input, session.accessToken);
+      else await createWebsiteValue(input, session.accessToken);
       const recalculated = await recalculateCars(session.accessToken);
       await load();
       resetForm();
@@ -102,7 +107,8 @@ export default function WebsiteValuesPage() {
   }
 
   function edit(value: WebsiteValue) {
-    const { _id, lastSyncedAt: _lastSyncedAt, ...input } = value;
+    const { _id, ...input } = value;
+    delete input.lastSyncedAt;
     setEditingId(_id);
     setForm(input);
     window.scrollTo({ top: 0, behavior: 'smooth' });

@@ -5,20 +5,15 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { AuthUser } from '../auth/auth.types';
 import { CarsService } from './cars.service';
-import { CreateCarDto, UpdateCarDto } from './dto';
+import { CreateCarDto, FindCarsQueryDto, SetPublishedDto, UpdateCarDto } from './dto';
 
 @Controller('cars')
 export class CarsController {
   constructor(private readonly carsService: CarsService) {}
 
   @Get()
-  findAll(
-    @Query('q') q?: string,
-    @Query('maker') maker?: string,
-    @Query('model') model?: string,
-    @Query('status') status?: string,
-  ) {
-    return this.carsService.findAll({ q, maker, model, status });
+  findAll(@Query() query: FindCarsQueryDto) {
+    return this.carsService.findAll(query);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -61,7 +56,7 @@ export class CarsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Patch(':id/published')
-  setPublished(@Param('id') id: string, @Body() dto: { published: boolean }) {
+  setPublished(@Param('id') id: string, @Body() dto: SetPublishedDto) {
     return this.carsService.setPublished(id, dto.published);
   }
 
