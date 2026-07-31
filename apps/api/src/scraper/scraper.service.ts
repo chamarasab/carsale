@@ -909,11 +909,12 @@ export class ScraperService implements OnModuleInit {
         const engineCapacity = normalizeEngineCapacity(row.engineCapacity, row.modelCode);
         const identity = `${row.model} ${row.modelCode} ${row.vehicleGrade}`;
         const fuelType = inferFuelType(identity);
+        const makerName = automarketMakerDisplayName(row.maker);
         const dto: CreateCarDto = {
           title: cleanDisplayText(
-            [row.year, titleCase(row.maker), titleCase(row.model), row.vehicleGrade].filter(Boolean).join(' '),
+            [row.year, makerName, titleCase(row.model), row.vehicleGrade].filter(Boolean).join(' '),
           ),
-          maker: titleCase(row.maker),
+          maker: makerName,
           model: titleCase(row.model),
           modelCode: row.modelCode,
           vehicleGrade: row.vehicleGrade || undefined,
@@ -1788,6 +1789,20 @@ function titleCase(value: string) {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+}
+
+export function automarketMakerDisplayName(value: string) {
+  const normalized = value.trim().toUpperCase();
+  const displayNames: Record<string, string> = {
+    BMW: 'BMW',
+    'BMW ALPINA': 'BMW Alpina',
+    BYD: 'BYD',
+    GMC: 'GMC',
+    MG: 'MG',
+    'NISSAN DIESEL (UD)': 'Nissan Diesel (UD)',
+    TVR: 'TVR',
+  };
+  return displayNames[normalized] ?? titleCase(value);
 }
 
 function isUsableVehicleImage(dimensions: { width: number; height: number }) {

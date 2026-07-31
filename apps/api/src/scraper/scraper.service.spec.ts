@@ -3,6 +3,7 @@ import test from 'node:test';
 import { normalizeAuctionGrade } from '../cars/auction-grades';
 import { findDuplicateScrapedAuctions, normalizeAuctionDate } from '../cars/cars.service';
 import {
+  automarketMakerDisplayName,
   cleanDisplayText,
   DEFAULT_AUTOMARKET_JOBS,
   extractAutomarketAveragePriceArgs,
@@ -26,6 +27,12 @@ test('uses A-Automarket searches for the scheduled batch', () => {
   assert.ok(DEFAULT_AUTOMARKET_JOBS.every((job) => (job.listSize ?? 0) >= 1 && (job.listSize ?? 0) <= 10));
   assert.ok(DEFAULT_AUTOMARKET_JOBS.some((job) => job.maker === 'Mercedes Benz' && job.model === ''));
   assert.ok(DEFAULT_AUTOMARKET_JOBS.some((job) => job.maker === 'Land Rover' && job.model === ''));
+});
+
+test('preserves manufacturer acronyms for imported-market cars', () => {
+  assert.equal(automarketMakerDisplayName('BMW'), 'BMW');
+  assert.equal(automarketMakerDisplayName('BYD'), 'BYD');
+  assert.equal(automarketMakerDisplayName('MERCEDES BENZ'), 'Mercedes Benz');
 });
 
 test('normalizes configured A-Automarket batch searches', () => {
