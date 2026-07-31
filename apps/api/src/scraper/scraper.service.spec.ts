@@ -4,15 +4,66 @@ import { normalizeAuctionGrade } from '../cars/auction-grades';
 import { findDuplicateScrapedAuctions, normalizeAuctionDate } from '../cars/cars.service';
 import {
   cleanDisplayText,
+  DEFAULT_AUTOMARKET_JOBS,
   extractAutomarketImageUrls,
   extractJpCenterMileage,
   isAutomarketAuctionSheetUrl,
   normalizeEngineCapacity,
+  parseAutomarketBatchJobs,
   parseAutomarketRows,
   selectEligibleAutomarketRows,
   selectRowsWithMileage,
   selectCurrentAuctionRows,
 } from './scraper.service';
+
+test('uses A-Automarket searches for the scheduled batch', () => {
+  assert.equal(DEFAULT_AUTOMARKET_JOBS.length, 9);
+  assert.ok(DEFAULT_AUTOMARKET_JOBS.every((job) => job.yearFrom === 2023));
+  assert.ok(DEFAULT_AUTOMARKET_JOBS.every((job) => (job.listSize ?? 0) >= 1 && (job.listSize ?? 0) <= 10));
+});
+
+test('normalizes configured A-Automarket batch searches', () => {
+  const jobs = parseAutomarketBatchJobs(JSON.stringify([
+    {
+      maker: 'Toyota',
+      model: 'Roomy',
+      yearFrom: 2024,
+      pages: 3,
+      listSize: 50,
+      auctionGrade: '4.0',
+    },
+    {
+      maker: 'Daihatsu',
+      model: 'Thor',
+      allUpcoming: true,
+    },
+  ]));
+
+  assert.deepEqual(jobs, [
+    {
+      maker: 'Toyota',
+      model: 'Roomy',
+      auctionGrade: '4',
+      yearFrom: 2024,
+      yearTo: undefined,
+      listSize: 10,
+      allUpcoming: false,
+    },
+    {
+      maker: 'Daihatsu',
+      model: 'Thor',
+      auctionGrade: undefined,
+      yearFrom: undefined,
+      yearTo: undefined,
+      listSize: undefined,
+      allUpcoming: true,
+    },
+  ]);
+  assert.throws(
+    () => parseAutomarketBatchJobs('[{"maker":"Unknown","model":"Example"}]'),
+    /unsupported maker/,
+  );
+});
 
 test('extracts mileage from a JP Center desktop lot row', () => {
   const html = `

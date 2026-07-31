@@ -121,7 +121,7 @@ export class ScraperController {
 
   @Post('run')
   run() {
-    return this.scraperService.startJpCenterBatch('manual');
+    return this.scraperService.startAutomarketBatch('manual');
   }
 }
 
@@ -141,7 +141,7 @@ export class ScraperInternalController {
   @Post('run')
   run(@Headers('x-scraper-service-key') key?: string) {
     this.assertServiceKey(key);
-    return this.scraperService.startJpCenterBatch('scheduled');
+    return this.scraperService.startAutomarketBatch('scheduled');
   }
 
   @Post('automarket')

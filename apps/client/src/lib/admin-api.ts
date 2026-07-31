@@ -79,10 +79,11 @@ export type ScraperStatus = {
   configuredJobs: Array<{
     maker: string;
     model: string;
-    pages?: number;
     listSize?: number;
     yearFrom?: number;
     yearTo?: number;
+    auctionGrade?: string;
+    allUpcoming?: boolean;
   }>;
   lastRun: ScrapeRun | null;
   lastRuns?: {

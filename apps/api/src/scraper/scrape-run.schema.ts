@@ -33,7 +33,7 @@ const ScrapeJobResultSchema = SchemaFactory.createForClass(ScrapeJobResult);
 
 @Schema({ suppressReservedKeysWarning: true, timestamps: true })
 export class ScrapeRun {
-  @Prop({ default: 'JP Center', required: true, type: String })
+  @Prop({ default: 'A-Automarket', required: true, type: String })
   source: string;
 
   @Prop({ enum: ['manual', 'scheduled'], required: true, type: String })

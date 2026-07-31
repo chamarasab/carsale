@@ -10,6 +10,12 @@ export function validateEnvironment(config: Record<string, unknown>) {
   validated.AUTH_JWT_SECRET = requireSecret(config, 'AUTH_JWT_SECRET');
   validated.GOOGLE_CLIENT_ID = validateGoogleClientId(requireValue(config, 'GOOGLE_CLIENT_ID'));
 
+  if (String(config.SCRAPER_BOT_ENABLED).trim().toLowerCase() === 'true') {
+    validated.AUTOMARKET_USERNAME = requireValue(config, 'AUTOMARKET_USERNAME');
+    validated.AUTOMARKET_PASSWORD = requireValue(config, 'AUTOMARKET_PASSWORD');
+    validated.SCRAPER_SERVICE_KEY = requireValue(config, 'SCRAPER_SERVICE_KEY');
+  }
+
   return validated;
 }
 

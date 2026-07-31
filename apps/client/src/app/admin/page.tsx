@@ -31,7 +31,7 @@ export default function AdminPanelPage() {
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             <PanelLink href="/admin/vehicles" icon={CarFront} title="Advertisements" text="Create a complete vehicle advertisement and upload optimized images." />
             {isAdmin ? <PanelLink href="/admin/approvals" icon={ClipboardCheck} title="Pending approvals" text="Review and approve newly submitted advertisements before publication." /> : null}
-            {isAdmin ? <PanelLink href="/admin/scraper" icon={DatabaseZap} title="JP Center scraper" text="Run imports and inspect scheduled fetch results." /> : null}
+            {isAdmin ? <PanelLink href="/admin/scraper" icon={DatabaseZap} title="A-Automarket scraper" text="Run imports and inspect scheduled auction results." /> : null}
             {isAdmin ? <PanelLink href="/admin/users" icon={UserPlus} title="Create user" text="Create publisher accounts and assign their login details." /> : null}
             {isAdmin ? <PanelLink href="/admin/users" icon={Users} title="Manage users" text="Activate or deactivate publisher accounts." /> : null}
             {isAdmin ? <PanelLink href="/admin/settings" icon={Settings} title="Tax settings" text="Update tax defaults and recalculate advertisements." /> : null}

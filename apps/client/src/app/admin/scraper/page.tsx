@@ -63,10 +63,10 @@ export default function AdminScraperPage() {
     setMessage('');
     try {
       const result = await runScraper(session.accessToken);
-      setMessage(result.started ? 'JP Center scrape started.' : result.reason || 'A scrape is already running.');
+      setMessage(result.started ? 'A-Automarket batch started.' : result.reason || 'A scrape is already running.');
       await refresh();
     } catch {
-      setMessage('Could not start the JP Center scraper.');
+      setMessage('Could not start the A-Automarket scraper.');
     } finally {
       setStarting(false);
     }
@@ -95,9 +95,6 @@ export default function AdminScraperPage() {
     }
   }
 
-  const lastJpCenterRun = scraper?.lastRuns?.jpCenter
-    ?? scraper?.runs.find((run) => run.source === 'JP Center')
-    ?? null;
   const lastAutomarketRun = scraper?.lastRuns?.automarket
     ?? scraper?.runs.find((run) => run.source === 'A-Automarket')
     ?? null;
@@ -113,7 +110,7 @@ export default function AdminScraperPage() {
         <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-wide text-signal">Import service</p>
-            <h1 className="mt-2 text-4xl font-black text-foreground">Auction scrapers</h1>
+            <h1 className="mt-2 text-4xl font-black text-foreground">Auction scraper</h1>
             <p className="mt-2 text-sm font-bold text-muted">
               {scraper?.schedule ?? 'Loading schedule'} · {scraper?.running ? 'Running now' : 'Waiting'}
             </p>
@@ -167,9 +164,8 @@ export default function AdminScraperPage() {
           </section>
         ) : (
           <>
-            <div className="mt-8 grid gap-6 lg:grid-cols-2">
-              <RunSummary icon={<DatabaseZap size={22} />} run={lastJpCenterRun} source="JP Center" />
-              <RunSummary icon={<Search size={22} />} run={lastAutomarketRun} source="A-Automarket" />
+            <div className="mt-8">
+              <RunSummary icon={<DatabaseZap size={22} />} run={lastAutomarketRun} source="A-Automarket" />
             </div>
 
             <section className="mt-6 rounded-panel border border-line bg-surface p-5 shadow-soft">
@@ -283,7 +279,7 @@ export default function AdminScraperPage() {
                       <th className="px-5 py-3">Maker</th>
                       <th className="px-5 py-3">Model</th>
                       <th className="px-5 py-3">Years</th>
-                      <th className="px-5 py-3">Pages</th>
+                      <th className="px-5 py-3">Auction grade</th>
                       <th className="px-5 py-3">Limit</th>
                     </tr>
                   </thead>
@@ -293,8 +289,8 @@ export default function AdminScraperPage() {
                         <td className="px-5 py-3 font-black text-foreground">{job.maker}</td>
                         <td className="px-5 py-3 font-bold text-sub">{job.model}</td>
                         <td className="px-5 py-3 text-muted">{job.yearFrom ?? 'Any'}–{job.yearTo ?? 'Now'}</td>
-                        <td className="px-5 py-3 text-muted">{job.pages ?? 1}</td>
-                        <td className="px-5 py-3 text-muted">{job.listSize ?? 20}</td>
+                        <td className="px-5 py-3 text-muted">{job.auctionGrade ? `Grade ${job.auctionGrade}` : 'Any valid grade'}</td>
+                        <td className="px-5 py-3 text-muted">{job.allUpcoming ? 'All upcoming' : job.listSize ?? 5}</td>
                       </tr>
                     ))}
                   </tbody>

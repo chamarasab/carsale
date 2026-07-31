@@ -61,6 +61,22 @@ test('requires production JWT secrets to be at least 32 characters', () => {
   );
 });
 
+test('requires A-Automarket credentials when scheduled scraping is enabled', () => {
+  assert.throws(
+    () => validateEnvironment({ ...validEnvironment, SCRAPER_BOT_ENABLED: 'true' }),
+    /Missing required environment variable: AUTOMARKET_USERNAME/,
+  );
+
+  const result = validateEnvironment({
+    ...validEnvironment,
+    SCRAPER_BOT_ENABLED: 'true',
+    AUTOMARKET_USERNAME: 'auction-user',
+    AUTOMARKET_PASSWORD: 'auction-password',
+    SCRAPER_SERVICE_KEY: 'scraper-service-key',
+  });
+  assert.equal(result.AUTOMARKET_USERNAME, 'auction-user');
+});
+
 test('generates stable, non-reversible client ID fingerprints', () => {
   const fingerprint = googleClientIdFingerprint(validEnvironment.GOOGLE_CLIENT_ID);
   assert.match(fingerprint, /^[a-f0-9]{16}$/);

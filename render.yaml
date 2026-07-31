@@ -33,12 +33,16 @@ services:
         sync: false
       - key: JPCENTER_PASSWORD
         sync: false
+      - key: AUTOMARKET_USERNAME
+        sync: false
+      - key: AUTOMARKET_PASSWORD
+        sync: false
       - key: SCRAPER_SERVICE_KEY
         sync: false
       - key: SCRAPER_BOT_ENABLED
         value: "true"
       - key: SCRAPER_SCHEDULE_LABEL
-        value: Every 6 hours
+        value: A-Automarket every 6 hours
       - key: SCRAPER_JOB_DELAY_MS
         value: "2000"
       - key: SCRAPER_JOB_RETRY_DELAY_MS

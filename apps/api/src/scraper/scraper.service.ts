@@ -33,11 +33,6 @@ type JpCenterPayload = {
   body?: JpCenterRow[];
 };
 
-type JpCenterBatchJob = JpCenterImportOptions & {
-  maker: string;
-  model: string;
-};
-
 type AutomarketImportOptions = {
   maker: string;
   model: string;
@@ -46,6 +41,11 @@ type AutomarketImportOptions = {
   yearTo?: number;
   listSize?: number;
   allUpcoming?: boolean;
+};
+
+export type AutomarketBatchJob = AutomarketImportOptions & {
+  maker: string;
+  model: string;
 };
 
 type AutomarketRow = {
@@ -121,17 +121,74 @@ const AUTOMARKET_MAKER_IDS: Record<string, string> = {
   LEXUS: '59',
 };
 
-const DEFAULT_JP_CENTER_JOBS: JpCenterBatchJob[] = [
-  { maker: 'Toyota', model: 'Raize', yearFrom: 2023, pages: 1, listSize: 7 },
-  { maker: 'Toyota', model: 'Roomy', yearFrom: 2023, pages: 1, listSize: 7 },
-  { maker: 'Honda', model: 'Vezel', yearFrom: 2023, pages: 1, listSize: 7 },
-  { maker: 'Honda', model: 'N BOX', yearFrom: 2023, pages: 1, listSize: 6 },
-  { maker: 'Suzuki', model: 'Wagon R', yearFrom: 2023, pages: 1, listSize: 6 },
-  { maker: 'Suzuki', model: 'Spacia', yearFrom: 2023, pages: 1, listSize: 5 },
-  { maker: 'Daihatsu', model: 'Taft', yearFrom: 2023, pages: 1, listSize: 5 },
-  { maker: 'Daihatsu', model: 'Rocky', yearFrom: 2023, pages: 1, listSize: 5 },
-  { maker: 'Daihatsu', model: 'Thor', yearFrom: 2023, pages: 1, listSize: 2 },
+export const DEFAULT_AUTOMARKET_JOBS: AutomarketBatchJob[] = [
+  { maker: 'Toyota', model: 'Raize', yearFrom: 2023, listSize: 7 },
+  { maker: 'Toyota', model: 'Roomy', yearFrom: 2023, listSize: 7 },
+  { maker: 'Honda', model: 'Vezel', yearFrom: 2023, listSize: 7 },
+  { maker: 'Honda', model: 'N BOX', yearFrom: 2023, listSize: 6 },
+  { maker: 'Suzuki', model: 'Wagon R', yearFrom: 2023, listSize: 6 },
+  { maker: 'Suzuki', model: 'Spacia', yearFrom: 2023, listSize: 5 },
+  { maker: 'Daihatsu', model: 'Taft', yearFrom: 2023, listSize: 5 },
+  { maker: 'Daihatsu', model: 'Rocky', yearFrom: 2023, listSize: 5 },
+  { maker: 'Daihatsu', model: 'Thor', yearFrom: 2023, listSize: 2 },
 ];
+
+export function parseAutomarketBatchJobs(configured?: string): AutomarketBatchJob[] {
+  if (!configured) return DEFAULT_AUTOMARKET_JOBS;
+
+  const parsed = JSON.parse(configured) as unknown;
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error('at least one configured search is required');
+  }
+
+  return parsed.map((value, index) => {
+    if (!value || typeof value !== 'object') {
+      throw new Error(`search ${index + 1} must be an object`);
+    }
+
+    const job = value as Record<string, unknown>;
+    const maker = typeof job.maker === 'string' ? job.maker.trim() : '';
+    const model = typeof job.model === 'string' ? job.model.trim() : '';
+    if (!maker || !AUTOMARKET_MAKER_IDS[maker.toUpperCase()]) {
+      throw new Error(`search ${index + 1} has an unsupported maker`);
+    }
+    if (!model) throw new Error(`search ${index + 1} requires a model`);
+
+    const allUpcoming = job.allUpcoming === true;
+    const auctionGradeValue = typeof job.auctionGrade === 'string' ? job.auctionGrade : undefined;
+    const auctionGrade = auctionGradeValue
+      ? normalizeAuctionGrade(auctionGradeValue)
+      : undefined;
+    if (auctionGradeValue && !auctionGrade) {
+      throw new Error(`search ${index + 1} has an unsupported auction grade`);
+    }
+
+    return {
+      maker,
+      model,
+      auctionGrade,
+      yearFrom: optionalAutomarketYear(job.yearFrom, index),
+      yearTo: optionalAutomarketYear(job.yearTo, index),
+      listSize: allUpcoming ? undefined : boundedAutomarketLimit(job.listSize),
+      allUpcoming,
+    };
+  });
+}
+
+function optionalAutomarketYear(value: unknown, index: number) {
+  if (value === undefined || value === null || value === '') return undefined;
+  const year = Number(value);
+  if (!Number.isInteger(year) || year < 1980 || year > 2100) {
+    throw new Error(`search ${index + 1} has an invalid year`);
+  }
+  return year;
+}
+
+function boundedAutomarketLimit(value: unknown) {
+  const limit = Number(value ?? 5);
+  if (!Number.isInteger(limit)) return 5;
+  return Math.min(Math.max(limit, 1), 10);
+}
 
 @Injectable()
 export class ScraperService implements OnModuleInit {
@@ -185,18 +242,27 @@ export class ScraperService implements OnModuleInit {
       this.websiteValuesService.countMissing(),
     ]);
     return {
-      source: 'JP Center',
-      sourceUrl: JP_CENTER_BASE_URL,
+      source: 'A-Automarket',
+      sourceUrl: AUTOMARKET_BASE_URL,
       enabled: this.config.get<string>('SCRAPER_BOT_ENABLED', 'true') !== 'false',
       running: this.isBatchRunning || this.isAutomarketRunning,
       schedule: this.config.get<string>('SCRAPER_SCHEDULE_LABEL', 'Every 6 hours'),
-      configuredJobs: this.batchJobs().map(({ maker, model, pages, listSize, yearFrom, yearTo }) => ({
+      configuredJobs: this.automarketBatchJobs().map(({
         maker,
         model,
-        pages,
         listSize,
         yearFrom,
         yearTo,
+        auctionGrade,
+        allUpcoming,
+      }) => ({
+        maker,
+        model,
+        listSize,
+        yearFrom,
+        yearTo,
+        auctionGrade,
+        allUpcoming,
       })),
       lastRun: runs[0] ?? null,
       lastRuns: {
@@ -208,7 +274,14 @@ export class ScraperService implements OnModuleInit {
     };
   }
 
-  async startJpCenterBatch(trigger: ScrapeRunTrigger) {
+  async startAutomarketBatch(trigger: ScrapeRunTrigger) {
+    if (
+      trigger === 'scheduled'
+      && this.config.get<string>('SCRAPER_BOT_ENABLED', 'true') === 'false'
+    ) {
+      return { started: false, reason: 'Scheduled scraper is disabled' };
+    }
+
     if (this.isBatchRunning || this.isAutomarketRunning) {
       const current = await this.scrapeRunModel.findOne({ status: 'running' }).sort({ startedAt: -1 }).lean();
       return { started: false, reason: 'A scrape run is already active', runId: current?._id };
@@ -218,9 +291,10 @@ export class ScraperService implements OnModuleInit {
     let run: ScrapeRunDocument;
     try {
       run = await this.scrapeRunModel.create({
-        source: 'JP Center',
+        source: 'A-Automarket',
         trigger,
         status: 'running',
+        phase: 'preparing configured searches',
         startedAt: new Date(),
       });
     } catch (error) {
@@ -228,7 +302,7 @@ export class ScraperService implements OnModuleInit {
       throw error;
     }
 
-    void this.executeBatch(run)
+    void this.executeAutomarketBatch(run)
       .catch((error) => this.recordUnexpectedFailure(run, error))
       .finally(() => {
         this.isBatchRunning = false;
@@ -258,9 +332,10 @@ export class ScraperService implements OnModuleInit {
     }
   }
 
-  private async executeBatch(run: ScrapeRunDocument) {
+  private async executeAutomarketBatch(run: ScrapeRunDocument) {
     const totals = {
       fetched: 0,
+      eligible: 0,
       imported: 0,
       inserted: 0,
       updated: 0,
@@ -268,18 +343,34 @@ export class ScraperService implements OnModuleInit {
     };
     const jobs: ScrapeJobResult[] = [];
     const errors: string[] = [];
-    this.logger.log(`[SCRAPE START] run=${run.id} trigger=${run.trigger}`);
+    this.logger.log(`[AUTOMARKET BATCH START] run=${run.id} trigger=${run.trigger}`);
     await this.prepareManufacturerValueCache();
-    const client = await this.createJpCenterClient();
+    let client = await this.createAutomarketClient();
     const jobDelayMs = Math.max(
       0,
       this.config.get<number>('SCRAPER_JOB_DELAY_MS') ?? DEFAULT_BATCH_JOB_DELAY_MS,
     );
 
-    const batchJobs = this.batchJobs();
+    const batchJobs = this.automarketBatchJobs();
     for (const [index, job] of batchJobs.entries()) {
+      const startingTotals = { ...totals };
       try {
-        const result = await this.runJpCenterJob(job, client);
+        const progress: AutomarketProgressCallback = async (current) => {
+          await this.scrapeRunModel.findByIdAndUpdate(run._id, {
+            $set: {
+              phase: `${current.phase}: ${job.maker} ${job.model}`,
+              fetched: startingTotals.fetched + current.fetched,
+              eligible: startingTotals.eligible + current.eligible,
+              imported: startingTotals.imported + current.imported,
+              inserted: startingTotals.inserted + current.inserted,
+              updated: startingTotals.updated + current.updated,
+              failedJobs: startingTotals.failedJobs + current.failedJobs,
+            },
+          });
+        };
+        const outcome = await this.runAutomarketBatchJob(job, client, progress);
+        client = outcome.client;
+        const { result } = outcome;
         const jobResult: ScrapeJobResult = {
           maker: job.maker,
           model: job.model,
@@ -287,17 +378,21 @@ export class ScraperService implements OnModuleInit {
           imported: result.imported,
           inserted: result.created,
           updated: result.updated,
+          error: result.errors.length ? `${result.errors.length} listing(s) skipped` : undefined,
         };
         jobs.push(jobResult);
         totals.fetched += result.fetched;
+        totals.eligible += result.eligible;
         totals.imported += result.imported;
         totals.inserted += result.created;
         totals.updated += result.updated;
+        totals.failedJobs += result.failedJobs;
+        errors.push(...result.errors.map((message) => `${job.maker} ${job.model}: ${message}`));
         this.logger.log(
-          `[SCRAPE JOB] ${job.maker} ${job.model} fetched=${result.fetched} inserted=${result.created} updated=${result.updated}`,
+          `[AUTOMARKET BATCH JOB] ${job.maker} ${job.model} fetched=${result.fetched} eligible=${result.eligible} inserted=${result.created} updated=${result.updated} skipped=${result.failedJobs}`,
         );
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = errorDetail(error);
         jobs.push({
           maker: job.maker,
           model: job.model,
@@ -309,11 +404,16 @@ export class ScraperService implements OnModuleInit {
         });
         totals.failedJobs += 1;
         errors.push(`${job.maker} ${job.model}: ${message}`);
-        this.logger.error(`[SCRAPE JOB FAILED] ${job.maker} ${job.model}: ${message}`);
+        this.logger.error(`[AUTOMARKET BATCH JOB FAILED] ${job.maker} ${job.model}: ${message}`);
       }
 
       await this.scrapeRunModel.findByIdAndUpdate(run._id, {
-        $set: totals,
+        $set: {
+          ...totals,
+          phase: index < batchJobs.length - 1
+            ? `waiting for search ${index + 2} of ${batchJobs.length}`
+            : 'checking expired and duplicate auctions',
+        },
         $push: { jobs: jobs[jobs.length - 1] },
       });
 
@@ -322,7 +422,9 @@ export class ScraperService implements OnModuleInit {
       }
     }
 
-    await this.scrapeRunModel.findByIdAndUpdate(run._id, { $set: { phase: 'checking duplicates' } });
+    await this.scrapeRunModel.findByIdAndUpdate(run._id, {
+      $set: { phase: 'checking expired and duplicate auctions' },
+    });
     const cleanup = await this.carsService.removeExpiredScrapedAuctions();
     let duplicateCleanup = { duplicateGroups: 0, deletedCars: 0, deletedImages: 0 };
     try {
@@ -350,36 +452,48 @@ export class ScraperService implements OnModuleInit {
       },
     });
     this.logger.log(
-      `[SCRAPE COMPLETE] run=${run.id} status=${status} fetched=${totals.fetched} inserted=${totals.inserted} updated=${totals.updated} errors=${errors.length} expiredDeleted=${cleanup.deletedCars} duplicatesDeleted=${duplicateCleanup.deletedCars} duplicateImagesDeleted=${duplicateCleanup.deletedImages}`,
+      `[AUTOMARKET BATCH COMPLETE] run=${run.id} status=${status} fetched=${totals.fetched} eligible=${totals.eligible} inserted=${totals.inserted} updated=${totals.updated} errors=${errors.length} expiredDeleted=${cleanup.deletedCars} duplicatesDeleted=${duplicateCleanup.deletedCars} duplicateImagesDeleted=${duplicateCleanup.deletedImages}`,
     );
   }
 
-  private batchJobs(): JpCenterBatchJob[] {
+  private automarketBatchJobs(): AutomarketBatchJob[] {
     const configured = this.config.get<string>('SCRAPER_JOBS_JSON');
-    if (!configured) return DEFAULT_JP_CENTER_JOBS;
+    if (!configured) return DEFAULT_AUTOMARKET_JOBS;
     try {
-      const jobs = JSON.parse(configured) as JpCenterBatchJob[];
-      return Array.isArray(jobs) && jobs.length ? jobs : DEFAULT_JP_CENTER_JOBS;
-    } catch {
-      this.logger.warn('SCRAPER_JOBS_JSON is invalid; using default JP Center jobs');
-      return DEFAULT_JP_CENTER_JOBS;
+      return parseAutomarketBatchJobs(configured);
+    } catch (error) {
+      this.logger.warn(
+        `SCRAPER_JOBS_JSON is invalid; using default A-Automarket jobs: ${errorDetail(error)}`,
+      );
+      return DEFAULT_AUTOMARKET_JOBS;
     }
   }
 
-  private async runJpCenterJob(job: JpCenterBatchJob, batchClient: JpCenterClient) {
+  private async runAutomarketBatchJob(
+    job: AutomarketBatchJob,
+    batchClient: AutomarketClient,
+    onProgress: AutomarketProgressCallback,
+  ) {
     try {
-      return await this.importFromJpCenter(job, batchClient);
+      return {
+        result: await this.importFromAutomarket(job, onProgress, batchClient),
+        client: batchClient,
+      };
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = errorDetail(error);
       const retryDelayMs = Math.max(
         0,
         this.config.get<number>('SCRAPER_JOB_RETRY_DELAY_MS') ?? DEFAULT_BATCH_JOB_RETRY_DELAY_MS,
       );
       this.logger.warn(
-        `[SCRAPE JOB RETRY] ${job.maker} ${job.model} after ${retryDelayMs}ms: ${message}`,
+        `[AUTOMARKET BATCH JOB RETRY] ${job.maker} ${job.model} after ${retryDelayMs}ms: ${message}`,
       );
       if (retryDelayMs > 0) await delay(retryDelayMs);
-      return this.importFromJpCenter(job);
+      const client = await this.createAutomarketClient();
+      return {
+        result: await this.importFromAutomarket(job, onProgress, client),
+        client,
+      };
     }
   }
 
@@ -519,6 +633,43 @@ export class ScraperService implements OnModuleInit {
     throw lastError;
   }
 
+  private async createAutomarketClient() {
+    const username = this.config.get<string>('AUTOMARKET_USERNAME')?.trim();
+    const password = this.config.get<string>('AUTOMARKET_PASSWORD')?.trim();
+    if (!username || !password) {
+      throw new BadRequestException('AUTOMARKET_USERNAME and AUTOMARKET_PASSWORD are required');
+    }
+
+    const attempts = Math.max(
+      1,
+      this.config.get<number>('SCRAPER_LOGIN_ATTEMPTS') ?? DEFAULT_LOGIN_ATTEMPTS,
+    );
+    const retryDelayMs = Math.max(
+      0,
+      this.config.get<number>('SCRAPER_LOGIN_RETRY_DELAY_MS') ?? DEFAULT_LOGIN_RETRY_DELAY_MS,
+    );
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        const client = new AutomarketClient(username, password);
+        await client.login();
+        return client;
+      } catch (error) {
+        lastError = error;
+        if (attempt < attempts) {
+          const waitMs = retryDelayMs * attempt;
+          this.logger.warn(
+            `[AUTOMARKET LOGIN RETRY] attempt=${attempt + 1}/${attempts} waitMs=${waitMs}`,
+          );
+          if (waitMs > 0) await delay(waitMs);
+        }
+      }
+    }
+
+    throw lastError;
+  }
+
   async startAutomarketImport(options: AutomarketImportOptions) {
     if (this.isBatchRunning || this.isAutomarketRunning) {
       const current = await this.scrapeRunModel.findOne({ status: 'running' }).sort({ startedAt: -1 }).lean();
@@ -611,13 +762,8 @@ export class ScraperService implements OnModuleInit {
   private async importFromAutomarket(
     options: AutomarketImportOptions,
     onProgress?: AutomarketProgressCallback,
+    authenticatedClient?: AutomarketClient,
   ) {
-    const username = this.config.get<string>('AUTOMARKET_USERNAME')?.trim();
-    const password = this.config.get<string>('AUTOMARKET_PASSWORD')?.trim();
-    if (!username || !password) {
-      throw new BadRequestException('AUTOMARKET_USERNAME and AUTOMARKET_PASSWORD are required');
-    }
-
     const maker = options.maker.trim();
     const model = options.model.trim();
     const makerId = AUTOMARKET_MAKER_IDS[maker.toUpperCase()];
@@ -632,8 +778,7 @@ export class ScraperService implements OnModuleInit {
     if (options.auctionGrade && !preferredAuctionGrade) {
       throw new BadRequestException(`Unsupported auction grade: ${options.auctionGrade}`);
     }
-    const client = new AutomarketClient(username, password);
-    await client.login();
+    const client = authenticatedClient ?? (await this.createAutomarketClient());
     const rows: AutomarketRow[] = [];
     const seenLotIds = new Set<string>();
     const today = colomboDateKey();
