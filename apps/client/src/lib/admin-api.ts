@@ -76,6 +76,14 @@ export type ScraperStatus = {
   enabled: boolean;
   running: boolean;
   schedule: string;
+  scheduler?: {
+    inProcessEnabled: boolean;
+    intervalMs: number;
+    pollIntervalMs: number;
+    lastScheduledRunAt: string | null;
+    nextDueAt: string | null;
+    overdue: boolean;
+  };
   configuredJobs: Array<{
     maker: string;
     model: string;

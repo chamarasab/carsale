@@ -13,13 +13,33 @@ import {
   isApprovedAuctionImageUrl,
   isApprovedAutomarketUrl,
   isAutomarketAuctionSheetUrl,
+  isScheduledScrapeDue,
   normalizeEngineCapacity,
   parseAutomarketBatchJobs,
   parseAutomarketRows,
+  scheduledScrapeDueAt,
   selectEligibleAutomarketRows,
   selectRowsWithMileage,
   selectCurrentAuctionRows,
 } from './scraper.service';
+
+test('calculates scheduled scraper catch-up from the previous scheduled start', () => {
+  const lastRun = { startedAt: '2026-08-01T00:00:00.000Z' };
+  const sixHours = 6 * 60 * 60 * 1_000;
+
+  assert.equal(
+    scheduledScrapeDueAt(lastRun, sixHours)?.toISOString(),
+    '2026-08-01T06:00:00.000Z',
+  );
+  assert.equal(isScheduledScrapeDue(lastRun, new Date('2026-08-01T05:59:59.999Z'), sixHours), false);
+  assert.equal(isScheduledScrapeDue(lastRun, new Date('2026-08-01T06:00:00.000Z'), sixHours), true);
+});
+
+test('treats a missing or invalid scheduled run as immediately due', () => {
+  assert.equal(scheduledScrapeDueAt(null), undefined);
+  assert.equal(isScheduledScrapeDue(null), true);
+  assert.equal(isScheduledScrapeDue({ startedAt: 'not-a-date' }), true);
+});
 
 test('uses A-Automarket searches for the scheduled batch', () => {
   assert.equal(DEFAULT_AUTOMARKET_JOBS.length, 17);

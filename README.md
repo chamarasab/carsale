@@ -51,6 +51,12 @@ The API includes a protected scraper module:
   `lotId` field restricts an import to one exact auction lot.
 - `POST /api/scraper/run` starts the configured A-Automarket batch.
 
+Production scheduling is intentionally redundant. The Render cron service calls the protected
+worker every six hours, while the API checks MongoDB run history on startup and every five minutes
+to catch up any missed run. `.github/workflows/scheduled-scraper-wakeup.yml` wakes a sleeping Render
+web service every six hours so the catch-up check still runs if the separate Render cron is absent.
+The admin scraper page shows the last scheduled run and its next due time.
+
 Each imported lot is opened individually. Its authenticated red **Average price** value is fetched
 and stored as `cost.auctionPriceJpy`; the list-page start price is retained only for diagnostics.
 The admin importer supports Japanese, European, American, and other passenger-car makers available

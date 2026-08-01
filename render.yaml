@@ -41,8 +41,16 @@ services:
         sync: false
       - key: SCRAPER_BOT_ENABLED
         value: "true"
+      - key: SCRAPER_IN_PROCESS_SCHEDULER_ENABLED
+        value: "true"
+      - key: SCRAPER_INTERVAL_MS
+        value: "21600000"
+      - key: SCRAPER_SCHEDULER_INITIAL_DELAY_MS
+        value: "15000"
+      - key: SCRAPER_SCHEDULER_POLL_MS
+        value: "300000"
       - key: SCRAPER_SCHEDULE_LABEL
-        value: A-Automarket every 6 hours
+        value: A-Automarket every 6 hours with catch-up
       - key: SCRAPER_JOB_DELAY_MS
         value: "2000"
       - key: SCRAPER_JOB_RETRY_DELAY_MS

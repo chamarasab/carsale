@@ -182,6 +182,15 @@ export default function AdminScraperPage() {
             <p className="mt-2 text-sm font-bold text-muted">
               {scraper?.schedule ?? 'Loading schedule'} · {scraper?.running ? 'Running now' : 'Waiting'}
             </p>
+            {scraper?.scheduler ? (
+              <p className={`mt-1 text-xs font-bold ${scraper.scheduler.overdue ? 'text-amber-500' : 'text-muted'}`}>
+                {scraper.scheduler.overdue
+                  ? 'A scheduled run is overdue; the catch-up service is starting it.'
+                  : scraper.scheduler.nextDueAt
+                    ? `Next due ${new Date(scraper.scheduler.nextDueAt).toLocaleString()}`
+                    : 'The first scheduled run is ready to start.'}
+              </p>
+            ) : null}
           </div>
           {isAdmin ? (
             <div className="flex gap-2">

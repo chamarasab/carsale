@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import * as cheerio from 'cheerio';
@@ -102,6 +102,9 @@ const DEFAULT_BATCH_JOB_DELAY_MS = 2_000;
 const DEFAULT_BATCH_JOB_RETRY_DELAY_MS = 5_000;
 const DEFAULT_LOGIN_RETRY_DELAY_MS = 15_000;
 const DEFAULT_LOGIN_ATTEMPTS = 3;
+const DEFAULT_SCRAPER_INTERVAL_MS = 6 * 60 * 60 * 1_000;
+const DEFAULT_SCHEDULER_INITIAL_DELAY_MS = 15_000;
+const DEFAULT_SCHEDULER_POLL_MS = 5 * 60 * 1_000;
 const AUTOMARKET_PAGE_SIZE = 20;
 const MAX_AUTOMARKET_PAGES = 100;
 const AUTOMARKET_REQUEST_ATTEMPTS = 4;
@@ -258,11 +261,38 @@ function boundedAutomarketLimit(value: unknown) {
   return Math.min(Math.max(limit, 1), 10);
 }
 
+function positiveMilliseconds(value: unknown, fallback: number) {
+  const milliseconds = Number(value);
+  return Number.isFinite(milliseconds) && milliseconds > 0 ? milliseconds : fallback;
+}
+
+export function scheduledScrapeDueAt(
+  lastRun: { startedAt?: Date | string | null } | null | undefined,
+  intervalMs = DEFAULT_SCRAPER_INTERVAL_MS,
+) {
+  if (!lastRun?.startedAt) return undefined;
+  const startedAt = new Date(lastRun.startedAt).getTime();
+  if (!Number.isFinite(startedAt)) return undefined;
+  return new Date(startedAt + positiveMilliseconds(intervalMs, DEFAULT_SCRAPER_INTERVAL_MS));
+}
+
+export function isScheduledScrapeDue(
+  lastRun: { startedAt?: Date | string | null } | null | undefined,
+  now = new Date(),
+  intervalMs = DEFAULT_SCRAPER_INTERVAL_MS,
+) {
+  const dueAt = scheduledScrapeDueAt(lastRun, intervalMs);
+  return !dueAt || dueAt.getTime() <= now.getTime();
+}
+
 @Injectable()
-export class ScraperService implements OnModuleInit {
+export class ScraperService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ScraperService.name);
   private isBatchRunning = false;
   private isAutomarketRunning = false;
+  private schedulerCheckRunning = false;
+  private schedulerInitialTimer?: NodeJS.Timeout;
+  private schedulerPollTimer?: NodeJS.Timeout;
 
   constructor(
     private readonly carsService: CarsService,
@@ -300,21 +330,45 @@ export class ScraperService implements OnModuleInit {
     } catch (error) {
       this.logger.error(`[AUCTION DUPLICATE CLEANUP FAILED] ${errorDetail(error)}`);
     }
+    this.startInProcessScheduler();
+  }
+
+  onModuleDestroy() {
+    if (this.schedulerInitialTimer) clearTimeout(this.schedulerInitialTimer);
+    if (this.schedulerPollTimer) clearInterval(this.schedulerPollTimer);
   }
 
   async getBotStatus() {
-    const [runs, lastJpCenterRun, lastAutomarketRun, missingWebsiteValues] = await Promise.all([
+    const [runs, lastJpCenterRun, lastAutomarketRun, lastScheduledRun, missingWebsiteValues] = await Promise.all([
       this.scrapeRunModel.find().sort({ startedAt: -1 }).limit(10).lean(),
       this.scrapeRunModel.findOne({ source: 'JP Center' }).sort({ startedAt: -1 }).lean(),
       this.scrapeRunModel.findOne({ source: 'A-Automarket' }).sort({ startedAt: -1 }).lean(),
+      this.scrapeRunModel
+        .findOne({ source: 'A-Automarket', trigger: 'scheduled' })
+        .sort({ startedAt: -1 })
+        .lean(),
       this.websiteValuesService.countMissing(),
     ]);
+    const intervalMs = this.schedulerIntervalMs();
+    const nextDueAt = scheduledScrapeDueAt(lastScheduledRun, intervalMs);
+    const running = this.isBatchRunning || this.isAutomarketRunning;
     return {
       source: 'A-Automarket',
       sourceUrl: AUTOMARKET_BASE_URL,
-      enabled: this.config.get<string>('SCRAPER_BOT_ENABLED', 'true') !== 'false',
-      running: this.isBatchRunning || this.isAutomarketRunning,
+      enabled: this.scraperBotEnabled(),
+      running,
       schedule: this.config.get<string>('SCRAPER_SCHEDULE_LABEL', 'Every 6 hours'),
+      scheduler: {
+        inProcessEnabled: this.inProcessSchedulerEnabled(),
+        intervalMs,
+        pollIntervalMs: this.schedulerPollMs(),
+        lastScheduledRunAt: lastScheduledRun?.startedAt ?? null,
+        nextDueAt: nextDueAt ?? null,
+        overdue:
+          this.inProcessSchedulerEnabled()
+          && !running
+          && isScheduledScrapeDue(lastScheduledRun, new Date(), intervalMs),
+      },
       configuredJobs: this.automarketBatchJobs().map(({
         maker,
         model,
@@ -345,7 +399,7 @@ export class ScraperService implements OnModuleInit {
   async startAutomarketBatch(trigger: ScrapeRunTrigger) {
     if (
       trigger === 'scheduled'
-      && this.config.get<string>('SCRAPER_BOT_ENABLED', 'true') === 'false'
+      && !this.scraperBotEnabled()
     ) {
       return { started: false, reason: 'Scheduled scraper is disabled' };
     }
@@ -376,6 +430,97 @@ export class ScraperService implements OnModuleInit {
         this.isBatchRunning = false;
       });
     return { started: true, runId: run._id };
+  }
+
+  private startInProcessScheduler() {
+    if (!this.inProcessSchedulerEnabled()) {
+      this.logger.log('[SCRAPER SCHEDULER] In-process catch-up scheduler is disabled');
+      return;
+    }
+
+    const initialDelayMs = this.schedulerInitialDelayMs();
+    const pollIntervalMs = this.schedulerPollMs();
+    this.logger.log(
+      `[SCRAPER SCHEDULER] Catch-up enabled intervalMs=${this.schedulerIntervalMs()} pollMs=${pollIntervalMs} initialDelayMs=${initialDelayMs}`,
+    );
+
+    this.schedulerInitialTimer = setTimeout(() => {
+      this.schedulerInitialTimer = undefined;
+      void this.runScheduledScrapeIfDue();
+    }, initialDelayMs);
+    this.schedulerInitialTimer.unref();
+
+    this.schedulerPollTimer = setInterval(() => {
+      void this.runScheduledScrapeIfDue();
+    }, pollIntervalMs);
+    this.schedulerPollTimer.unref();
+  }
+
+  private async runScheduledScrapeIfDue() {
+    if (
+      !this.inProcessSchedulerEnabled()
+      || this.schedulerCheckRunning
+      || this.isBatchRunning
+      || this.isAutomarketRunning
+    ) {
+      return;
+    }
+
+    this.schedulerCheckRunning = true;
+    try {
+      const lastScheduledRun = await this.scrapeRunModel
+        .findOne({ source: 'A-Automarket', trigger: 'scheduled' })
+        .sort({ startedAt: -1 })
+        .lean();
+      const intervalMs = this.schedulerIntervalMs();
+      if (!isScheduledScrapeDue(lastScheduledRun, new Date(), intervalMs)) return;
+
+      const dueAt = scheduledScrapeDueAt(lastScheduledRun, intervalMs);
+      this.logger.warn(
+        `[SCRAPER SCHEDULER] Scheduled run is due${dueAt ? ` since ${dueAt.toISOString()}` : ''}; starting catch-up`,
+      );
+      const result = await this.startAutomarketBatch('scheduled');
+      if (!result.started) {
+        this.logger.log(`[SCRAPER SCHEDULER] Catch-up not started: ${result.reason}`);
+      }
+    } catch (error) {
+      this.logger.error(`[SCRAPER SCHEDULER FAILED] ${errorDetail(error)}`);
+    } finally {
+      this.schedulerCheckRunning = false;
+    }
+  }
+
+  private scraperBotEnabled() {
+    return this.config.get<string>('SCRAPER_BOT_ENABLED', 'true').trim().toLowerCase() !== 'false';
+  }
+
+  private inProcessSchedulerEnabled() {
+    if (!this.scraperBotEnabled()) return false;
+    return this.config
+      .get<string>('SCRAPER_IN_PROCESS_SCHEDULER_ENABLED', 'true')
+      .trim()
+      .toLowerCase() !== 'false';
+  }
+
+  private schedulerIntervalMs() {
+    return positiveMilliseconds(
+      this.config.get<string>('SCRAPER_INTERVAL_MS'),
+      DEFAULT_SCRAPER_INTERVAL_MS,
+    );
+  }
+
+  private schedulerInitialDelayMs() {
+    return positiveMilliseconds(
+      this.config.get<string>('SCRAPER_SCHEDULER_INITIAL_DELAY_MS'),
+      DEFAULT_SCHEDULER_INITIAL_DELAY_MS,
+    );
+  }
+
+  private schedulerPollMs() {
+    return positiveMilliseconds(
+      this.config.get<string>('SCRAPER_SCHEDULER_POLL_MS'),
+      DEFAULT_SCHEDULER_POLL_MS,
+    );
   }
 
   private async recordUnexpectedFailure(run: ScrapeRunDocument, error: unknown) {
