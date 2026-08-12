@@ -8,9 +8,13 @@ import { createPortal } from 'react-dom';
 const portraitPhotoNumbers = new Set([
   6, 7, 8, 9, 10, 11, 12, 14, 15, 20, 21, 29, 30, 31, 32, 33, 35, 37, 38, 39, 40, 41,
 ]);
+const manuallyCroppedCardPhotos = new Set([7, 12, 14, 40, 41]);
 const handoverPhotos = Array.from(
   { length: 41 },
   (_, index) => ({
+    cardSrc: manuallyCroppedCardPhotos.has(index + 1)
+      ? `/customer-handovers/handover-${String(index + 1).padStart(2, '0')}-card.webp`
+      : `/customer-handovers/handover-${String(index + 1).padStart(2, '0')}.webp`,
     portrait: portraitPhotoNumbers.has(index + 1),
     src: `/customer-handovers/handover-${String(index + 1).padStart(2, '0')}.webp`,
   }),
@@ -229,7 +233,7 @@ export function CustomerHandoverCarousel() {
           ref={scrollerRef}
           role="region"
         >
-          {handoverPhotos.map(({ portrait, src }, index) => (
+          {handoverPhotos.map(({ cardSrc, portrait, src }, index) => (
             <article
               aria-label={`Customer handover photo ${index + 1}`}
               className="relative aspect-[4/3] flex-none basis-[88%] snap-start overflow-hidden rounded-panel border border-white/10 bg-[#11162d] sm:basis-[58%] lg:basis-[42%]"
@@ -249,7 +253,7 @@ export function CustomerHandoverCarousel() {
                   priority={index === 0}
                   quality={70}
                   sizes="(max-width: 639px) 88vw, (max-width: 1023px) 58vw, 42vw"
-                  src={src}
+                  src={cardSrc}
                 />
                 <span className="absolute bottom-3 right-3 grid size-10 place-items-center rounded-full border border-white/20 bg-black/55 text-white shadow-soft backdrop-blur-sm transition group-hover:bg-black/72">
                   <Maximize2 size={18} />
