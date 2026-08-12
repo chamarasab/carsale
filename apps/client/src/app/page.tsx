@@ -22,6 +22,7 @@ export default async function Home({
     <main>
       <Nav active="home" />
       {signup === 'pending' ? <SignupPendingToast /> : null}
+      <CustomerHandoverCarousel />
       <section className="bg-owl-gradient relative min-h-[64svh] overflow-hidden">
         <HeroSlider />
         <div className="relative z-10 mx-auto flex min-h-[64svh] max-w-7xl items-center px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
@@ -123,8 +124,6 @@ export default async function Home({
           ))}
         </div>
       </section>
-
-      <CustomerHandoverCarousel />
     </main>
   );
 }

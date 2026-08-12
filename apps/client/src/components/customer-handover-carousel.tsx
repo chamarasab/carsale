@@ -138,6 +138,7 @@ export function CustomerHandoverCarousel() {
                 alt={`Genuine Automobiles customer with a delivered vehicle, photo ${index + 1}`}
                 className="object-contain"
                 fill
+                priority={index === 0}
                 quality={70}
                 sizes="(max-width: 639px) 88vw, (max-width: 1023px) 58vw, 42vw"
                 src={src}

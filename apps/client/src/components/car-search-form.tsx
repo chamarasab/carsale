@@ -1,7 +1,8 @@
 'use client';
 
-import { RotateCcw, Search, SlidersHorizontal, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { LoaderCircle, RotateCcw, Search, SlidersHorizontal, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { type FormEvent, useEffect, useState, useTransition } from 'react';
 import { createPortal } from 'react-dom';
 
 type CarSearchFormProps = {
@@ -34,6 +35,8 @@ export function CarSearchForm({
   selectedGrade,
   selectedView,
 }: CarSearchFormProps) {
+  const router = useRouter();
+  const [isSearching, startSearchTransition] = useTransition();
   const [maker, setMaker] = useState(selectedMaker);
   const [model, setModel] = useState(selectedModel);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -55,6 +58,19 @@ export function CarSearchForm({
       window.removeEventListener('keydown', closeOnEscape);
     };
   }, [mobileOpen]);
+
+  function submitSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const params = new URLSearchParams();
+
+    for (const [name, value] of new FormData(event.currentTarget).entries()) {
+      if (typeof value === 'string' && value.trim()) params.set(name, value.trim());
+    }
+
+    const query = params.toString();
+    setMobileOpen(false);
+    startSearchTransition(() => router.push(query ? `/dashboard?${query}` : '/dashboard'));
+  }
 
   const searchFields = (mobile = false) => (
     <div className={`grid gap-4 ${mobile ? '' : 'sm:grid-cols-2 xl:grid-cols-3'}`}>
@@ -135,11 +151,17 @@ export function CarSearchForm({
 
       <div className="flex items-end gap-2">
         <button
-          className="bg-brand-gradient inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-panel px-5 text-sm font-black text-white shadow-theme hover:opacity-90"
+          aria-live="polite"
+          className="bg-brand-gradient inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-panel px-5 text-sm font-black text-white shadow-theme hover:opacity-90 disabled:cursor-wait disabled:opacity-80"
+          disabled={isSearching}
           type="submit"
         >
-          <Search size={18} />
-          Search cars
+          {isSearching ? (
+            <LoaderCircle className="animate-spin motion-reduce:animate-none" size={19} />
+          ) : (
+            <Search size={18} />
+          )}
+          {isSearching ? 'Searching...' : 'Search cars'}
         </button>
         {hasFilters ? (
           <a
@@ -159,7 +181,9 @@ export function CarSearchForm({
     <>
       <form
         action="/dashboard"
+        aria-busy={isSearching}
         className="mt-8 hidden rounded-panel border border-line bg-surface-raised p-5 shadow-soft sm:block"
+        onSubmit={submitSearch}
       >
         <div className="mb-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -227,10 +251,31 @@ export function CarSearchForm({
                     <X size={19} />
                   </button>
                 </div>
-                <form action="/dashboard" className="p-4 pb-7">
+                <form action="/dashboard" aria-busy={isSearching} className="p-4 pb-7" onSubmit={submitSearch}>
                   {searchFields(true)}
                 </form>
               </section>
+            </div>,
+            document.body,
+          )
+        : null}
+
+      {isSearching
+        ? createPortal(
+            <div
+              aria-live="assertive"
+              aria-label="Searching cars"
+              className="fixed inset-0 z-[90] grid place-items-center bg-[#111a4b]/72 px-6 text-white backdrop-blur-sm"
+              role="status"
+            >
+              <div className="flex flex-col items-center text-center">
+                <span className="relative grid size-20 place-items-center" aria-hidden="true">
+                  <span className="absolute inset-0 rounded-full border-4 border-white/20 border-t-[#00c4b4] animate-spin motion-reduce:animate-none" />
+                  <Search size={28} strokeWidth={2.5} />
+                </span>
+                <p className="mt-5 text-xl font-black">Searching cars</p>
+                <p className="mt-1 text-sm font-bold text-white/68">Finding the best matching vehicles...</p>
+              </div>
             </div>,
             document.body,
           )
