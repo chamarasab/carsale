@@ -4,6 +4,7 @@ import { MessageCircle } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { jpy } from '@/lib/format';
+import { vendorContact } from '@/lib/vendor-contact';
 
 export type VehicleInquiryDetails = {
   title: string;
@@ -19,7 +20,7 @@ export type VehicleInquiryDetails = {
   auctionPriceJpy: number;
 };
 
-export const vendorWhatsAppNumber = (process.env.NEXT_PUBLIC_VENDOR_WHATSAPP_NUMBER ?? '').replace(/\D/g, '');
+export const vendorWhatsAppNumber = vendorContact.whatsappNumber;
 
 export function buildVehicleInquiryMessage(vehicle: VehicleInquiryDetails, listingUrl: string) {
   return [

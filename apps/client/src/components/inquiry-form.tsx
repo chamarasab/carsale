@@ -9,8 +9,9 @@ import {
   vendorWhatsAppNumber,
 } from '@/components/whatsapp-fab';
 import { createInquiry } from '@/lib/api';
+import { vendorContact } from '@/lib/vendor-contact';
 
-const vendorEmail = process.env.NEXT_PUBLIC_VENDOR_EMAIL ?? '';
+const vendorEmail = vendorContact.email;
 
 export function InquiryForm({ carId, vehicle }: { carId: string; vehicle: VehicleInquiryDetails }) {
   const [state, setState] = useState<'idle' | 'submitting' | 'sent' | 'error'>('idle');
@@ -77,10 +78,17 @@ export function InquiryForm({ carId, vehicle }: { carId: string; vehicle: Vehicl
               Email inquiry
             </button>
           ) : null}
+          <a
+            className="mt-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-panel border border-white/20 px-4 text-sm font-black text-white hover:border-white/45 hover:bg-white/5"
+            href={`tel:+${vendorWhatsAppNumber}`}
+          >
+            <Phone size={18} />
+            Call {vendorContact.callLabel}
+          </a>
           <div className="mt-4 space-y-2 text-sm font-bold text-white/76">
             <a className="flex items-center gap-2 hover:text-white" href={`tel:+${vendorWhatsAppNumber}`}>
               <Phone size={16} />
-              +94 76 197 0838
+              {vendorContact.displayPhone}
             </a>
             {vendorEmail ? (
               <a className="flex items-center gap-2 hover:text-white" href={`mailto:${vendorEmail}`}>
