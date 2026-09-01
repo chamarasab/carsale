@@ -2,6 +2,7 @@
 
 import { MessageCircle } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { jpy } from '@/lib/format';
 
 export type VehicleInquiryDetails = {
@@ -34,22 +35,30 @@ export function buildVehicleInquiryMessage(vehicle: VehicleInquiryDetails, listi
     ]
       .filter(Boolean)
       .join('\n'),
-    `Listing: ${listingUrl}`,
+    listingUrl ? `Listing: ${listingUrl}` : '',
     'Please confirm availability and share the next steps.',
-  ].join('\n\n');
+  ]
+    .filter(Boolean)
+    .join('\n\n');
 }
 
-export function openWhatsAppMessage(message: string) {
-  if (!vendorWhatsAppNumber) return;
-  window.open(
-    `https://wa.me/${vendorWhatsAppNumber}?text=${encodeURIComponent(message)}`,
-    '_blank',
-    'noopener,noreferrer',
-  );
+export function buildWhatsAppUrl(message: string) {
+  return `https://wa.me/${vendorWhatsAppNumber}?text=${encodeURIComponent(message)}`;
+}
+
+function useCurrentPageUrl() {
+  const [pageUrl, setPageUrl] = useState('');
+
+  useEffect(() => {
+    setPageUrl(window.location.href);
+  }, []);
+
+  return pageUrl;
 }
 
 export function WhatsAppFab() {
   const pathname = usePathname();
+  const pageUrl = useCurrentPageUrl();
   const hiddenRoute =
     pathname.startsWith('/cars/') ||
     pathname.startsWith('/admin') ||
@@ -59,42 +68,46 @@ export function WhatsAppFab() {
 
   if (!vendorWhatsAppNumber || hiddenRoute) return null;
 
+  const message = [
+    'Hello, I would like help finding a vehicle through Genuine Automobiles.',
+    pageUrl ? `Page: ${pageUrl}` : '',
+    'Please share the available Japan auction and local stock options.',
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+
   return (
     <FloatingWhatsAppButton
+      href={buildWhatsAppUrl(message)}
       label="Ask about a vehicle on WhatsApp"
-      onClick={() => {
-        const message = [
-          'Hello, I would like help finding a vehicle through Genuine Automobiles.',
-          `Page: ${window.location.href}`,
-          'Please share the available Japan auction and local stock options.',
-        ].join('\n\n');
-        openWhatsAppMessage(message);
-      }}
     />
   );
 }
 
 export function VehicleWhatsAppFab({ vehicle }: { vehicle: VehicleInquiryDetails }) {
+  const pageUrl = useCurrentPageUrl();
+
   if (!vendorWhatsAppNumber) return null;
 
   return (
     <FloatingWhatsAppButton
+      href={buildWhatsAppUrl(buildVehicleInquiryMessage(vehicle, pageUrl))}
       label={`Ask about ${vehicle.title} on WhatsApp`}
-      onClick={() => openWhatsAppMessage(buildVehicleInquiryMessage(vehicle, window.location.href))}
     />
   );
 }
 
-function FloatingWhatsAppButton({ label, onClick }: { label: string; onClick: () => void }) {
+function FloatingWhatsAppButton({ href, label }: { href: string; label: string }) {
   return (
-    <button
+    <a
       aria-label={label}
-      className="fixed bottom-[84px] right-5 z-50 grid h-[52px] w-[52px] place-items-center rounded-full border border-white/35 bg-[#25D366] text-[#082f1b] shadow-theme focus:outline-none focus:ring-4 focus:ring-[#25D366]/25 sm:hidden"
-      onClick={onClick}
+      className="fixed bottom-[84px] right-5 z-50 grid h-[52px] w-[52px] place-items-center rounded-full border border-white/35 bg-[#25D366] text-[#082f1b] shadow-theme transition duration-200 hover:-translate-y-1 hover:bg-[#20bd5a] focus:outline-none focus:ring-4 focus:ring-[#25D366]/25 sm:bottom-[88px] sm:right-6"
+      href={href}
+      rel="noopener noreferrer"
+      target="_blank"
       title={label}
-      type="button"
     >
       <MessageCircle size={23} strokeWidth={2.4} />
-    </button>
+    </a>
   );
 }

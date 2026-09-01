@@ -1,10 +1,10 @@
 'use client';
 
 import { Mail, MessageCircle, Phone, Send } from 'lucide-react';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import {
   buildVehicleInquiryMessage,
-  openWhatsAppMessage,
+  buildWhatsAppUrl,
   type VehicleInquiryDetails,
   vendorWhatsAppNumber,
 } from '@/components/whatsapp-fab';
@@ -14,10 +14,13 @@ const vendorEmail = process.env.NEXT_PUBLIC_VENDOR_EMAIL ?? '';
 
 export function InquiryForm({ carId, vehicle }: { carId: string; vehicle: VehicleInquiryDetails }) {
   const [state, setState] = useState<'idle' | 'submitting' | 'sent' | 'error'>('idle');
+  const [pageUrl, setPageUrl] = useState('');
 
-  function openWhatsApp() {
-    openWhatsAppMessage(buildVehicleInquiryMessage(vehicle, window.location.href));
-  }
+  useEffect(() => {
+    setPageUrl(window.location.href);
+  }, []);
+
+  const whatsappHref = buildWhatsAppUrl(buildVehicleInquiryMessage(vehicle, pageUrl));
 
   function openEmail() {
     const subject = `Vehicle inquiry: ${vehicle.title}`;
@@ -55,14 +58,15 @@ export function InquiryForm({ carId, vehicle }: { carId: string; vehicle: Vehicl
           <p className="mt-2 text-sm leading-6 text-white/70">
             Ask about availability, ordering, payment stages, or the estimated handover cost.
           </p>
-          <button
+          <a
             className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-panel bg-[#25D366] px-4 text-sm font-black text-[#082f1b] hover:bg-[#20bd5a]"
-            onClick={openWhatsApp}
-            type="button"
+            href={whatsappHref}
+            rel="noopener noreferrer"
+            target="_blank"
           >
             <MessageCircle size={19} />
             Inquire on WhatsApp
-          </button>
+          </a>
           {vendorEmail ? (
             <button
               className="mt-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-panel border border-white/20 px-4 text-sm font-black text-white hover:border-white/45 hover:bg-white/5"
