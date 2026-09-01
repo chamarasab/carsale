@@ -1,4 +1,4 @@
-import { Car, CarSummary } from './types';
+import { Car, CarSummary, CustomerHandover } from './types';
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'https://carsale-1.onrender.com/api';
 const apiPublicUrl = apiUrl.replace(/\/api\/?$/, '');
@@ -41,6 +41,20 @@ export async function getExchangeRate() {
   }
 }
 
+export async function getCustomerHandovers(): Promise<CustomerHandover[]> {
+  try {
+    const response = await fetch(`${apiUrl}/customer-handovers`, { cache: 'no-store' });
+    if (!response.ok) return [];
+    const handovers = (await response.json()) as CustomerHandover[];
+    return handovers.map((handover) => ({
+      ...handover,
+      imageUrl: normalizeMediaUrl(handover.imageUrl),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function createInquiry(payload: {
   carId: string;
   name: string;
@@ -68,8 +82,10 @@ function normalizeCars<T extends CarSummary>(cars: T[]) {
 function normalizeCar<T extends CarSummary>(car: T): T {
   return {
     ...car,
-    images: car.images.map((image) =>
-      image.replace(/^https?:\/\/(?:localhost|127\.0\.0\.1):4000/i, apiPublicUrl),
-    ),
+    images: car.images.map(normalizeMediaUrl),
   } as T;
+}
+
+function normalizeMediaUrl(url: string) {
+  return url.replace(/^https?:\/\/(?:localhost|127\.0\.0\.1):4000/i, apiPublicUrl);
 }

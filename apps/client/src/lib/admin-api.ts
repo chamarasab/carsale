@@ -1,4 +1,4 @@
-import { Car } from './types';
+import { Car, CustomerHandover } from './types';
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
 
@@ -519,6 +519,27 @@ export async function uploadCarImages(files: File[], accessToken: string) {
   });
   if (!response.ok) throw new Error('Could not upload images');
   return (await response.json()) as string[];
+}
+
+export async function createCustomerHandover(file: File, accessToken: string) {
+  const body = new FormData();
+  body.append('image', file);
+  const response = await fetch(`${apiUrl}/customer-handovers`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body,
+  });
+  if (!response.ok) throw new Error('Could not upload sold car post');
+  return (await response.json()) as CustomerHandover;
+}
+
+export async function deleteCustomerHandover(id: string, accessToken: string) {
+  const response = await fetch(`${apiUrl}/customer-handovers/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error('Could not delete sold car post');
+  return (await response.json()) as { deleted: boolean };
 }
 
 export async function getUsers(accessToken: string) {

@@ -2,14 +2,15 @@
 
 import { ChevronLeft, ChevronRight, Maximize2, Minus, Pause, Play, Plus, RotateCcw, X } from 'lucide-react';
 import Image from 'next/image';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import type { CustomerHandover } from '@/lib/types';
 
 const portraitPhotoNumbers = new Set([
   6, 7, 8, 9, 10, 11, 12, 14, 15, 20, 21, 29, 30, 31, 32, 33, 35, 37, 38, 39, 40, 41,
 ]);
 const manuallyCroppedCardPhotos = new Set([7, 12, 14, 40, 41]);
-const handoverPhotos = Array.from(
+const bundledHandoverPhotos = Array.from(
   { length: 41 },
   (_, index) => ({
     cardSrc: manuallyCroppedCardPhotos.has(index + 1)
@@ -17,6 +18,7 @@ const handoverPhotos = Array.from(
       : `/customer-handovers/handover-${String(index + 1).padStart(2, '0')}.webp`,
     portrait: portraitPhotoNumbers.has(index + 1),
     src: `/customer-handovers/handover-${String(index + 1).padStart(2, '0')}.webp`,
+    id: `bundled-${index + 1}`,
   }),
 );
 
@@ -28,7 +30,11 @@ const zoomStep = 0.5;
 type Point = { x: number; y: number };
 type DragState = Point & { originX: number; originY: number; pointerId: number };
 
-export function CustomerHandoverCarousel() {
+export function CustomerHandoverCarousel({
+  uploadedHandovers = [],
+}: {
+  uploadedHandovers?: CustomerHandover[];
+}) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const closeViewerRef = useRef<HTMLButtonElement>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -39,6 +45,18 @@ export function CustomerHandoverCarousel() {
   const [zoom, setZoom] = useState(minimumZoom);
   const [offset, setOffset] = useState<Point>({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
+  const handoverPhotos = useMemo(
+    () => [
+      ...uploadedHandovers.map((handover) => ({
+        cardSrc: handover.imageUrl,
+        id: handover._id,
+        portrait: true,
+        src: handover.imageUrl,
+      })),
+      ...bundledHandoverPhotos,
+    ],
+    [uploadedHandovers],
+  );
 
   const goToPhoto = useCallback((requestedIndex: number, behavior: ScrollBehavior = 'smooth') => {
     const scroller = scrollerRef.current;
@@ -50,7 +68,7 @@ export function CustomerHandoverCarousel() {
 
     scroller.scrollTo({ left: slide.offsetLeft, behavior });
     setActiveIndex(index);
-  }, []);
+  }, [handoverPhotos.length]);
 
   const syncActivePhoto = useCallback(() => {
     const scroller = scrollerRef.current;
@@ -79,7 +97,7 @@ export function CustomerHandoverCarousel() {
     setViewerIndex(index);
     resetViewerPosition();
     goToPhoto(index);
-  }, [goToPhoto, resetViewerPosition]);
+  }, [goToPhoto, handoverPhotos.length, resetViewerPosition]);
 
   const closeViewer = useCallback(() => {
     setViewerIndex(null);
@@ -233,12 +251,12 @@ export function CustomerHandoverCarousel() {
           ref={scrollerRef}
           role="region"
         >
-          {handoverPhotos.map(({ cardSrc, portrait, src }, index) => (
+          {handoverPhotos.map(({ cardSrc, id, portrait }, index) => (
             <article
               aria-label={`Customer handover photo ${index + 1}`}
               className="relative aspect-[4/3] flex-none basis-[88%] snap-start overflow-hidden rounded-panel border border-white/10 bg-[#11162d] sm:basis-[58%] lg:basis-[42%]"
               data-handover-index={index}
-              key={src}
+              key={id}
             >
               <button
                 aria-label={`Open customer handover photo ${index + 1}`}

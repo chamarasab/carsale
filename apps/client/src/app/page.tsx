@@ -6,7 +6,7 @@ import { CustomerHandoverCarousel } from '@/components/customer-handover-carouse
 import { HeroSlider } from '@/components/hero-slider';
 import { Nav } from '@/components/nav';
 import { SignupPendingToast } from '@/components/signup-pending-toast';
-import { getCars } from '@/lib/api';
+import { getCars, getCustomerHandovers } from '@/lib/api';
 import { jpy } from '@/lib/format';
 
 export default async function Home({
@@ -15,14 +15,14 @@ export default async function Home({
   searchParams: Promise<{ signup?: string }>;
 }) {
   const { signup } = await searchParams;
-  const cars = await getCars();
+  const [cars, customerHandovers] = await Promise.all([getCars(), getCustomerHandovers()]);
   const featured = cars.slice(0, 3);
 
   return (
     <main>
       <Nav active="home" />
       {signup === 'pending' ? <SignupPendingToast /> : null}
-      <CustomerHandoverCarousel />
+      <CustomerHandoverCarousel uploadedHandovers={customerHandovers} />
       <section className="bg-owl-gradient relative min-h-[64svh] overflow-hidden">
         <HeroSlider />
         <div className="relative z-10 mx-auto flex min-h-[64svh] max-w-7xl items-center px-4 py-6 sm:px-6 sm:py-8 lg:px-8">

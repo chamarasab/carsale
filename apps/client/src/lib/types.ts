@@ -127,3 +127,10 @@ export type CarSummary = Pick<
 > & {
   cost: Pick<CostBreakdown, 'auctionPriceJpy'>;
 };
+
+export type CustomerHandover = {
+  _id: string;
+  imageUrl: string;
+  createdAt: string;
+  updatedAt?: string;
+};

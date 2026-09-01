@@ -1,6 +1,6 @@
 'use client';
 
-import { BadgeJapaneseYen, CarFront, ClipboardCheck, DatabaseZap, Settings, UserPlus, Users } from 'lucide-react';
+import { BadgeJapaneseYen, CarFront, ClipboardCheck, DatabaseZap, Images, Settings, UserPlus, Users } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { Nav } from '@/components/nav';
@@ -30,6 +30,7 @@ export default function AdminPanelPage() {
         ) : (
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             <PanelLink href="/admin/vehicles" icon={CarFront} title="Advertisements" text="Create a complete vehicle advertisement and upload optimized images." />
+            {isAdmin ? <PanelLink href="/admin/sold-cars" icon={Images} title="Add sold car posts" text="Publish customer handover images on the home page." /> : null}
             {isAdmin ? <PanelLink href="/admin/approvals" icon={ClipboardCheck} title="Pending approvals" text="Review and approve newly submitted advertisements before publication." /> : null}
             {isAdmin ? <PanelLink href="/admin/scraper" icon={DatabaseZap} title="A-Automarket scraper" text="Run imports and inspect scheduled auction results." /> : null}
             {isAdmin ? <PanelLink href="/admin/users" icon={UserPlus} title="Create user" text="Create publisher accounts and assign their login details." /> : null}

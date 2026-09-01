@@ -11,7 +11,7 @@ const SUPPORTED_FORMATS = new Set(['avif', 'gif', 'heif', 'jpeg', 'png', 'tiff',
 export class UploadsService {
   constructor(private readonly mediaService: MediaService) {}
 
-  async saveImages(files: Express.Multer.File[]) {
+  async saveImages(files: Express.Multer.File[], source = 'admin-upload') {
     if (!files.length) throw new BadRequestException('Select at least one image');
 
     const images: string[] = [];
@@ -30,7 +30,7 @@ export class UploadsService {
           buffer,
           contentType: 'image/webp',
           filename,
-          source: 'admin-upload',
+          source,
         }),
       );
     }

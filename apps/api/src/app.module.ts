@@ -6,6 +6,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
 import { CategoriesModule } from './categories/categories.module';
 import { CarsModule } from './cars/cars.module';
+import { CustomerHandoversModule } from './customer-handovers/customer-handovers.module';
 import { InquiriesModule } from './inquiries/inquiries.module';
 import { MediaModule } from './media/media.module';
 import { ScraperModule } from './scraper/scraper.module';
@@ -34,6 +35,7 @@ import { validateEnvironment } from './config/environment';
     AuthModule,
     CategoriesModule,
     CarsModule,
+    CustomerHandoversModule,
     InquiriesModule,
     MediaModule,
     ScraperModule,
