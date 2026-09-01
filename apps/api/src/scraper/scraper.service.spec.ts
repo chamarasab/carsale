@@ -248,6 +248,7 @@ test('parses Automarket vehicle trim and auction score separately', () => {
     auctionGrade: '4.5',
     year: 2026,
     mileageKm: 8000,
+    mileageReported: true,
     engineCapacity: 1000,
     transmission: 'IAT',
     color: 'BLACK',
@@ -287,6 +288,38 @@ test('filters Automarket imports by preferred auction grade before applying the 
   assert.deepEqual(
     selectEligibleAutomarketRows(rows, 1, '4.5', '2026-07-22').map((row) => row.id),
     ['2'],
+  );
+});
+
+test('accepts explicitly reported zero-mileage Automarket cars but rejects missing mileage', () => {
+  const base = {
+    id: 'reported-zero',
+    lotNumber: '30063',
+    auctionDate: '2026-09-03',
+    auctionName: 'USS Tokyo',
+    maker: 'HONDA',
+    model: 'VEZEL',
+    vehicleGrade: 'e:HEV Z',
+    auctionGrade: 'S',
+    year: 2026,
+    mileageKm: 0,
+    engineCapacity: 1500,
+    transmission: 'FAT',
+    color: 'PEARL',
+    modelCode: 'RV5',
+    equipment: 'AAC',
+    auctionPriceJpy: 2000000,
+    detailPath: '/auctions/?p=project/lot&id=979012379&s',
+  };
+  const rows = [
+    { ...base, mileageReported: true },
+    { ...base, id: 'missing', mileageReported: false },
+    { ...base, id: 'legacy-missing' },
+  ];
+
+  assert.deepEqual(
+    selectEligibleAutomarketRows(rows, undefined, undefined, '2026-09-01').map((row) => row.id),
+    ['reported-zero'],
   );
 });
 

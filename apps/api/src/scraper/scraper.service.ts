@@ -60,6 +60,7 @@ type AutomarketRow = {
   auctionGrade?: string;
   year: number;
   mileageKm: number;
+  mileageReported?: boolean;
   engineCapacity: number;
   transmission: string;
   color: string;
@@ -1588,6 +1589,7 @@ export function parseAutomarketRows(html: string): AutomarketRow[] {
     const id = new URL(detailPath || '/', AUTOMARKET_BASE_URL).searchParams.get('id') ?? '';
     const currency = text(`#currencyLot${index}`);
     const auctionPriceJpy = currency === 'JPY' ? toNumber(text(`#priceLotS${index}`)) * 1000 : 0;
+    const mileageText = text(`#mileage_${index}`);
     const previewImageUrl = $(`#photo_${index} img`).attr('load_src')?.replace(/[?&]w=\d+$/, '');
 
     if (!id || !detailPath) return;
@@ -1601,7 +1603,8 @@ export function parseAutomarketRows(html: string): AutomarketRow[] {
       vehicleGrade: text(`#grade_${index}`),
       auctionGrade: normalizeAuctionGrade(text(`#scores_${index}`)),
       year: toNumber(text(`#year_${index}`)),
-      mileageKm: toNumber(text(`#mileage_${index}`)),
+      mileageKm: toNumber(mileageText),
+      mileageReported: /\d/.test(mileageText),
       engineCapacity: toNumber(text(`#displacement_${index}`)),
       transmission: text(`#transmission_${index}`),
       color: text(`#color_${index}`),
@@ -1624,7 +1627,8 @@ export function selectEligibleAutomarketRows(
 ) {
   const eligibleRows = rows.filter((row) => {
     const auctionDate = normalizeAuctionDate(row.auctionDate);
-    return row.mileageKm > 0
+    const hasUsableMileage = row.mileageKm > 0 || (row.mileageKm === 0 && row.mileageReported === true);
+    return hasUsableMileage
       && row.auctionGrade
       && auctionDate !== undefined
       && auctionDate >= today
