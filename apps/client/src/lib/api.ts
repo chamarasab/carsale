@@ -41,16 +41,17 @@ export async function getExchangeRate() {
   }
 }
 
-export async function getCustomerHandovers(): Promise<CustomerHandover[]> {
+export async function getCustomerHandovers(options: { throwOnError?: boolean } = {}): Promise<CustomerHandover[]> {
   try {
     const response = await fetch(`${apiUrl}/customer-handovers`, { cache: 'no-store' });
-    if (!response.ok) return [];
+    if (!response.ok) throw new Error('Could not load customer handovers');
     const handovers = (await response.json()) as CustomerHandover[];
     return handovers.map((handover) => ({
       ...handover,
       imageUrl: normalizeMediaUrl(handover.imageUrl),
     }));
-  } catch {
+  } catch (error) {
+    if (options.throwOnError) throw error;
     return [];
   }
 }
