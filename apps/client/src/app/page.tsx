@@ -15,14 +15,17 @@ export default async function Home({
   searchParams: Promise<{ signup?: string }>;
 }) {
   const { signup } = await searchParams;
-  const [cars, customerHandovers] = await Promise.all([getCars(), getCustomerHandovers()]);
+  const [cars, customerHandovers] = await Promise.all([
+    getCars(),
+    getCustomerHandovers({ throwOnError: true }).catch(() => undefined),
+  ]);
   const featured = cars.slice(0, 3);
 
   return (
     <main>
       <Nav active="home" />
       {signup === 'pending' ? <SignupPendingToast /> : null}
-      <CustomerHandoverCarousel uploadedHandovers={customerHandovers} />
+      <CustomerHandoverCarousel handovers={customerHandovers} />
       <section className="bg-owl-gradient relative min-h-[64svh] overflow-hidden">
         <HeroSlider />
         <div className="relative z-10 mx-auto flex min-h-[64svh] max-w-7xl items-center px-4 py-6 sm:px-6 sm:py-8 lg:px-8">

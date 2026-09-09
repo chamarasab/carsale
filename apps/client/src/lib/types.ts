@@ -131,6 +131,10 @@ export type CarSummary = Pick<
 export type CustomerHandover = {
   _id: string;
   imageUrl: string;
+  cardImageUrl?: string;
+  origin?: 'bundled' | 'uploaded';
+  portrait?: boolean;
+  sourceKey?: string;
   createdAt: string;
   updatedAt?: string;
 };

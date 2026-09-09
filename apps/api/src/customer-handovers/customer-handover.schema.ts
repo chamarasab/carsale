@@ -7,6 +7,15 @@ export type CustomerHandoverDocument = HydratedDocument<CustomerHandover>;
 export class CustomerHandover {
   @Prop({ required: true, trim: true, type: String })
   imageUrl: string;
+
+  @Prop({ enum: ['bundled', 'uploaded'], type: String })
+  origin?: 'bundled' | 'uploaded';
+
+  @Prop({ sparse: true, trim: true, type: String, unique: true })
+  sourceKey?: string;
+
+  @Prop({ default: false, type: Boolean })
+  hidden?: boolean;
 }
 
 export const CustomerHandoverSchema = SchemaFactory.createForClass(CustomerHandover);

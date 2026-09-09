@@ -31,9 +31,9 @@ type Point = { x: number; y: number };
 type DragState = Point & { originX: number; originY: number; pointerId: number };
 
 export function CustomerHandoverCarousel({
-  uploadedHandovers = [],
+  handovers,
 }: {
-  uploadedHandovers?: CustomerHandover[];
+  handovers?: CustomerHandover[];
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const closeViewerRef = useRef<HTMLButtonElement>(null);
@@ -46,21 +46,21 @@ export function CustomerHandoverCarousel({
   const [offset, setOffset] = useState<Point>({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const handoverPhotos = useMemo(
-    () => [
-      ...uploadedHandovers.map((handover) => ({
-        cardSrc: handover.imageUrl,
-        id: handover._id,
-        portrait: true,
-        src: handover.imageUrl,
-      })),
-      ...bundledHandoverPhotos,
-    ],
-    [uploadedHandovers],
+    () =>
+      handovers === undefined
+        ? bundledHandoverPhotos
+        : handovers.map((handover) => ({
+            cardSrc: handover.cardImageUrl ?? handover.imageUrl,
+            id: handover._id,
+            portrait: handover.portrait ?? true,
+            src: handover.imageUrl,
+          })),
+    [handovers],
   );
 
   const goToPhoto = useCallback((requestedIndex: number, behavior: ScrollBehavior = 'smooth') => {
     const scroller = scrollerRef.current;
-    if (!scroller) return;
+    if (!scroller || handoverPhotos.length === 0) return;
 
     const index = (requestedIndex + handoverPhotos.length) % handoverPhotos.length;
     const slide = scroller.querySelector<HTMLElement>(`[data-handover-index="${index}"]`);
@@ -93,6 +93,7 @@ export function CustomerHandoverCarousel({
   }, []);
 
   const showViewerPhoto = useCallback((requestedIndex: number) => {
+    if (handoverPhotos.length === 0) return;
     const index = (requestedIndex + handoverPhotos.length) % handoverPhotos.length;
     setViewerIndex(index);
     resetViewerPosition();
@@ -124,11 +125,11 @@ export function CustomerHandoverCarousel({
   }, []);
 
   useEffect(() => {
-    if (paused || interacting || viewerIndex !== null) return;
+    if (handoverPhotos.length === 0 || paused || interacting || viewerIndex !== null) return;
 
     const timer = window.setTimeout(() => goToPhoto(activeIndex + 1), autoplayDelayMs);
     return () => window.clearTimeout(timer);
-  }, [activeIndex, goToPhoto, interacting, paused, viewerIndex]);
+  }, [activeIndex, goToPhoto, handoverPhotos.length, interacting, paused, viewerIndex]);
 
   useEffect(() => {
     if (viewerIndex === null) return;
@@ -186,6 +187,8 @@ export function CustomerHandoverCarousel({
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
   };
+
+  if (handoverPhotos.length === 0) return null;
 
   return (
     <section

@@ -48,6 +48,7 @@ export async function getCustomerHandovers(options: { throwOnError?: boolean } =
     const handovers = (await response.json()) as CustomerHandover[];
     return handovers.map((handover) => ({
       ...handover,
+      cardImageUrl: handover.cardImageUrl ? normalizeMediaUrl(handover.cardImageUrl) : undefined,
       imageUrl: normalizeMediaUrl(handover.imageUrl),
     }));
   } catch (error) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { ImagePlus, Images, LoaderCircle, Maximize2, Trash2, Upload } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ImagePlus, Images, LoaderCircle, Maximize2, Trash2, Upload } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -11,6 +11,7 @@ import { getCustomerHandovers } from '@/lib/api';
 import type { CustomerHandover } from '@/lib/types';
 
 const maximumFileSize = 10 * 1024 * 1024;
+const pageSize = 5;
 type Notice = { tone: 'error' | 'success'; text: string };
 
 export default function AdminSoldCarsPage() {
@@ -23,7 +24,12 @@ export default function AdminSoldCarsPage() {
   const [loadingHandovers, setLoadingHandovers] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const isAdmin = session?.user.role === 'ADMIN';
+  const totalPages = Math.max(1, Math.ceil(handovers.length / pageSize));
+  const firstVisibleIndex = (currentPage - 1) * pageSize;
+  const visibleHandovers = handovers.slice(firstVisibleIndex, firstVisibleIndex + pageSize);
+  const paginationItems = getPaginationItems(currentPage, totalPages);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -36,7 +42,10 @@ export default function AdminSoldCarsPage() {
     setLoadingHandovers(true);
     getCustomerHandovers({ throwOnError: true })
       .then((items) => {
-        if (!cancelled) setHandovers(items);
+        if (!cancelled) {
+          setHandovers(items);
+          setCurrentPage(1);
+        }
       })
       .catch(() => {
         if (!cancelled) setNotice({ tone: 'error', text: 'Could not load sold car posts.' });
@@ -49,6 +58,10 @@ export default function AdminSoldCarsPage() {
       cancelled = true;
     };
   }, [isAdmin, status]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   useEffect(() => {
     if (!selectedFile) {
@@ -94,6 +107,7 @@ export default function AdminSoldCarsPage() {
     try {
       const handover = await createCustomerHandover(selectedFile, session.accessToken);
       setHandovers((current) => [handover, ...current]);
+      setCurrentPage(1);
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
       setNotice({ tone: 'success', text: 'Sold car post published.' });
@@ -108,7 +122,7 @@ export default function AdminSoldCarsPage() {
   }
 
   async function removeHandover(handover: CustomerHandover) {
-    if (!session?.accessToken || !window.confirm('Delete this sold car post?')) return;
+    if (!session?.accessToken || !window.confirm('Delete this sold car image from the home page?')) return;
 
     setDeletingId(handover._id);
     setNotice(null);
@@ -251,7 +265,7 @@ export default function AdminSoldCarsPage() {
                       <span className="text-right">Action</span>
                     </div>
                     <div className="divide-y divide-line">
-                      {handovers.map((handover) => (
+                      {visibleHandovers.map((handover) => (
                         <article
                           aria-busy={deletingId === handover._id}
                           className="grid grid-cols-[80px_minmax(0,1fr)_40px] items-center gap-3 p-3 transition sm:grid-cols-[112px_minmax(0,1fr)_190px_64px] sm:px-4"
@@ -280,7 +294,7 @@ export default function AdminSoldCarsPage() {
                           <div className="min-w-0">
                             <p className="truncate text-sm font-black text-foreground">Sold car image</p>
                             <p className="mt-1 text-xs font-bold text-muted sm:hidden">
-                              {formatDate(handover.createdAt)}
+                              {handover.origin === 'bundled' ? 'Original gallery' : formatDate(handover.createdAt)}
                             </p>
                             <span className="mt-2 inline-flex items-center gap-1.5 text-xs font-black uppercase text-signal">
                               <span className="size-1.5 rounded-full bg-signal" aria-hidden="true" />
@@ -288,9 +302,13 @@ export default function AdminSoldCarsPage() {
                             </span>
                           </div>
 
-                          <time className="hidden text-sm font-bold text-muted sm:block" dateTime={handover.createdAt}>
-                            {formatDate(handover.createdAt)}
-                          </time>
+                          {handover.origin === 'bundled' ? (
+                            <span className="hidden text-sm font-bold text-muted sm:block">Original gallery</span>
+                          ) : (
+                            <time className="hidden text-sm font-bold text-muted sm:block" dateTime={handover.createdAt}>
+                              {formatDate(handover.createdAt)}
+                            </time>
+                          )}
 
                           <div className="flex justify-end">
                             <button
@@ -310,6 +328,58 @@ export default function AdminSoldCarsPage() {
                           </div>
                         </article>
                       ))}
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-field px-3 py-3 sm:px-4">
+                      <p className="text-xs font-bold tabular-nums text-muted">
+                        Showing {firstVisibleIndex + 1}-{Math.min(firstVisibleIndex + pageSize, handovers.length)} of{' '}
+                        {handovers.length}
+                      </p>
+                      <nav aria-label="Sold car image pages" className="flex items-center gap-1.5">
+                        <button
+                          aria-label="Previous page"
+                          className="grid size-9 place-items-center rounded-panel border border-line text-foreground transition hover:border-signal disabled:cursor-not-allowed disabled:opacity-35"
+                          disabled={currentPage === 1}
+                          onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                          title="Previous page"
+                          type="button"
+                        >
+                          <ChevronLeft size={17} />
+                        </button>
+
+                        <span className="min-w-20 px-2 text-center text-xs font-black tabular-nums text-sub sm:hidden">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                        <span className="hidden items-center gap-1.5 sm:flex">
+                          {paginationItems.map((item) =>
+                            typeof item === 'number' ? (
+                              <button
+                                aria-current={item === currentPage ? 'page' : undefined}
+                                className={`grid size-9 place-items-center rounded-panel border text-xs font-black tabular-nums transition ${item === currentPage ? 'border-signal bg-signal text-white' : 'border-line text-sub hover:border-signal'}`}
+                                key={item}
+                                onClick={() => setCurrentPage(item)}
+                                type="button"
+                              >
+                                {item}
+                              </button>
+                            ) : (
+                              <span className="grid size-7 place-items-center text-xs font-black text-muted" key={item}>
+                                ...
+                              </span>
+                            ),
+                          )}
+                        </span>
+
+                        <button
+                          aria-label="Next page"
+                          className="grid size-9 place-items-center rounded-panel border border-line text-foreground transition hover:border-signal disabled:cursor-not-allowed disabled:opacity-35"
+                          disabled={currentPage === totalPages}
+                          onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                          title="Next page"
+                          type="button"
+                        >
+                          <ChevronRight size={17} />
+                        </button>
+                      </nav>
                     </div>
                   </div>
                 ) : (
@@ -334,4 +404,22 @@ function formatDate(value: string) {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value));
+}
+
+function getPaginationItems(currentPage: number, totalPages: number): Array<number | string> {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  const pages = [...new Set([1, currentPage - 1, currentPage, currentPage + 1, totalPages])]
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((left, right) => left - right);
+  const items: Array<number | string> = [];
+  let previousPage = 0;
+
+  for (const page of pages) {
+    if (previousPage && page - previousPage > 1) items.push(`ellipsis-${previousPage}-${page}`);
+    items.push(page);
+    previousPage = page;
+  }
+
+  return items;
 }

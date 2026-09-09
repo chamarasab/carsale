@@ -21,8 +21,32 @@ test('lists handovers with the newest uploads first', async () => {
     { deleteImages: async () => 0 } as never,
   );
 
-  assert.deepEqual(await service.findAll(), expected);
+  const handovers = await service.findAll();
+
+  assert.equal(handovers.length, 42);
+  assert.deepEqual(handovers[0], { ...expected[0], origin: 'uploaded' });
+  assert.equal(handovers[1]._id, 'bundled-1');
+  assert.equal(handovers.at(-1)?._id, 'bundled-41');
   assert.deepEqual(sort, { createdAt: -1, _id: -1 });
+});
+
+test('keeps a deleted bundled handover hidden from the unified gallery', async () => {
+  const service = new CustomerHandoversService(
+    {
+      find: () => ({
+        sort: () => ({
+          lean: async () => [{ imageUrl: '/customer-handovers/handover-01.webp', hidden: true, sourceKey: 'bundled-1' }],
+        }),
+      }),
+    } as never,
+    { saveImages: async () => [] } as never,
+    { deleteImages: async () => 0 } as never,
+  );
+
+  const handovers = await service.findAll();
+
+  assert.equal(handovers.length, 40);
+  assert.equal(handovers.some((handover) => handover._id === 'bundled-1'), false);
 });
 
 test('stores a handover after its optimized image is uploaded', async () => {
@@ -40,7 +64,7 @@ test('stores a handover after its optimized image is uploaded', async () => {
 
   await service.create({ originalname: 'handover.jpg' } as Express.Multer.File);
 
-  assert.equal(saved?.imageUrl, imageUrl);
+  assert.deepEqual(saved, { imageUrl, origin: 'uploaded' });
 });
 
 test('removes an uploaded image when the handover record cannot be stored', async () => {
@@ -83,4 +107,43 @@ test('deleting a handover removes its GridFS image', async () => {
 
   assert.deepEqual(await service.remove(id), { deleted: true });
   assert.deepEqual(deleted, [[imageUrl]]);
+});
+
+test('deleting a bundled handover stores a persistent gallery suppression', async () => {
+  let update:
+    | {
+        filter: Record<string, unknown>;
+        options: Record<string, unknown>;
+        update: Record<string, unknown>;
+      }
+    | undefined;
+  const service = new CustomerHandoversService(
+    {
+      updateOne: async (
+        filter: Record<string, unknown>,
+        value: Record<string, unknown>,
+        options: Record<string, unknown>,
+      ) => {
+        update = { filter, options, update: value };
+      },
+    } as never,
+    { saveImages: async () => [] } as never,
+    {
+      deleteImages: async () => {
+        throw new Error('Bundled assets must not be removed from GridFS');
+      },
+    } as never,
+  );
+
+  assert.deepEqual(await service.remove('bundled-1'), { deleted: true });
+  assert.deepEqual(update?.filter, { sourceKey: 'bundled-1' });
+  assert.deepEqual(update?.options, { upsert: true });
+  assert.deepEqual(update?.update, {
+    $set: {
+      hidden: true,
+      imageUrl: '/customer-handovers/handover-01.webp',
+      origin: 'bundled',
+      sourceKey: 'bundled-1',
+    },
+  });
 });
