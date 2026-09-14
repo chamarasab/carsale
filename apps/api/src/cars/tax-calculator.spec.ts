@@ -173,6 +173,27 @@ test('does not assign Toyota Roomy manufacturer pricing to a Daihatsu Thor', () 
   assert.notEqual(cost.referenceModel, 'Roomy customs declaration website value 2,118,600 JPY');
 });
 
+test('preserves low source auction averages without a manufacturer value, including later recalculation', () => {
+  for (const source of ['A-Automarket', 'JP Center']) {
+    for (const calculationBasis of [undefined, 'Workbook reference CIF fallback']) {
+      const cost = applyWorkbookReferenceCost({
+        maker: 'Toyota',
+        model: 'Roomy',
+        modelCode: 'M900A',
+        vehicleGrade: '2WD',
+        source,
+        cost: baseCost({ auctionPriceJpy: 125_000, calculationBasis }),
+      });
+
+      assert.equal(cost.auctionPriceJpy, 125_000);
+      assert.equal(cost.websiteValueJpy, undefined);
+      assert.equal(cost.calculationBasis, 'Auction price with workbook reference');
+      assert.ok(cost.referenceCifJpy);
+      assert.equal(calculateImportCost(cost).auctionPriceJpy, 125_000);
+    }
+  }
+});
+
 test('matches the Roomy declaration tax structure from website value to customs duty', () => {
   const result = calculateImportCost(baseCost({
     auctionPriceJpy: 1_598_000,

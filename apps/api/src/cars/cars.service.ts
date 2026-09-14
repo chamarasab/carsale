@@ -361,7 +361,7 @@ export class CarsService {
   private withCurrentExchangeRate(
     car: Pick<
       Car,
-      'title' | 'maker' | 'model' | 'modelCode' | 'vehicleGrade' | 'auctionGrade' | 'chassisCode' | 'features'
+      'title' | 'maker' | 'model' | 'modelCode' | 'vehicleGrade' | 'auctionGrade' | 'chassisCode' | 'features' | 'source'
     > & { cost: CreateCarDto['cost'] },
     exchangeRate: Awaited<ReturnType<SettingsService['getJpyToLkrRate']>>,
   ) {

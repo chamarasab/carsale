@@ -5,6 +5,7 @@ type CarLike = {
   maker?: string;
   model?: string;
   modelCode?: string;
+  source?: string;
   vehicleGrade?: string;
   chassisCode?: string;
   // Auction condition grade is intentionally excluded from vehicle-variant matching.
@@ -132,10 +133,14 @@ export function applyWorkbookReferenceCost(car: CarLike): CostInput {
     fallbackAuctionPriceJpy * MIN_REFERENCE_PRICE_RATIO,
   );
   const alreadyUsedFallback = car.cost.calculationBasis === 'Workbook reference CIF fallback';
-  const needsFallback =
+  // Tax benchmarks must never replace an actual price supplied by an auction source.
+  const hasAuctionSourcePrice =
+    (car.source === 'A-Automarket' || car.source === 'JP Center') && profiledCost.auctionPriceJpy > 0;
+  const needsFallback = !hasAuctionSourcePrice && (
     alreadyUsedFallback ||
     !profiledCost.auctionPriceJpy ||
-    profiledCost.auctionPriceJpy < minimumTrustedAuctionPriceJpy;
+    profiledCost.auctionPriceJpy < minimumTrustedAuctionPriceJpy
+  );
   const benchmark = workbookBenchmark(car, profiledCost.fuelType, reference);
 
   return {

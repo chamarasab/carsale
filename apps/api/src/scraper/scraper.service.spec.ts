@@ -3,6 +3,7 @@ import test from 'node:test';
 import { normalizeAuctionGrade } from '../cars/auction-grades';
 import { findDuplicateScrapedAuctions, normalizeAuctionDate } from '../cars/cars.service';
 import {
+  AutomarketClient,
   automarketMakerDisplayName,
   cleanDisplayText,
   DEFAULT_AUTOMARKET_JOBS,
@@ -21,7 +22,74 @@ import {
   selectEligibleAutomarketRows,
   selectRowsWithMileage,
   selectCurrentAuctionRows,
+  ScraperService,
 } from './scraper.service';
+
+function auctionRows(start: number, count: number, auctionDate = '2100-01-01') {
+  return Array.from({ length: count }, (_, index) => ({
+    id: String(start + index),
+    lotNumber: String(start + index),
+    auctionDate,
+    auctionName: 'USS Tokyo',
+    maker: 'TOYOTA',
+    model: 'ROOMY',
+    vehicleGrade: 'G',
+    auctionGrade: '4.5',
+    year: 2025,
+    mileageKm: 8000,
+    engineCapacity: 1000,
+    transmission: 'IAT',
+    color: 'BLACK',
+    modelCode: 'M900A',
+    equipment: 'AC',
+    auctionPriceJpy: 100000,
+    detailPath: `/auctions/?p=project/lot&id=${start + index}`,
+  }));
+}
+
+test('searches every upcoming page without confusing an ordinary search with a specific lot', async (t) => {
+  const firstPage = auctionRows(1, 20);
+  const secondPage = auctionRows(21, 3);
+  const cases = [
+    { name: 'all upcoming spans multiple pages', options: { allUpcoming: true }, pages: [firstPage, secondPage], expectedPages: [1, 2], eligible: 23 },
+    { name: 'continues past an expired first page', options: { listSize: 3 }, pages: [auctionRows(1, 20, '2000-01-01'), secondPage], expectedPages: [1, 2], eligible: 3 },
+    { name: 'stops at a requested limit', options: { listSize: 3 }, pages: [firstPage, secondPage], expectedPages: [1], eligible: 3 },
+    { name: 'stops when a page repeats', options: { allUpcoming: true }, pages: [firstPage, firstPage], expectedPages: [1, 2], eligible: 20 },
+    { name: 'finds a specific lot on a later page', options: { lotId: '21' }, pages: [firstPage, secondPage], expectedPages: [1, 2], eligible: 1 },
+  ];
+  for (const scenario of cases) {
+    await t.test(scenario.name, async (subtest) => {
+      const requestedPages: number[] = [];
+      const service = new ScraperService(
+        {} as never,
+        {} as never,
+        {} as never,
+        { getJpyToLkrRate: async () => ({ rate: 2 }) } as never,
+        {} as never,
+        {} as never,
+      );
+      subtest.mock.method(service['logger'], 'log', () => undefined);
+      subtest.mock.method(service['logger'], 'error', () => undefined);
+      const client = new AutomarketClient('test', 'test');
+      subtest.mock.method(client, 'fetchAuctionRows', async ({ page }: { page: number }) => {
+        requestedPages.push(page);
+        return scenario.pages[page - 1] ?? [];
+      });
+      subtest.mock.method(client, 'fetchLotDetails', async () => ({ averagePriceJpy: 0, imageUrls: [] }));
+      const result = await service['importFromAutomarket'](
+        { maker: 'Toyota', model: 'Roomy', ...scenario.options },
+        undefined,
+        client,
+      );
+      assert.deepEqual(requestedPages, scenario.expectedPages);
+      assert.equal(result.eligible, scenario.eligible);
+      // A starting bid must not substitute for an unavailable detail-page average.
+      assert.equal(result.imported, 0);
+      assert.equal(result.failedJobs, scenario.eligible);
+      assert.ok(result.errors.every(error => error.includes('detail-page average price is unavailable')));
+    });
+  }
+});
 
 test('calculates scheduled scraper catch-up from the previous scheduled start', () => {
   const lastRun = { startedAt: '2026-08-01T00:00:00.000Z' };

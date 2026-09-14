@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, DatabaseZap, Play, RefreshCcw, Search } from 'lucide-react';
+import { ArrowUpRight, DatabaseZap, Play, RefreshCcw, Search } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
@@ -217,20 +217,15 @@ export default function AdminScraperPage() {
         </div>
 
         {isAdmin && (scraper?.missingWebsiteValues ?? 0) > 0 ? (
-          <Link
-            className="mt-6 flex items-start gap-3 border border-amber-500/45 bg-amber-500/10 p-4 text-sm"
-            href="/admin/website-values"
-          >
-            <AlertTriangle className="mt-0.5 shrink-0 text-amber-500" size={19} />
-            <span>
-              <strong className="block text-foreground">
-                Website value not found for {scraper?.missingWebsiteValues} auction variant{scraper?.missingWebsiteValues === 1 ? '' : 's'}
-              </strong>
-              <span className="mt-1 block font-bold text-muted">
-                Review unmatched model codes before relying on their estimated tax totals.
-              </span>
-            </span>
-          </Link>
+          <details className="mt-6 border-y border-line py-3 text-sm text-muted">
+            <summary className="cursor-pointer font-bold">
+              Tax reference backlog: {scraper?.missingWebsiteValues} unmatched variants
+            </summary>
+            <p className="mt-2">Missing manufacturer values do not prevent imports or affect the displayed auction average in JPY.</p>
+            <Link className="mt-2 inline-flex items-center gap-1 font-bold text-signal" href="/admin/website-values">
+              Review manufacturer values <ArrowUpRight size={15} />
+            </Link>
+          </details>
         ) : null}
 
         {!isAdmin ? (
@@ -461,6 +456,28 @@ function RunSummary({ icon, run, source }: { icon: ReactNode; run: ScrapeRun | n
           </div>
         ))}
       </div>
+      {run?.jobs.length ? (
+        <div className="mt-4 divide-y divide-line border-y border-line">
+          {run.jobs.map((job, index) => {
+            const params = new URLSearchParams({ market: 'japan' });
+            if (job.maker !== 'All makers') params.set('maker', job.maker);
+            if (job.model) params.set('model', job.model);
+            return (
+              <div className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm" key={`${job.maker}-${job.model}-${index}`}>
+                <div>
+                  <p className="font-black text-foreground">{job.maker} {job.model || 'All models'}</p>
+                  <p className="mt-1 text-xs font-bold text-muted">{job.inserted} new · {job.updated} updated</p>
+                </div>
+                {job.imported > 0 ? (
+                  <Link className="inline-flex items-center gap-1 font-bold text-signal" href={`/dashboard?${params}`}>
+                    View cars <ArrowUpRight size={16} />
+                  </Link>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
       {run?.errors.length ? (
         <div className="mt-4 border-l-4 border-red-500 bg-red-500/8 p-4 text-sm font-bold text-red-500">
           {run.errors.map((error) => <p key={error}>{error}</p>)}

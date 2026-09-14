@@ -219,9 +219,9 @@ export default async function CarDetail({ params }: { params: Promise<{ id: stri
               ) : null}
             </div>
             <div className="rounded-panel border-l-4 border-brass bg-jdm-panel p-5 text-white">
-              <p className="text-xs font-black uppercase tracking-wide text-white/70">Japan auction price</p>
+              <p className="text-xs font-black uppercase tracking-wide text-white/70">Average auction price (JPY)</p>
               <p className="mt-2 text-4xl font-black">{jpy(car.cost.auctionPriceJpy)}</p>
-              <p className="mt-2 text-xs text-white/65">Average auction value for this listing; the winning bid can be higher or lower.</p>
+              <p className="mt-2 text-xs text-white/65">Auction-source average in Japanese yen. Shipping, taxes and import charges are not included.</p>
             </div>
             <div className="rounded-panel border border-line bg-field p-4 text-sm leading-6 text-muted">
               <p>

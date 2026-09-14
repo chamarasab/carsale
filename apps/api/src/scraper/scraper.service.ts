@@ -558,7 +558,6 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
     const jobs: ScrapeJobResult[] = [];
     const errors: string[] = [];
     this.logger.log(`[AUTOMARKET BATCH START] run=${run.id} trigger=${run.trigger}`);
-    await this.prepareManufacturerValueCache();
     let client = await this.createAutomarketClient();
     const jobDelayMs = Math.max(
       0,
@@ -719,8 +718,6 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('JPCENTER_USERNAME and JPCENTER_PASSWORD are required');
     }
 
-    if (!authenticatedClient) await this.prepareManufacturerValueCache();
-
     const maker = (options.maker ?? 'Toyota').trim();
     const model = (options.model ?? 'Prius').trim().toUpperCase();
     const vendor = options.vendor ?? JP_CENTER_VENDOR_IDS[maker.toUpperCase()];
@@ -879,7 +876,6 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(
       `[AUTOMARKET START] run=${run.id} maker=${options.maker} model=${options.model || 'all'} lot=${options.lotId || 'search'} allUpcoming=${options.allUpcoming === true}`,
     );
-    await this.prepareManufacturerValueCache();
     const result = await this.importFromAutomarket(options, async (progress, error) => {
       const update: Record<string, unknown> = { $set: progress };
       if (error) update.$push = { errors: error };
@@ -1006,7 +1002,7 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
 
       const candidateRows = targetLotId ? rows.filter((row) => row.id === targetLotId) : rows;
       completeRows = selectEligibleAutomarketRows(candidateRows, listSize, preferredAuctionGrade, today);
-      targetLotFound = targetLotFound || candidateRows.length > 0;
+      targetLotFound = Boolean(targetLotId && candidateRows.length > 0);
       this.logger.log(
         `[AUTOMARKET PAGE] page=${page} fetched=${rows.length} eligible=${completeRows.length}`,
       );
@@ -1128,22 +1124,6 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
       errors,
       cars,
     };
-  }
-
-  private async prepareManufacturerValueCache() {
-    try {
-      await this.websiteValuesService.ensureKnownValues();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.logger.warn(`[WEBSITE VALUE CACHE] could not seed known values: ${message}`);
-    }
-    try {
-      const result = await this.carsService.recalculateAll();
-      this.logger.log(`[WEBSITE VALUE RECALCULATION] cars=${result.recalculated}`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.logger.warn(`[WEBSITE VALUE RECALCULATION] skipped: ${message}`);
-    }
   }
 
   private async toCarDto(
