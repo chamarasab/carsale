@@ -7,8 +7,9 @@ Last checked: 2026-09-14 (Asia/Colombo).
 - Vercel project: `carsale-client`, root directory `apps/client`.
 - `jdmimporters.lk` is attached to this project.
 - `www.jdmimporters.lk` is attached and redirects to the apex with HTTP 308.
-- The existing `carsale-client.vercel.app` address is retained.
-- Both Vercel and Render were verified running `2383292`, including the
+- The existing `carsale-client.vercel.app` address is retained as an HTTP 308
+  redirect to the apex, preserving paths and query strings.
+- Both Vercel and Render were verified running `3bd3768`, including the
   dependency security fixes, CORS smoke check, and theme contrast fix.
 - Vercel's project runtime is now explicitly Node 22, matching the repo and CI;
   the client package also declares this requirement for future deployments.
@@ -18,24 +19,22 @@ Last checked: 2026-09-14 (Asia/Colombo).
 - The user-approved OTP was accepted for the nameserver change. Pending Server
   Records was checked: it adds `ns1.vercel-dns.com.` and `ns2.vercel-dns.com.`
   (TTL 86400), and deletes `pns101.cloudns.net.` through `pns104.cloudns.net.`.
-- The registry has begun activating the change: `d.nic.lk` returns the two
-  Vercel nameservers, while `ns1.ac.lk` and Cloudflare's resolver still return
-  ClouDNS. Do not resubmit it or request another OTP unnecessarily.
-- A direct HTTPS request to Vercel (`curl --resolve`, certificate validation
-  enabled) returns 200 for `https://jdmimporters.lk`. This verifies the custom
-  hostname and certificate, not yet public DNS resolution for all visitors.
-- Google public DNS resolves the new domain, and Chrome loads its homepage.
-  Some other resolvers still have the old delegation cached.
+- The registry nameserver change is active: `ns1.ac.lk` now returns both Vercel
+  nameservers, matching the previously verified `d.nic.lk` delegation.
+- Both Google (8.8.8.8) and Cloudflare (1.1.1.1) resolve the new domain.
+  Normal local DNS and HTTPS also work, with HTTP 200 and valid TLS.
+  Vercel reports `misconfigured: false`. No further registry request is needed.
 - Access to the existing Google Cloud project and Render service is restored.
 - The existing Google OAuth client now includes the new apex origin and exact
   callback URI. The saved entries were reopened and verified; old entries and
   OAuth credentials were preserved.
-- Render `CLIENT_ORIGIN` now includes the old hostname, apex, and www; a rebuild
-  and deployment was requested (not Save Only). Verify live CORS after it finishes.
-- Vercel production `NEXTAUTH_URL` is now `https://jdmimporters.lk`; a new frontend
-  deployment is required to activate it. Login must be retested afterward.
+- Render `CLIENT_ORIGIN` includes the old hostname, apex, and www. The service
+  was rebuilt and deployed, and both new origins pass credentialed CORS preflight.
+- Vercel production `NEXTAUTH_URL` is `https://jdmimporters.lk` and the frontend
+  was redeployed. A fresh Chrome Google sign-in returned to the new-domain admin
+  page with an ADMIN session and no session error.
 - Production smoke checks and the metadata fallback now default to the new
-  domain. An explicit `PRODUCTION_CLIENT_URL` repository variable overrides it.
+  domain. GitHub currently has no `PRODUCTION_CLIENT_URL` variable overriding it.
 
 ## OAuth failure and prevention
 
@@ -73,22 +72,21 @@ error and can reset unsaved form fields. Inspect visible confirmation buttons,
 then check Pending Records separately after OTP approval. Registry acceptance
 is not the same as public DNS activation.
 
-## Finish the migration
+## Configuration to preserve
 
-1. Wait for the already accepted nameserver request to activate. Check public
-   NS records and the registry's Current Running Records. Verify apex and www
-   resolve, mail records remain present, Vercel reports valid configuration,
-   and HTTPS works. If registry processing stalls, contact its support about
-   the two pending Vercel nameservers rather than submitting duplicate requests.
-2. In the existing Google OAuth web client for `carsale-web`, add the origin
+1. Keep Vercel's managed DNS entries and the existing mail records. Verify apex
+   and www resolution and HTTPS after any future DNS changes. Do not resubmit
+   the completed registry request.
+2. In the existing Google OAuth web client for `carsale-web`, retain the origin
    `https://jdmimporters.lk` and exact redirect URI
    `https://jdmimporters.lk/api/auth/callback/google`. Retain the old entries;
    do not replace the OAuth client ID or secret.
-3. In the Render account that owns `carsale-1`, append
-   `https://jdmimporters.lk,https://www.jdmimporters.lk` to `CLIENT_ORIGIN`.
+3. On Render's `carsale-1`, keep
+   `https://jdmimporters.lk,https://www.jdmimporters.lk` in `CLIENT_ORIGIN`.
    Preserve all existing origins. Deploy and check both new origins with CORS
    preflight requests. Do not replace `API_PUBLIC_URL` or database settings.
-4. Set Vercel's production `NEXTAUTH_URL` to `https://jdmimporters.lk` and redeploy.
+4. Keep Vercel's production `NEXTAUTH_URL` at `https://jdmimporters.lk`.
+   Redeploy after changing production environment variables.
    Keep `NEXT_PUBLIC_API_URL`, `NEXTAUTH_SECRET`, and the Google keys unchanged.
    Metadata uses `NEXTAUTH_URL` unless `NEXT_PUBLIC_SITE_URL` explicitly overrides it.
 5. If the GitHub repository variable `PRODUCTION_CLIENT_URL` exists, set it to
@@ -99,19 +97,26 @@ is not the same as public DNS activation.
    and exact-origin browser API CORS. It does not prove that Google accepted
    a real sign-in.
 7. Test real Google login, admin access, vehicle images, handover images,
-   inquiries, and the www redirect on the new HTTPS address. Keep the old
-   hostname available until this is complete. Then redirect the old hostname
-   to the new canonical host before initiating sign-in, so OAuth state cookies
-   are not split between the old host and the new callback host.
+   inquiries, and alternate-host redirects after future authentication changes.
+   Keep both alternate hosts redirecting to the apex before sign-in starts.
 
-## Verification before switching
+## Verification
 
-- Existing public homepage: HTTP 200.
-- Existing production authentication configuration smoke test: passed.
+- New-domain homepage: HTTP 200 through normal DNS and valid HTTPS.
+- New-domain production authentication configuration and API CORS test: passed.
 - GitHub's remote quality gate and production auth/CORS check passed for
-  `36427a6`. New-domain API CORS is still blocked until Render is configured.
-- Live desktop/mobile homepage, listing, and vehicle page checks: 200 responses,
-  loaded on-screen images, no horizontal overflow or JavaScript errors.
+  `3bd3768`. The daily and deployment-triggered checks now target the new domain.
+- Real Google login in the user's Chrome session: signed out, clicked Continue
+  with Google, and returned to `https://jdmimporters.lk/admin` as ADMIN.
+- Admin sold-car page: 42 published images, five thumbnails loaded, pagination
+  visible, and no horizontal overflow. No production posts were modified.
+- New-domain desktop (1440x1000) and mobile (390x844) homepage/listing screenshots
+  were inspected: visible images loaded and no horizontal overflow. Homepage,
+  listing, and a car detail page returned 200 with no JavaScript errors.
+- Old Vercel hostname and www: HTTP 308 to apex, preserving path and query.
+- Existing MX and SPF records were also verified through Google public DNS.
+- Inquiry CORS was tested without submitting a customer inquiry; external
+  email delivery was not tested as part of this domain switch.
 - Mobile search popup, Toyota filter, list navigation, theme switching, and
   login-page layout were checked. A theme-transition contrast issue on vehicle
   cards was identified; card transitions now exclude background and text colors.
@@ -137,3 +142,6 @@ as a response to an origin or redirect mismatch.
 The current Vercel team uses Hobby. Vercel restricts that plan to non-commercial
 personal use: https://vercel.com/docs/plans/hobby. Arrange the owner's approval
 for a commercial plan before client handover. No paid upgrade was performed.
+
+Render still uses a Free instance, which sleeps after inactivity and can delay
+requests during startup. No paid instance change was performed.
