@@ -8,6 +8,7 @@ async function main() {
   const [readiness, authorizationUrl] = await Promise.all([
     retry('API auth readiness', getApiReadiness),
     retry('NextAuth Google authorization URL', getGoogleAuthorizationUrl),
+    retry('API browser origin', verifyApiCors),
   ]);
 
   assert(readiness.ready === true, 'The API reports that Google authentication is not ready');
@@ -24,7 +25,28 @@ async function main() {
     'Vercel and Render are configured with different Google OAuth client IDs',
   );
 
-  console.log(`Production Google authentication is ready: ${expectedCallbackUrl}`);
+  console.log(`Production authentication configuration and API CORS verified: ${expectedCallbackUrl}`);
+  console.log('A real Google sign-in is still required to verify the registered callback and account access.');
+}
+
+async function verifyApiCors() {
+  const origin = new URL(clientUrl).origin;
+  const response = await fetch(`${apiUrl}/inquiries`, {
+    method: 'OPTIONS',
+    headers: {
+      origin,
+      'access-control-request-method': 'POST',
+      'access-control-request-headers': 'content-type,authorization',
+    },
+    signal: AbortSignal.timeout(30_000),
+  });
+  assert(response.ok, `API CORS preflight returned HTTP ${response.status}`);
+  assert(response.headers.get('access-control-allow-origin') === origin, `API CLIENT_ORIGIN must allow ${origin}`);
+  assert(response.headers.get('access-control-allow-credentials') === 'true', 'API must allow credentialed browser requests');
+  const methods = (response.headers.get('access-control-allow-methods') || '').toUpperCase().split(',').map((value) => value.trim());
+  const headers = (response.headers.get('access-control-allow-headers') || '').toLowerCase().split(',').map((value) => value.trim());
+  assert(methods.includes('POST'), 'API CORS must allow POST requests');
+  assert(headers.includes('content-type') && headers.includes('authorization'), 'API CORS must allow content-type and authorization headers');
 }
 
 async function getApiReadiness() {
@@ -94,7 +116,11 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-main().catch((error) => {
-  console.error(`Production authentication verification failed: ${error.message}`);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(`Production authentication verification failed: ${error.message}`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { verifyApiCors };

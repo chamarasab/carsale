@@ -17,7 +17,7 @@
     "start": "npm run start --workspace apps/api",
     "build": "npm run build --workspace apps/api && npm run build --workspace apps/client",
     "lint": "npm run lint --workspace apps/api && npm run lint --workspace apps/client",
-    "test": "npm run test --workspace apps/api",
+    "test": "node --test scripts/*.spec.cjs && npm run test --workspace apps/api",
     "security:secrets": "node scripts/check-tracked-secrets.cjs",
     "security:audit": "npm audit --omit=dev --audit-level=high",
     "verify": "npm run security:secrets && npm run lint && npm test && npm run build && npm run security:audit",
@@ -29,14 +29,18 @@
   },
   "overrides": {
     "cheerio": {
-      "undici": "7.28.0"
+      "undici": "7.29.1"
+    },
+    "@nestjs/platform-express": {
+      "multer": "2.4.0"
     },
     "express": {
       "body-parser": "2.3.0"
     },
     "next": {
+      ".": "15.5.25",
       "postcss": "8.5.25",
-      "sharp": "0.35.3"
+      "sharp": "0.35.4"
     }
   },
   "engines": {
