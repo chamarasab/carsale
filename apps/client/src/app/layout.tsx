@@ -16,7 +16,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://carsale-client.vercel.app'),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'https://carsale-client.vercel.app',
+  ),
   title: 'Genuine Automobiles',
   description: 'Genuine quality Japanese auction cars with clear estimated landed costs for Sri Lanka.',
   openGraph: {
