@@ -12,7 +12,7 @@ export function CarListItem({ car }: { car: CarSummary }) {
 
   return (
     <Link
-      className="car-card group grid min-h-[124px] grid-cols-[112px_minmax(0,1fr)] overflow-hidden rounded-panel border border-line bg-surface shadow-soft transition duration-300 hover:border-signal/40 hover:shadow-theme md:grid-cols-[230px_1fr_auto]"
+      className="car-card group grid min-h-[124px] grid-cols-[112px_minmax(0,1fr)] overflow-hidden rounded-panel border border-line bg-surface shadow-soft transition-[border-color,box-shadow,transform] duration-300 hover:border-signal/40 hover:shadow-theme md:grid-cols-[230px_1fr_auto]"
       href={`/cars/${car._id}`}
     >
       <div className="relative min-h-[124px] bg-field md:min-h-44">

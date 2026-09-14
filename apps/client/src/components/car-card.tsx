@@ -12,7 +12,7 @@ export function CarCard({ car }: { car: CarSummary }) {
 
   return (
     <Link
-      className="car-card group grid min-h-[132px] grid-cols-[128px_minmax(0,1fr)] overflow-hidden rounded-panel border border-line bg-surface shadow-soft transition duration-300 hover:border-signal/40 hover:shadow-theme sm:block sm:min-h-0 sm:hover:-translate-y-1"
+      className="car-card group grid min-h-[132px] grid-cols-[128px_minmax(0,1fr)] overflow-hidden rounded-panel border border-line bg-surface shadow-soft transition-[border-color,box-shadow,transform] duration-300 hover:border-signal/40 hover:shadow-theme sm:block sm:min-h-0 sm:hover:-translate-y-1"
       href={`/cars/${car._id}`}
     >
       <div className="relative min-h-[132px] overflow-hidden bg-field sm:aspect-[16/10] sm:min-h-0">

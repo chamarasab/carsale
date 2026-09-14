@@ -19,8 +19,12 @@ Last checked: 2026-09-14 (Asia/Colombo).
 - The user-approved OTP was accepted for the nameserver change. Pending Server
   Records was checked: it adds `ns1.vercel-dns.com.` and `ns2.vercel-dns.com.`
   (TTL 86400), and deletes `pns101.cloudns.net.` through `pns104.cloudns.net.`.
-- Public DNS still reports the old ClouDNS delegation. The accepted request is
-  queued, not yet active. Do not resubmit it or request another OTP unnecessarily.
+- The registry has begun activating the change: `d.nic.lk` returns the two
+  Vercel nameservers, while `ns1.ac.lk` and Cloudflare's resolver still return
+  ClouDNS. Do not resubmit it or request another OTP unnecessarily.
+- A direct HTTPS request to Vercel (`curl --resolve`, certificate validation
+  enabled) returns 200 for `https://jdmimporters.lk`. This verifies the custom
+  hostname and certificate, not yet public DNS resolution for all visitors.
 - The currently signed-in Render account does not have the existing service;
   the Google Cloud account lacks access to `carsale-web`.
 - Production auth environment variables have NOT been changed. Keep them this
@@ -82,6 +86,13 @@ is not the same as public DNS activation.
 
 - Existing public homepage: HTTP 200.
 - Existing production authentication configuration smoke test: passed.
+- GitHub's remote quality gate and production auth/CORS check passed for
+  `36427a6`. New-domain API CORS is still blocked until Render is configured.
+- Live desktop/mobile homepage, listing, and vehicle page checks: 200 responses,
+  loaded on-screen images, no horizontal overflow or JavaScript errors.
+- Mobile search popup, Toyota filter, list navigation, theme switching, and
+  login-page layout were checked. A theme-transition contrast issue on vehicle
+  cards was identified; card transitions now exclude background and text colors.
 - Full release verification under Node 22.23.2: lint, API tests, API/client
   production builds, tracked-secret scan, and production audit passed.
 - New CORS smoke regression tests: all eight scenarios passed (nine TAP tests).
