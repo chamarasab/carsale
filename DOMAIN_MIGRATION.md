@@ -8,9 +8,8 @@ Last checked: 2026-09-14 (Asia/Colombo).
 - `jdmimporters.lk` is attached to this project.
 - `www.jdmimporters.lk` is attached and redirects to the apex with HTTP 308.
 - The existing `carsale-client.vercel.app` address is retained.
-- Security fixes and the CORS smoke check were pushed in `220d591`; Vercel
-  promoted that production deployment successfully. Render deployment status
-  cannot yet be verified from the currently signed-in account.
+- Both Vercel and Render were verified running `2383292`, including the
+  dependency security fixes, CORS smoke check, and theme contrast fix.
 - Vercel's project runtime is now explicitly Node 22, matching the repo and CI;
   the client package also declares this requirement for future deployments.
 - LK Domain Registry now shows registration as Completed, expiring 2027-09-14.
@@ -25,10 +24,32 @@ Last checked: 2026-09-14 (Asia/Colombo).
 - A direct HTTPS request to Vercel (`curl --resolve`, certificate validation
   enabled) returns 200 for `https://jdmimporters.lk`. This verifies the custom
   hostname and certificate, not yet public DNS resolution for all visitors.
-- The currently signed-in Render account does not have the existing service;
-  the Google Cloud account lacks access to `carsale-web`.
-- Production auth environment variables have NOT been changed. Keep them this
-  way until the prerequisites below are verified.
+- Google public DNS resolves the new domain, and Chrome loads its homepage.
+  Some other resolvers still have the old delegation cached.
+- Access to the existing Google Cloud project and Render service is restored.
+- The existing Google OAuth client now includes the new apex origin and exact
+  callback URI. The saved entries were reopened and verified; old entries and
+  OAuth credentials were preserved.
+- Render `CLIENT_ORIGIN` now includes the old hostname, apex, and www; a rebuild
+  and deployment was requested (not Save Only). Verify live CORS after it finishes.
+- Vercel production `NEXTAUTH_URL` is now `https://jdmimporters.lk`; a new frontend
+  deployment is required to activate it. Login must be retested afterward.
+- Production smoke checks and the metadata fallback now default to the new
+  domain. An explicit `PRODUCTION_CLIENT_URL` repository variable overrides it.
+
+## OAuth failure and prevention
+
+The new domain previously initiated login while production `NEXTAUTH_URL`
+still pointed to the old Vercel hostname. Google returned to a different host
+from the one that stored the OAuth state/PKCE cookies, leading to an
+`OAuthCallback` failure. Keep the initiating host and callback host identical:
+use the apex as `NEXTAUTH_URL` and redirect alternate hosts before login starts.
+Do not disable state/PKCE checks or share cookies across unrelated domains.
+
+The API separately rejected browser requests from the new domain because its
+`CLIENT_ORIGIN` only contained the old hostname. The scheduled and deployment
+smoke check validates the canonical callback, client-ID agreement, and exact
+origin CORS together. Keep that check targeting the canonical production domain.
 
 ## Prepared DNS zone
 
@@ -70,8 +91,9 @@ is not the same as public DNS activation.
 4. Set Vercel's production `NEXTAUTH_URL` to `https://jdmimporters.lk` and redeploy.
    Keep `NEXT_PUBLIC_API_URL`, `NEXTAUTH_SECRET`, and the Google keys unchanged.
    Metadata uses `NEXTAUTH_URL` unless `NEXT_PUBLIC_SITE_URL` explicitly overrides it.
-5. Set the GitHub repository variable `PRODUCTION_CLIENT_URL` to
-   `https://jdmimporters.lk`. The existing authentication smoke workflow uses it.
+5. If the GitHub repository variable `PRODUCTION_CLIENT_URL` exists, set it to
+   `https://jdmimporters.lk`. Otherwise the authentication smoke workflow uses
+   that domain by default.
 6. Run `CLIENT_URL=https://jdmimporters.lk npm run verify:production-auth`.
    This checks the generated callback, frontend/backend client-ID agreement,
    and exact-origin browser API CORS. It does not prove that Google accepted
@@ -105,7 +127,8 @@ is not the same as public DNS activation.
 
 If the new sign-in fails after switching, restore Vercel's production
 `NEXTAUTH_URL` to `https://carsale-client.vercel.app`, redeploy, and restore the
-GitHub `PRODUCTION_CLIENT_URL` variable to that URL. Retain both domains and the
+GitHub `PRODUCTION_CLIENT_URL` variable to that URL. Remove the old hostname's
+redirect before using it to sign in. Retain both domains and the
 old Google callback throughout the transition. Do not rotate working credentials
 as a response to an origin or redirect mismatch.
 

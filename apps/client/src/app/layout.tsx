@@ -17,7 +17,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'https://carsale-client.vercel.app',
+    process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'https://jdmimporters.lk',
   ),
   title: 'Genuine Automobiles',
   description: 'Genuine quality Japanese auction cars with clear estimated landed costs for Sri Lanka.',

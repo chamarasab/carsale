@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      CLIENT_URL: ${{ vars.PRODUCTION_CLIENT_URL || 'https://carsale-client.vercel.app' }}
+      CLIENT_URL: ${{ vars.PRODUCTION_CLIENT_URL || 'https://jdmimporters.lk' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -1,6 +1,6 @@
 const { createHash } = require('node:crypto');
 
-const clientUrl = normalizeUrl(process.env.CLIENT_URL || 'https://carsale-client.vercel.app');
+const clientUrl = normalizeUrl(process.env.CLIENT_URL || 'https://jdmimporters.lk');
 const apiUrl = normalizeUrl(process.env.API_URL || 'https://carsale-1.onrender.com/api');
 const expectedCallbackUrl = `${clientUrl}/api/auth/callback/google`;
 

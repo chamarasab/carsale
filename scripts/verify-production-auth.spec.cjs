@@ -3,7 +3,7 @@ const { test } = require('node:test');
 const { verifyApiCors } = require('./verify-production-auth.cjs');
 
 test('deployment smoke test validates browser API access without submitting an inquiry', async (t) => {
-  const origin = new URL(process.env.CLIENT_URL || 'https://carsale-client.vercel.app').origin;
+  const origin = new URL(process.env.CLIENT_URL || 'https://jdmimporters.lk').origin;
   const validHeaders = {
     'access-control-allow-origin': origin,
     'access-control-allow-credentials': 'true',
