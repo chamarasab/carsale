@@ -8,6 +8,11 @@ Last checked: 2026-09-14 (Asia/Colombo).
 - `jdmimporters.lk` is attached to this project.
 - `www.jdmimporters.lk` is attached and redirects to the apex with HTTP 308.
 - The existing `carsale-client.vercel.app` address is retained.
+- Security fixes and the CORS smoke check were pushed in `220d591`; Vercel
+  promoted that production deployment successfully. Render deployment status
+  cannot yet be verified from the currently signed-in account.
+- Vercel's project runtime is now explicitly Node 22, matching the repo and CI;
+  the client package also declares this requirement for future deployments.
 - LK Domain Registry now shows registration as Completed, expiring 2027-09-14.
 - Vercel DNS is enabled. Its authoritative servers answer for the website,
   existing MX, and existing SPF records.
@@ -92,3 +97,9 @@ If the new sign-in fails after switching, restore Vercel's production
 GitHub `PRODUCTION_CLIENT_URL` variable to that URL. Retain both domains and the
 old Google callback throughout the transition. Do not rotate working credentials
 as a response to an origin or redirect mismatch.
+
+## Commercial hosting
+
+The current Vercel team uses Hobby. Vercel restricts that plan to non-commercial
+personal use: https://vercel.com/docs/plans/hobby. Arrange the owner's approval
+for a commercial plan before client handover. No paid upgrade was performed.
