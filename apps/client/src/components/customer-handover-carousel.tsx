@@ -207,7 +207,7 @@ export function CustomerHandoverCarousel({
           <div className="max-w-2xl">
             <a
               aria-label={`Call Genuine Automobiles on ${vendorContact.callLabel}`}
-              className="mb-5 inline-flex h-12 items-center gap-2 rounded-full bg-brand-gradient px-5 text-sm font-black text-white shadow-theme transition hover:-translate-y-0.5 hover:opacity-90 focus:outline-none focus:ring-4 focus:ring-white/20 sm:hidden"
+              className="mb-5 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#22c55e] to-[#00b894] px-5 text-center text-sm font-black text-white shadow-theme transition hover:-translate-y-0.5 hover:opacity-90 focus:outline-none focus:ring-4 focus:ring-[#22c55e]/25 sm:hidden"
               href={`tel:${vendorContact.callLabel}`}
             >
               <PhoneCall aria-hidden size={19} />
