@@ -1,6 +1,6 @@
 'use client';
 
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, PhoneCall } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { jpy } from '@/lib/format';
@@ -82,6 +82,30 @@ export function WhatsAppFab() {
       href={buildWhatsAppUrl(message)}
       label="Ask about a vehicle on WhatsApp"
     />
+  );
+}
+
+export function PhoneFab() {
+  const pathname = usePathname();
+  const hiddenRoute =
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/users') ||
+    pathname === '/login' ||
+    pathname === '/signup';
+
+  if (!vendorContact.callLabel || hiddenRoute) return null;
+
+  const label = `Call Genuine Automobiles on ${vendorContact.callLabel}`;
+
+  return (
+    <a
+      aria-label={label}
+      className="fixed bottom-[148px] right-6 z-50 hidden h-[52px] w-[52px] place-items-center rounded-full border border-white/35 bg-brand-gradient text-white shadow-theme transition duration-200 hover:-translate-y-1 hover:opacity-90 focus:outline-none focus:ring-4 focus:ring-signal/25 sm:grid"
+      href={`tel:${vendorContact.callLabel}`}
+      title={`${label} (${vendorContact.displayPhone})`}
+    >
+      <PhoneCall aria-hidden size={22} strokeWidth={2.4} />
+    </a>
   );
 }
 

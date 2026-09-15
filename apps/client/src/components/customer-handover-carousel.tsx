@@ -1,10 +1,11 @@
 'use client';
 
-import { ChevronLeft, ChevronRight, Maximize2, Minus, Pause, Play, Plus, RotateCcw, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, Minus, Pause, PhoneCall, Play, Plus, RotateCcw, X } from 'lucide-react';
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { CustomerHandover } from '@/lib/types';
+import { vendorContact } from '@/lib/vendor-contact';
 
 const portraitPhotoNumbers = new Set([
   6, 7, 8, 9, 10, 11, 12, 14, 15, 20, 21, 29, 30, 31, 32, 33, 35, 37, 38, 39, 40, 41,
@@ -204,6 +205,14 @@ export function CustomerHandoverCarousel({
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl">
+            <a
+              aria-label={`Call Genuine Automobiles on ${vendorContact.callLabel}`}
+              className="mb-5 inline-flex h-12 items-center gap-2 rounded-full bg-brand-gradient px-5 text-sm font-black text-white shadow-theme transition hover:-translate-y-0.5 hover:opacity-90 focus:outline-none focus:ring-4 focus:ring-white/20 sm:hidden"
+              href={`tel:${vendorContact.callLabel}`}
+            >
+              <PhoneCall aria-hidden size={19} />
+              Call {vendorContact.callLabel}
+            </a>
             <p className="text-xs font-black uppercase tracking-wide text-brass">Customer handovers</p>
             <h2 className="mt-2 text-4xl font-black leading-tight text-white" id="customer-handovers-title">
               Real cars. Real handovers.

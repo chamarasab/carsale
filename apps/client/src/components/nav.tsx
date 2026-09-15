@@ -1,8 +1,9 @@
-import { CarFront, Gavel, House } from 'lucide-react';
+import { CarFront, Gavel, House, PhoneCall } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { AdminLink } from './admin-link';
 import { LoginButton } from './login-button';
+import { vendorContact } from '@/lib/vendor-contact';
 
 type NavSection = 'home' | 'japan' | 'local';
 
@@ -49,6 +50,15 @@ export function Nav({ active }: { active?: NavSection }) {
         </Link>
         <InventoryLinks active={active} className="hidden md:flex" />
         <nav className="flex shrink-0 items-center gap-2 sm:gap-4">
+          <a
+            aria-label={`Call Genuine Automobiles on ${vendorContact.callLabel}`}
+            className="hidden h-10 items-center gap-2 rounded-panel border border-white/15 bg-white/5 px-3 text-xs font-black text-white transition hover:border-[#00c9b7] hover:bg-white/10 lg:inline-flex"
+            href={`tel:${vendorContact.callLabel}`}
+            title={`Call ${vendorContact.callLabel}`}
+          >
+            <PhoneCall aria-hidden size={16} />
+            <span>{vendorContact.displayPhone}</span>
+          </a>
           <AdminLink />
           <LoginButton />
         </nav>
