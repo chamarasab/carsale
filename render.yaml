@@ -51,6 +51,8 @@ services:
         value: "300000"
       - key: SCRAPER_SCHEDULE_LABEL
         value: A-Automarket every 6 hours with catch-up
+      - key: STORAGE_MAINTENANCE_INTERVAL_MS
+        value: "3600000"
       - key: SCRAPER_JOB_DELAY_MS
         value: "2000"
       - key: SCRAPER_JOB_RETRY_DELAY_MS

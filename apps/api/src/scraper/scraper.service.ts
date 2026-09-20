@@ -106,6 +106,7 @@ const DEFAULT_LOGIN_ATTEMPTS = 3;
 const DEFAULT_SCRAPER_INTERVAL_MS = 6 * 60 * 60 * 1_000;
 const DEFAULT_SCHEDULER_INITIAL_DELAY_MS = 15_000;
 const DEFAULT_SCHEDULER_POLL_MS = 5 * 60 * 1_000;
+const DEFAULT_STORAGE_MAINTENANCE_INTERVAL_MS = 60 * 60 * 1_000;
 const AUTOMARKET_PAGE_SIZE = 20;
 const MAX_AUTOMARKET_PAGES = 100;
 const AUTOMARKET_REQUEST_ATTEMPTS = 4;
@@ -292,8 +293,10 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
   private isBatchRunning = false;
   private isAutomarketRunning = false;
   private schedulerCheckRunning = false;
+  private storageMaintenanceRunning = false;
   private schedulerInitialTimer?: NodeJS.Timeout;
   private schedulerPollTimer?: NodeJS.Timeout;
+  private storageMaintenanceTimer?: NodeJS.Timeout;
 
   constructor(
     private readonly carsService: CarsService,
@@ -315,10 +318,7 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
         },
       },
     );
-    const cleanup = await this.carsService.removeExpiredScrapedAuctions();
-    this.logger.log(
-      `[AUCTION CLEANUP] deletedCars=${cleanup.deletedCars} deletedImages=${cleanup.deletedImages} cutoff=${cleanup.cutoffDate}`,
-    );
+    await this.runStorageMaintenance();
     const gradeCleanup = await this.carsService.sanitizeAuctionGrades();
     this.logger.log(
       `[AUCTION GRADE CLEANUP] normalizedCars=${gradeCleanup.normalizedCars} deletedCars=${gradeCleanup.deletedCars} unpublishedCars=${gradeCleanup.unpublishedCars} deletedImages=${gradeCleanup.deletedImages}`,
@@ -332,11 +332,13 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(`[AUCTION DUPLICATE CLEANUP FAILED] ${errorDetail(error)}`);
     }
     this.startInProcessScheduler();
+    this.startStorageMaintenance();
   }
 
   onModuleDestroy() {
     if (this.schedulerInitialTimer) clearTimeout(this.schedulerInitialTimer);
     if (this.schedulerPollTimer) clearInterval(this.schedulerPollTimer);
+    if (this.storageMaintenanceTimer) clearInterval(this.storageMaintenanceTimer);
   }
 
   async getBotStatus() {
@@ -455,6 +457,34 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
       void this.runScheduledScrapeIfDue();
     }, pollIntervalMs);
     this.schedulerPollTimer.unref();
+  }
+
+  private startStorageMaintenance() {
+    const intervalMs = positiveMilliseconds(
+      this.config.get<string>('STORAGE_MAINTENANCE_INTERVAL_MS'),
+      DEFAULT_STORAGE_MAINTENANCE_INTERVAL_MS,
+    );
+    this.storageMaintenanceTimer = setInterval(() => {
+      void this.runStorageMaintenance();
+    }, intervalMs);
+    this.storageMaintenanceTimer.unref();
+    this.logger.log(`[STORAGE MAINTENANCE] Scheduled every ${intervalMs}ms`);
+  }
+
+  private async runStorageMaintenance() {
+    if (this.storageMaintenanceRunning) return;
+    this.storageMaintenanceRunning = true;
+    try {
+      const expired = await this.carsService.removeExpiredScrapedAuctions();
+      const orphaned = await this.mediaService.deleteOrphanedImages();
+      this.logger.log(
+        `[STORAGE MAINTENANCE] expiredCars=${expired.deletedCars} expiredImages=${expired.deletedImages} orphanedImages=${orphaned.deletedImages} orphanedBytes=${orphaned.deletedBytes} cutoff=${expired.cutoffDate}`,
+      );
+    } catch (error) {
+      this.logger.error(`[STORAGE MAINTENANCE FAILED] ${errorDetail(error)}`);
+    } finally {
+      this.storageMaintenanceRunning = false;
+    }
   }
 
   private async runScheduledScrapeIfDue() {
@@ -639,6 +669,15 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
       $set: { phase: 'checking expired and duplicate auctions' },
     });
     const cleanup = await this.carsService.removeExpiredScrapedAuctions();
+    let orphanCleanup = { deletedImages: 0, deletedBytes: 0 };
+    try {
+      orphanCleanup = await this.mediaService.deleteOrphanedImages();
+    } catch (error) {
+      const message = `Orphan image cleanup: ${errorDetail(error)}`;
+      errors.push(message);
+      totals.failedJobs += 1;
+      this.logger.error(`[ORPHAN IMAGE CLEANUP FAILED] run=${run.id}: ${message}`);
+    }
     let duplicateCleanup = { duplicateGroups: 0, deletedCars: 0, deletedImages: 0 };
     try {
       duplicateCleanup = await this.carsService.removeDuplicateScrapedAuctions();
@@ -665,7 +704,7 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
       },
     });
     this.logger.log(
-      `[AUTOMARKET BATCH COMPLETE] run=${run.id} status=${status} fetched=${totals.fetched} eligible=${totals.eligible} inserted=${totals.inserted} updated=${totals.updated} errors=${errors.length} expiredDeleted=${cleanup.deletedCars} duplicatesDeleted=${duplicateCleanup.deletedCars} duplicateImagesDeleted=${duplicateCleanup.deletedImages}`,
+      `[AUTOMARKET BATCH COMPLETE] run=${run.id} status=${status} fetched=${totals.fetched} eligible=${totals.eligible} inserted=${totals.inserted} updated=${totals.updated} errors=${errors.length} expiredDeleted=${cleanup.deletedCars} orphanedImagesDeleted=${orphanCleanup.deletedImages} duplicatesDeleted=${duplicateCleanup.deletedCars} duplicateImagesDeleted=${duplicateCleanup.deletedImages}`,
     );
   }
 
