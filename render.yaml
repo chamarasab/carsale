@@ -54,7 +54,7 @@ services:
       - key: STORAGE_MAINTENANCE_INTERVAL_MS
         value: "3600000"
       - key: IMAGE_STORAGE_MAX_BYTES
-        value: "450000000"
+        value: "380000000"
       - key: SCRAPER_JOB_DELAY_MS
         value: "2000"
       - key: SCRAPER_JOB_RETRY_DELAY_MS

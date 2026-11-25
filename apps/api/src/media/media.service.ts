@@ -26,7 +26,7 @@ type PrunableCar = {
 
 const IMAGE_DELETE_BATCH_SIZE = 8;
 const ORPHAN_GRACE_PERIOD_MS = 60 * 60 * 1_000;
-const DEFAULT_MAX_IMAGE_CHUNKS_BYTES = 450_000_000;
+const DEFAULT_MAX_IMAGE_CHUNKS_BYTES = 380_000_000;
 
 @Injectable()
 export class MediaService {
