@@ -47,6 +47,24 @@ function auctionRows(start: number, count: number, auctionDate = '2100-01-01') {
   }));
 }
 
+test('does not block API initialization on database maintenance', (t) => {
+  let databaseUpdates = 0;
+  const service = new ScraperService(
+    {} as never,
+    { get: (_key: string, fallback?: unknown) => fallback } as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    { updateMany: async () => { databaseUpdates += 1; } } as never,
+  );
+  t.mock.method(service['logger'], 'log', () => undefined);
+
+  service.onModuleInit();
+
+  assert.equal(databaseUpdates, 0);
+  service.onModuleDestroy();
+});
+
 test('searches every upcoming page without confusing an ordinary search with a specific lot', async (t) => {
   const firstPage = auctionRows(1, 20);
   const secondPage = auctionRows(21, 3);

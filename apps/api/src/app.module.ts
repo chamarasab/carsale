@@ -30,6 +30,7 @@ import { validateEnvironment } from './config/environment';
       useFactory: (config: ConfigService) => ({
         uri: config.getOrThrow<string>('MONGODB_URI'),
         dbName: config.get<string>('MONGODB_DB', 'carsale'),
+        serverSelectionTimeoutMS: 10_000,
       }),
     }),
     AuthModule,

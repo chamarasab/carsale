@@ -2,10 +2,19 @@ import { Car, CarSummary, CustomerHandover } from './types';
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'https://carsale-1.onrender.com/api';
 const apiPublicUrl = apiUrl.replace(/\/api\/?$/, '');
+const PUBLIC_API_REVALIDATE_SECONDS = 5 * 60;
+const PUBLIC_API_TIMEOUT_MS = 8_000;
+
+function publicApiOptions(revalidate = PUBLIC_API_REVALIDATE_SECONDS): RequestInit & { next: { revalidate: number } } {
+  return {
+    next: { revalidate },
+    signal: AbortSignal.timeout(PUBLIC_API_TIMEOUT_MS),
+  };
+}
 
 export async function getCars(): Promise<CarSummary[]> {
   try {
-    const response = await fetch(`${apiUrl}/cars`, { cache: 'no-store' });
+    const response = await fetch(`${apiUrl}/cars`, publicApiOptions());
     if (!response.ok) return [];
     return normalizeCars((await response.json()) as CarSummary[]);
   } catch {
@@ -15,7 +24,7 @@ export async function getCars(): Promise<CarSummary[]> {
 
 export async function getCar(id: string): Promise<Car | null> {
   try {
-    const response = await fetch(`${apiUrl}/cars/${id}`, { cache: 'no-store' });
+    const response = await fetch(`${apiUrl}/cars/${id}`, publicApiOptions(60));
     if (!response.ok) return null;
     return normalizeCar((await response.json()) as Car);
   } catch {
@@ -25,7 +34,7 @@ export async function getCar(id: string): Promise<Car | null> {
 
 export async function getExchangeRate() {
   try {
-    const response = await fetch(`${apiUrl}/settings/exchange-rate`, { next: { revalidate: 60 * 60 * 6 } });
+    const response = await fetch(`${apiUrl}/settings/exchange-rate`, publicApiOptions(60 * 60 * 6));
     if (!response.ok) return null;
     return (await response.json()) as {
       base: 'JPY';
@@ -43,7 +52,7 @@ export async function getExchangeRate() {
 
 export async function getCustomerHandovers(options: { throwOnError?: boolean } = {}): Promise<CustomerHandover[]> {
   try {
-    const response = await fetch(`${apiUrl}/customer-handovers`, { cache: 'no-store' });
+    const response = await fetch(`${apiUrl}/customer-handovers`, publicApiOptions());
     if (!response.ok) throw new Error('Could not load customer handovers');
     const handovers = (await response.json()) as CustomerHandover[];
     return handovers.map((handover) => ({

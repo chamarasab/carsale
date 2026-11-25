@@ -297,6 +297,7 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
   private schedulerInitialTimer?: NodeJS.Timeout;
   private schedulerPollTimer?: NodeJS.Timeout;
   private storageMaintenanceTimer?: NodeJS.Timeout;
+  private startupMaintenanceTimer?: NodeJS.Timeout;
 
   constructor(
     private readonly carsService: CarsService,
@@ -307,38 +308,17 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
     @InjectModel(ScrapeRun.name) private readonly scrapeRunModel: Model<ScrapeRun>,
   ) {}
 
-  async onModuleInit() {
-    await this.scrapeRunModel.updateMany(
-      { status: 'running' },
-      {
-        $set: {
-          status: 'interrupted',
-          finishedAt: new Date(),
-          errors: ['API restarted before the scrape run completed'],
-        },
-      },
-    );
-    await this.runStorageMaintenance();
-    const gradeCleanup = await this.carsService.sanitizeAuctionGrades();
-    this.logger.log(
-      `[AUCTION GRADE CLEANUP] normalizedCars=${gradeCleanup.normalizedCars} deletedCars=${gradeCleanup.deletedCars} unpublishedCars=${gradeCleanup.unpublishedCars} deletedImages=${gradeCleanup.deletedImages}`,
-    );
-    try {
-      const duplicateCleanup = await this.carsService.removeDuplicateScrapedAuctions();
-      this.logger.log(
-        `[AUCTION DUPLICATE CLEANUP] groups=${duplicateCleanup.duplicateGroups} deletedCars=${duplicateCleanup.deletedCars} deletedImages=${duplicateCleanup.deletedImages}`,
-      );
-    } catch (error) {
-      this.logger.error(`[AUCTION DUPLICATE CLEANUP FAILED] ${errorDetail(error)}`);
-    }
+  onModuleInit() {
     this.startInProcessScheduler();
     this.startStorageMaintenance();
+    this.startStartupMaintenance();
   }
 
   onModuleDestroy() {
     if (this.schedulerInitialTimer) clearTimeout(this.schedulerInitialTimer);
     if (this.schedulerPollTimer) clearInterval(this.schedulerPollTimer);
     if (this.storageMaintenanceTimer) clearInterval(this.storageMaintenanceTimer);
+    if (this.startupMaintenanceTimer) clearTimeout(this.startupMaintenanceTimer);
   }
 
   async getBotStatus() {
@@ -469,6 +449,40 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
     }, intervalMs);
     this.storageMaintenanceTimer.unref();
     this.logger.log(`[STORAGE MAINTENANCE] Scheduled every ${intervalMs}ms`);
+  }
+
+  private startStartupMaintenance() {
+    this.startupMaintenanceTimer = setTimeout(() => {
+      this.startupMaintenanceTimer = undefined;
+      void this.runStartupMaintenance();
+    }, 1_000);
+    this.startupMaintenanceTimer.unref();
+  }
+
+  private async runStartupMaintenance() {
+    try {
+      await this.scrapeRunModel.updateMany(
+        { status: 'running' },
+        {
+          $set: {
+            status: 'interrupted',
+            finishedAt: new Date(),
+            errors: ['API restarted before the scrape run completed'],
+          },
+        },
+      );
+      await this.runStorageMaintenance();
+      const gradeCleanup = await this.carsService.sanitizeAuctionGrades();
+      this.logger.log(
+        `[AUCTION GRADE CLEANUP] normalizedCars=${gradeCleanup.normalizedCars} deletedCars=${gradeCleanup.deletedCars} unpublishedCars=${gradeCleanup.unpublishedCars} deletedImages=${gradeCleanup.deletedImages}`,
+      );
+      const duplicateCleanup = await this.carsService.removeDuplicateScrapedAuctions();
+      this.logger.log(
+        `[AUCTION DUPLICATE CLEANUP] groups=${duplicateCleanup.duplicateGroups} deletedCars=${duplicateCleanup.deletedCars} deletedImages=${duplicateCleanup.deletedImages}`,
+      );
+    } catch (error) {
+      this.logger.error(`[STARTUP MAINTENANCE FAILED] ${errorDetail(error)}`);
+    }
   }
 
   private async runStorageMaintenance() {
