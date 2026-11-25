@@ -1,28 +1,44 @@
-import { BadRequestException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcryptjs';
 import { Model } from 'mongoose';
 import { getAdminEmails } from '../config/admin-emails';
+import { isMongoStorageQuotaError } from '../config/mongo-errors';
 import { CreateUserDto } from './dto';
 import { User } from './user.schema';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<User>,
     private readonly config: ConfigService,
   ) {}
 
   async onModuleInit() {
-    await this.removeSingleAdminConstraint();
+    await this.runStartupWrite('drop legacy single-admin index', () =>
+      this.removeSingleAdminConstraint(),
+    );
 
     const adminEmails = getAdminEmails(this.config);
     if (adminEmails.length) {
-      await this.userModel.updateMany(
-        { email: { $in: adminEmails } },
-        { $set: { role: 'ADMIN', active: true } },
-      );
+      const pendingPromotion = await this.userModel.exists({
+        email: { $in: adminEmails },
+        $or: [{ role: { $ne: 'ADMIN' } }, { active: { $ne: true } }],
+      });
+      if (pendingPromotion) {
+        await this.runStartupWrite('promote configured administrator accounts', () =>
+          this.userModel.updateMany(
+            {
+              email: { $in: adminEmails },
+              $or: [{ role: { $ne: 'ADMIN' } }, { active: { $ne: true } }],
+            },
+            { $set: { role: 'ADMIN', active: true } },
+          ),
+        );
+      }
     }
 
     const email =
@@ -35,13 +51,15 @@ export class UsersService implements OnModuleInit {
     const existingAdmin = await this.userModel.findOne({ role: 'ADMIN' }).lean();
     if (existingAdmin) return;
 
-    await this.userModel.create({
-      name: this.config.get<string>('ADMIN_INITIAL_NAME', 'Carsale Administrator'),
-      email,
-      passwordHash: await bcrypt.hash(password, 12),
-      role: 'ADMIN',
-      active: true,
-    });
+    await this.runStartupWrite('seed initial administrator account', async () =>
+      this.userModel.create({
+        name: this.config.get<string>('ADMIN_INITIAL_NAME', 'Carsale Administrator'),
+        email,
+        passwordHash: await bcrypt.hash(password, 12),
+        role: 'ADMIN',
+        active: true,
+      }),
+    );
   }
 
   async findForLogin(email: string) {
@@ -60,13 +78,27 @@ export class UsersService implements OnModuleInit {
     });
 
     if (existing) {
-      existing.googleSubject = input.googleSubject;
-      if (!existing.name) existing.name = input.name.trim();
-      if (isAdmin) {
-        existing.role = 'ADMIN';
-        existing.active = true;
+      const trimmedName = input.name.trim();
+      let changed = false;
+      if (existing.googleSubject !== input.googleSubject) {
+        existing.googleSubject = input.googleSubject;
+        changed = true;
       }
-      return { user: await existing.save(), created: false };
+      if (!existing.name && trimmedName) {
+        existing.name = trimmedName;
+        changed = true;
+      }
+      if (isAdmin) {
+        if (existing.role !== 'ADMIN') {
+          existing.role = 'ADMIN';
+          changed = true;
+        }
+        if (!existing.active) {
+          existing.active = true;
+          changed = true;
+        }
+      }
+      return { user: changed ? await existing.save() : existing, created: false };
     }
 
     return {
@@ -107,6 +139,18 @@ export class UsersService implements OnModuleInit {
     }
     user.active = active;
     return user.save();
+  }
+
+  private async runStartupWrite(action: string, operation: () => Promise<unknown>) {
+    try {
+      await operation();
+    } catch (error) {
+      if (isMongoStorageQuotaError(error)) {
+        this.logger.warn(`Skipping "${action}" during startup because MongoDB storage quota is exceeded`);
+        return;
+      }
+      throw error;
+    }
   }
 
   private async removeSingleAdminConstraint() {

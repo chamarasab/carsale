@@ -7,12 +7,13 @@ import { AuthUser } from '../auth/auth.types';
 import { gridFsImageId, MediaService } from '../media/media.service';
 import { WebsiteValuesService } from '../website-values/website-values.service';
 import { AUCTION_GRADES, normalizeAuctionGrade } from './auction-grades';
+import { colomboDateKey, normalizeAuctionDate, SCRAPED_AUCTION_SOURCES } from './auction-dates';
 import { Car } from './car.schema';
 import { applyWorkbookReferenceCost } from './cost-reference';
 import { CreateCarDto, FindCarsQueryDto, UpdateCarDto } from './dto';
 import { calculateImportCost, prepareCostForRecalculation } from './tax-calculator';
 
-const SCRAPED_AUCTION_SOURCES = ['JP Center', 'A-Automarket'] as const;
+export { colomboDateKey, normalizeAuctionDate };
 
 type ScrapedAuctionCandidate = {
   _id: unknown;
@@ -177,7 +178,7 @@ export class CarsService {
 
   async removeExpiredScrapedAuctions(today = colomboDateKey()) {
     const candidates = await this.carModel
-      .find({ source: { $in: ['JP Center', 'A-Automarket'] }, auctionDate: { $exists: true, $ne: '' } })
+      .find({ source: { $in: [...SCRAPED_AUCTION_SOURCES] }, auctionDate: { $exists: true, $ne: '' } })
       .select('_id auctionDate images')
       .lean();
     const expired = candidates.filter((car) => {
@@ -185,14 +186,8 @@ export class CarsService {
       return date !== undefined && date < today;
     });
 
-    let deletedImages = 0;
-    for (const car of expired) {
-      deletedImages += await this.mediaService.deleteImages(car.images);
-    }
-    if (expired.length) {
-      await this.carModel.deleteMany({ _id: { $in: expired.map((car) => car._id) } });
-    }
-    return { deletedCars: expired.length, deletedImages, cutoffDate: today };
+    const result = await this.mediaService.deleteCarsAndUnreferencedImages(expired);
+    return { deletedCars: result.deletedCars, deletedImages: result.deletedImages, cutoffDate: today };
   }
 
   async removeDuplicateScrapedAuctions() {
@@ -398,28 +393,6 @@ export class CarsService {
       invoiceCifJpy: undefined,
     };
   }
-}
-
-export function normalizeAuctionDate(value?: string) {
-  const text = value?.trim();
-  if (!text) return undefined;
-  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  const local = text.match(/^(\d{2})[./-](\d{2})[./-](\d{4})/);
-  const parts = iso ? [iso[1], iso[2], iso[3]] : local ? [local[3], local[2], local[1]] : undefined;
-  if (!parts) return undefined;
-  const [year, month, day] = parts.map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return undefined;
-  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-export function colomboDateKey() {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Colombo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
 }
 
 export function auctionDuplicateFingerprint(car: ScrapedAuctionCandidate) {

@@ -4,6 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import * as cheerio from 'cheerio';
 import { Model } from 'mongoose';
 import { extname } from 'node:path';
+import sharp from 'sharp';
 import { normalizeAuctionGrade } from '../cars/auction-grades';
 import { CarsService, colomboDateKey, normalizeAuctionDate } from '../cars/cars.service';
 import { CreateCarDto } from '../cars/dto';
@@ -461,6 +462,7 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
 
   private async runStartupMaintenance() {
     try {
+      await this.runStorageMaintenance();
       await this.scrapeRunModel.updateMany(
         { status: 'running' },
         {
@@ -471,7 +473,6 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
           },
         },
       );
-      await this.runStorageMaintenance();
       const gradeCleanup = await this.carsService.sanitizeAuctionGrades();
       this.logger.log(
         `[AUCTION GRADE CLEANUP] normalizedCars=${gradeCleanup.normalizedCars} deletedCars=${gradeCleanup.deletedCars} unpublishedCars=${gradeCleanup.unpublishedCars} deletedImages=${gradeCleanup.deletedImages}`,
@@ -491,8 +492,9 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
     try {
       const expired = await this.carsService.removeExpiredScrapedAuctions();
       const orphaned = await this.mediaService.deleteOrphanedImages();
+      const budgeted = await this.mediaService.ensureStorageCapacity(0);
       this.logger.log(
-        `[STORAGE MAINTENANCE] expiredCars=${expired.deletedCars} expiredImages=${expired.deletedImages} orphanedImages=${orphaned.deletedImages} orphanedBytes=${orphaned.deletedBytes} cutoff=${expired.cutoffDate}`,
+        `[STORAGE MAINTENANCE] expiredCars=${expired.deletedCars} expiredImages=${expired.deletedImages} orphanedImages=${orphaned.deletedImages} orphanedBytes=${orphaned.deletedBytes} budgetCars=${budgeted.deletedCars} budgetImages=${budgeted.deletedImages} chunksBytes=${budgeted.currentBytes} cutoff=${expired.cutoffDate}`,
       );
     } catch (error) {
       this.logger.error(`[STORAGE MAINTENANCE FAILED] ${errorDetail(error)}`);
@@ -602,6 +604,7 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
     const jobs: ScrapeJobResult[] = [];
     const errors: string[] = [];
     this.logger.log(`[AUTOMARKET BATCH START] run=${run.id} trigger=${run.trigger}`);
+    await this.runStorageMaintenance();
     let client = await this.createAutomarketClient();
     const jobDelayMs = Math.max(
       0,
@@ -929,6 +932,7 @@ export class ScraperService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(
       `[AUTOMARKET START] run=${run.id} maker=${options.maker} model=${options.model || 'all'} lot=${options.lotId || 'search'} allUpcoming=${options.allUpcoming === true}`,
     );
+    await this.runStorageMaintenance();
     const result = await this.importFromAutomarket(options, async (progress, error) => {
       const update: Record<string, unknown> = { $set: progress };
       if (error) update.$push = { errors: error };
@@ -1884,19 +1888,38 @@ async function saveImage(
   localRoute: string,
   mediaService: MediaService,
 ) {
-  const extension = imageExtension(image.buffer, image.contentType, image.url);
+  const auctionSheet = isLikelyAuctionSheet(image);
+  const optimized = auctionSheet ? null : await optimizeVehiclePhoto(image.buffer);
+  const buffer = optimized ?? image.buffer;
+  const extension = optimized ? '.webp' : imageExtension(buffer, image.contentType, image.url);
   const filename = `${sourceKey}_${formatFileTimestamp(addSeconds(timestampBase, index))}${extension}`;
 
   return mediaService.saveImage({
-    buffer: image.buffer,
-    contentType: imageContentType(extension),
+    buffer,
+    contentType: optimized ? 'image/webp' : imageContentType(extension),
     filename,
     source: localRoute.includes('automarket') ? 'A-Automarket' : 'JP Center',
     sourceUrl: image.url,
     width: image.dimensions.width,
     height: image.dimensions.height,
-    imageKind: isLikelyAuctionSheet(image) ? 'auction-sheet' : 'vehicle-photo',
+    imageKind: auctionSheet ? 'auction-sheet' : 'vehicle-photo',
   });
+}
+
+async function optimizeVehiclePhoto(input: Buffer) {
+  try {
+    const output = await sharp(input, {
+      failOn: 'error',
+      limitInputPixels: MAX_AUCTION_IMAGE_PIXELS,
+    })
+      .rotate()
+      .resize({ width: 1280, height: 960, fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 82 })
+      .toBuffer();
+    return output.length < input.length ? output : null;
+  } catch {
+    return null;
+  }
 }
 
 function addSeconds(value: Date, seconds: number) {

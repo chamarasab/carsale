@@ -3,14 +3,40 @@
 import { LogIn } from 'lucide-react';
 import { signIn, useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { FormEvent, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { FormEvent, Suspense, useEffect, useState } from 'react';
 
-export default function LoginPage() {
+const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? 'https://carsale-1.onrender.com/api').replace(/\/$/, '');
+
+function authErrorMessage(code: string | null) {
+  if (!code) return '';
+  if (code === 'BackendTimeout') {
+    return 'The authentication server took too long to wake up. Please try again.';
+  }
+  if (code === 'AuthServiceUnavailable') {
+    return 'The authentication server is temporarily unavailable. Please try again shortly.';
+  }
+  if (code === 'AccessDenied') {
+    return 'Access denied. Your account may still be waiting for administrator approval.';
+  }
+  if (code === 'OAuthCallback' || code === 'OAuthSignin' || code === 'Callback') {
+    return 'Google sign-in could not be completed. Please try again.';
+  }
+  return 'Sign-in failed. Please try again.';
+}
+
+function LoginForm() {
   const { data: session } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const routeError = authErrorMessage(searchParams.get('error'));
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetch(`${apiUrl}/auth/readiness`, { cache: 'no-store' }).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (session?.user) {
@@ -41,9 +67,68 @@ export default function LoginPage() {
 
   async function loginWithGoogle() {
     setError('');
-    await signIn('google', { callbackUrl: '/users/vehicles' });
+    setGoogleSubmitting(true);
+    try {
+      await signIn('google', { callbackUrl: '/users/vehicles' });
+    } catch {
+      setGoogleSubmitting(false);
+      setError('Could not start Google sign-in. Please try again.');
+    }
   }
 
+  const displayedError = error || routeError;
+
+  return (
+    <form className="mx-auto w-full max-w-lg rounded-panel border border-white/10 bg-surface/95 p-6 text-foreground shadow-theme" onSubmit={onSubmit}>
+      <p className="mb-2 text-xs font-black uppercase tracking-wide text-brass lg:hidden">Secure access</p>
+      <h2 className="text-2xl font-black">Account login</h2>
+      <p className="mt-2 text-sm leading-6 text-muted">Use the email and password assigned by the administrator.</p>
+      <label className="mt-6 grid gap-2 text-sm font-bold text-sub">
+        Email
+        <input autoComplete="email" className="h-12 rounded-panel border border-line bg-field px-4 focus:border-signal focus:ring-signal/15" name="email" required type="email" />
+      </label>
+      <label className="mt-4 grid gap-2 text-sm font-bold text-sub">
+        Password
+        <input autoComplete="current-password" className="h-12 rounded-panel border border-line bg-field px-4 focus:border-signal focus:ring-signal/15" minLength={5} name="password" required type="password" />
+      </label>
+      <button
+        className="bg-brand-gradient mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-panel px-4 text-sm font-black text-white hover:opacity-90 disabled:opacity-50"
+        disabled={submitting || googleSubmitting}
+        type="submit"
+      >
+        <LogIn size={18} />
+        {submitting ? 'Signing in...' : 'Sign in'}
+      </button>
+      <div className="my-5 flex items-center gap-3 text-xs font-bold uppercase text-muted">
+        <span className="h-px flex-1 bg-line" />
+        Or
+        <span className="h-px flex-1 bg-line" />
+      </div>
+      <button
+        className="inline-flex h-12 w-full items-center justify-center rounded-panel border border-line bg-surface px-4 text-sm font-black text-foreground hover:bg-field disabled:opacity-50"
+        disabled={submitting || googleSubmitting}
+        onClick={loginWithGoogle}
+        type="button"
+      >
+        {googleSubmitting ? 'Connecting to Google...' : 'Continue with Google'}
+      </button>
+      {displayedError ? <p className="mt-4 text-sm font-bold text-red-500">{displayedError}</p> : null}
+      <p className="mt-5 text-center text-sm font-bold text-muted">
+        New publisher?{' '}
+        <Link className="text-signal hover:text-foreground" href="/signup">
+          Create an account
+        </Link>
+      </p>
+      <p className="mt-3 text-center text-sm font-bold text-muted lg:hidden">
+        <Link className="hover:text-foreground" href="/home">
+          Back to public site
+        </Link>
+      </p>
+    </form>
+  );
+}
+
+export default function LoginPage() {
   return (
     <main className="relative min-h-screen overflow-hidden text-foreground">
       <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-4 py-20 sm:px-6 sm:py-16 lg:grid-cols-2 lg:px-8">
@@ -58,51 +143,13 @@ export default function LoginPage() {
             Back to public site
           </Link>
         </div>
-        <form className="mx-auto w-full max-w-lg rounded-panel border border-white/10 bg-surface/95 p-6 text-foreground shadow-theme" onSubmit={onSubmit}>
-          <p className="mb-2 text-xs font-black uppercase tracking-wide text-brass lg:hidden">Secure access</p>
-          <h2 className="text-2xl font-black">Account login</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">Use the email and password assigned by the administrator.</p>
-          <label className="mt-6 grid gap-2 text-sm font-bold text-sub">
-            Email
-            <input className="h-12 rounded-panel border border-line bg-field px-4 focus:border-signal focus:ring-signal/15" name="email" required type="email" />
-          </label>
-          <label className="mt-4 grid gap-2 text-sm font-bold text-sub">
-            Password
-            <input className="h-12 rounded-panel border border-line bg-field px-4 focus:border-signal focus:ring-signal/15" minLength={5} name="password" required type="password" />
-          </label>
-          <button
-            className="bg-brand-gradient mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-panel px-4 text-sm font-black text-white hover:opacity-90 disabled:opacity-50"
-            disabled={submitting}
-            type="submit"
-          >
-            <LogIn size={18} />
-            {submitting ? 'Signing in...' : 'Sign in'}
-          </button>
-          <div className="my-5 flex items-center gap-3 text-xs font-bold uppercase text-muted">
-            <span className="h-px flex-1 bg-line" />
-            Or
-            <span className="h-px flex-1 bg-line" />
-          </div>
-          <button
-            className="inline-flex h-12 w-full items-center justify-center rounded-panel border border-line bg-surface px-4 text-sm font-black text-foreground hover:bg-field"
-            onClick={loginWithGoogle}
-            type="button"
-          >
-            Continue with Google
-          </button>
-          {error ? <p className="mt-4 text-sm font-bold text-red-500">{error}</p> : null}
-          <p className="mt-5 text-center text-sm font-bold text-muted">
-            New publisher?{' '}
-            <Link className="text-signal hover:text-foreground" href="/signup">
-              Create an account
-            </Link>
-          </p>
-          <p className="mt-3 text-center text-sm font-bold text-muted lg:hidden">
-            <Link className="hover:text-foreground" href="/home">
-              Back to public site
-            </Link>
-          </p>
-        </form>
+        <Suspense
+          fallback={
+            <div className="mx-auto h-96 w-full max-w-lg rounded-panel border border-white/10 bg-surface/95 p-6 shadow-theme" />
+          }
+        >
+          <LoginForm />
+        </Suspense>
       </div>
     </main>
   );

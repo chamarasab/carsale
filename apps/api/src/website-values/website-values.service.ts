@@ -7,6 +7,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CreateCarDto } from '../cars/dto';
+import { isMongoStorageQuotaError } from '../config/mongo-errors';
 import { CreateWebsiteValueDto, UpdateWebsiteValueDto } from './dto';
 import { KNOWN_WEBSITE_VALUES, MANUFACTURER_PRICE_SOURCES } from './manufacturer-sources';
 import { WebsiteValue } from './website-value.schema';
@@ -29,7 +30,15 @@ export class WebsiteValuesService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    await this.ensureKnownValues();
+    try {
+      await this.ensureKnownValues();
+    } catch (error) {
+      if (isMongoStorageQuotaError(error)) {
+        this.logger.warn('Skipping manufacturer value startup seeding because MongoDB storage quota is exceeded');
+        return;
+      }
+      throw error;
+    }
   }
 
   findAll() {

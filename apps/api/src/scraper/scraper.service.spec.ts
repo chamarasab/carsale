@@ -65,6 +65,56 @@ test('does not block API initialization on database maintenance', (t) => {
   service.onModuleDestroy();
 });
 
+test('runs storage cleanup before marking interrupted runs during startup maintenance', async (t) => {
+  const order: string[] = [];
+  const service = new ScraperService(
+    {
+      removeExpiredScrapedAuctions: async () => {
+        order.push('removeExpired');
+        return { deletedCars: 1, deletedImages: 2, cutoffDate: '2026-11-25' };
+      },
+      sanitizeAuctionGrades: async () => {
+        order.push('sanitizeGrades');
+        return { normalizedCars: 0, deletedCars: 0, unpublishedCars: 0, deletedImages: 0 };
+      },
+      removeDuplicateScrapedAuctions: async () => {
+        order.push('removeDuplicates');
+        return { duplicateGroups: 0, deletedCars: 0, deletedImages: 0 };
+      },
+    } as never,
+    { get: (_key: string, fallback?: unknown) => fallback } as never,
+    {
+      deleteOrphanedImages: async () => {
+        order.push('deleteOrphaned');
+        return { deletedImages: 0, deletedBytes: 0 };
+      },
+      ensureStorageCapacity: async () => {
+        order.push('ensureCapacity');
+        return { deletedCars: 0, deletedImages: 0, deletedBytes: 0, currentBytes: 100, maxBytes: 450 };
+      },
+    } as never,
+    {} as never,
+    {} as never,
+    {
+      updateMany: async () => {
+        order.push('markInterrupted');
+      },
+    } as never,
+  );
+  t.mock.method(service['logger'], 'log', () => undefined);
+
+  await service['runStartupMaintenance']();
+
+  assert.deepEqual(order, [
+    'removeExpired',
+    'deleteOrphaned',
+    'ensureCapacity',
+    'markInterrupted',
+    'sanitizeGrades',
+    'removeDuplicates',
+  ]);
+});
+
 test('searches every upcoming page without confusing an ordinary search with a specific lot', async (t) => {
   const firstPage = auctionRows(1, 20);
   const secondPage = auctionRows(21, 3);

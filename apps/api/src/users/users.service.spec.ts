@@ -46,6 +46,59 @@ test('promotes and activates an existing configured Google administrator', async
   assert.equal(result.user.googleSubject, 'google-subject');
 });
 
+test('skips saving an existing Google administrator when nothing changed', async () => {
+  let saves = 0;
+  const existing = {
+    email: 'aselawhatsapp@gmail.com',
+    name: 'Asela',
+    role: 'ADMIN',
+    active: true,
+    googleSubject: 'google-subject',
+    async save() {
+      saves += 1;
+      return this;
+    },
+  };
+  const service = createService({ findOne: async () => existing });
+
+  const result = await service.findOrCreateGoogleUser({
+    googleSubject: 'google-subject',
+    email: 'aselawhatsapp@gmail.com',
+    name: 'Asela',
+  });
+
+  assert.equal(saves, 0);
+  assert.equal(result.created, false);
+  assert.equal(result.user.role, 'ADMIN');
+});
+
+test('skips startup writes when configured admins are already active and survives quota blocks', async () => {
+  let updates = 0;
+  const service = createService({
+    exists: async () => null,
+    updateMany: async () => {
+      updates += 1;
+    },
+    findOne: () => ({ lean: async () => ({ _id: 'admin-1', role: 'ADMIN' }) }),
+  });
+
+  await service.onModuleInit();
+  assert.equal(updates, 0);
+
+  const quotaService = createService({
+    exists: async () => ({ _id: 'user-1' }),
+    updateMany: async () => {
+      const err = new Error('you are over your space quota, using 515 MB of 512 MB. Writes are blocked');
+      (err as Error & { code?: number; codeName?: string }).code = 8000;
+      (err as Error & { codeName?: string }).codeName = 'AtlasError';
+      throw err;
+    },
+    findOne: () => ({ lean: async () => ({ _id: 'admin-1', role: 'ADMIN' }) }),
+  });
+
+  await quotaService.onModuleInit();
+});
+
 function createService(modelOverrides: Record<string, unknown>) {
   const model = {
     collection: { indexes: async () => [] },

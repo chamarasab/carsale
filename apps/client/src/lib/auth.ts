@@ -5,7 +5,7 @@ import GoogleProvider from 'next-auth/providers/google';
 import { serverEnvironment } from './server-environment';
 
 const { apiUrl, googleClientId, googleClientSecret, nextAuthSecret, siteUrl } = serverEnvironment;
-const AUTH_API_TIMEOUT_MS = 10_000;
+const AUTH_API_TIMEOUT_MS = 45_000;
 
 function authApiSignal() {
   return AbortSignal.timeout(AUTH_API_TIMEOUT_MS);
@@ -25,15 +25,23 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        const response = await fetch(`${apiUrl}/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: credentials?.email,
-            password: credentials?.password,
-          }),
-          signal: authApiSignal(),
-        });
+        let response: Response;
+        try {
+          response = await fetch(`${apiUrl}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: credentials?.email,
+              password: credentials?.password,
+            }),
+            signal: authApiSignal(),
+          });
+        } catch (error) {
+          console.error('[credentials-auth] API sign-in request failed', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+          });
+          return null;
+        }
         if (!response.ok) return null;
         const result = (await response.json()) as {
           accessToken: string;
@@ -56,14 +64,31 @@ export const authOptions: NextAuthOptions = {
       if (account?.provider !== 'google') return true;
       if (!account.id_token) return false;
 
-      const response = await fetch(`${apiUrl}/auth/google`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken: account.id_token }),
-        signal: authApiSignal(),
-      });
+      let response: Response;
+      try {
+        response = await fetch(`${apiUrl}/auth/google`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken: account.id_token }),
+          signal: authApiSignal(),
+        });
+      } catch (error) {
+        const isTimeout = error instanceof Error && error.name === 'TimeoutError';
+        console.error('[google-auth] API sign-in request failed', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          timeout: isTimeout,
+        });
+        return new URL(
+          `/login?error=${isTimeout ? 'BackendTimeout' : 'AuthServiceUnavailable'}`,
+          siteUrl,
+        ).toString();
+      }
+
       if (!response.ok) {
         console.error('[google-auth] API rejected the verified Google identity', { status: response.status });
+        if (response.status >= 500) {
+          return new URL('/login?error=AuthServiceUnavailable', siteUrl).toString();
+        }
         return false;
       }
 
@@ -111,6 +136,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/login',
+    error: '/login',
   },
   session: {
     strategy: 'jwt',
